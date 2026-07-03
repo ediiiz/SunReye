@@ -1,0 +1,28 @@
+name: reyeon-db
+
+# Standalone TimescaleDB for local development (separate from the full-stack
+# docker-compose.yml). Host networking is used so it also works with Docker
+# inside an unprivileged Proxmox LXC, where bridged containers fail on the
+# net.ipv4.ip_unprivileged_port_start sysctl. Reachable on localhost:5432,
+# which matches apps/server/.env.
+
+services:
+  timescaledb:
+    image: timescale/timescaledb:latest-pg17
+    container_name: ReyeON-timescaledb
+    network_mode: host
+    environment:
+      POSTGRES_DB: ReyeON
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+    volumes:
+      - ReyeON_timescale_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: "no"
+
+volumes:
+  ReyeON_timescale_data:

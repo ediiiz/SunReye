@@ -1,26 +1,30 @@
--- TimescaleDB bootstrap for the Deye dashboard.
+-- TimescaleDB bootstrap for the inverter dashboard.
 -- Apply after `db:push` has created the `metrics_raw` table: `bun run db:timescale`.
--- Statements are separated by `--> statement-breakpoint`; each runs on its own
--- (continuous aggregates cannot be created inside a transaction block).
+-- Statements are separated by the drizzle statement-breakpoint marker; each runs
+-- on its own (continuous aggregates cannot be created inside a transaction block).
 
 CREATE EXTENSION IF NOT EXISTS timescaledb;
 --> statement-breakpoint
 
 -- Promote metrics_raw to a hypertable partitioned on the time column.
-SELECT create_hypertable('metrics_raw', 'time', if_not_exists => TRUE);
+-- migrate_data handles the case where the poll loop already wrote rows before
+-- the table was promoted to a hypertable.
+SELECT create_hypertable('metrics_raw', 'time', if_not_exists => TRUE, migrate_data => TRUE);
 --> statement-breakpoint
 
--- Hourly rollup (background-materialized by TimescaleDB).
+-- Hourly rollup, per (inverter, metric). Long form generalizes across every
+-- inverter profile without per-metric DDL.
 CREATE MATERIALIZED VIEW IF NOT EXISTS hourly_rollups
 WITH (timescaledb.continuous) AS
 SELECT
   time_bucket('1 hour', time) AS bucket,
-  avg(pv_power_w)   AS avg_pv_power_w,
-  max(pv_power_w)   AS max_pv_power_w,
-  avg(battery_soc)  AS avg_battery_soc,
-  avg(grid_power_w) AS avg_grid_power_w
+  inverter_id,
+  metric,
+  avg(value) AS avg_value,
+  max(value) AS max_value,
+  min(value) AS min_value
 FROM metrics_raw
-GROUP BY bucket
+GROUP BY bucket, inverter_id, metric
 WITH NO DATA;
 --> statement-breakpoint
 
@@ -29,12 +33,13 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS daily_rollups
 WITH (timescaledb.continuous) AS
 SELECT
   time_bucket('1 day', time) AS bucket,
-  avg(pv_power_w)   AS avg_pv_power_w,
-  max(pv_power_w)   AS max_pv_power_w,
-  avg(battery_soc)  AS avg_battery_soc,
-  avg(grid_power_w) AS avg_grid_power_w
+  inverter_id,
+  metric,
+  avg(value) AS avg_value,
+  max(value) AS max_value,
+  min(value) AS min_value
 FROM metrics_raw
-GROUP BY bucket
+GROUP BY bucket, inverter_id, metric
 WITH NO DATA;
 --> statement-breakpoint
 
@@ -53,9 +58,11 @@ SELECT add_continuous_aggregate_policy('daily_rollups',
   if_not_exists => TRUE);
 --> statement-breakpoint
 
--- Compress raw rows older than 7 days to hit the ~5-year / ~1.5B-row target.
+-- Compress raw rows older than 7 days, segmented by series, to hit the
+-- long-horizon storage target.
 ALTER TABLE metrics_raw SET (
   timescaledb.compress,
+  timescaledb.compress_segmentby = 'inverter_id, metric',
   timescaledb.compress_orderby = 'time DESC'
 );
 --> statement-breakpoint

@@ -25,6 +25,22 @@ First, install the dependencies:
 bun install
 ```
 
+## Dev Container (recommended)
+
+Open the repo in VS Code and **Reopen in Container** (`.devcontainer/`). This automatically:
+
+- starts a **TimescaleDB** service (`db`) on the compose network,
+- installs dependencies (`bun install`),
+- creates the schema and TimescaleDB hypertable/aggregates (`bun db:push && bun db:timescale`).
+
+Then start the apps:
+
+```bash
+bun run dev
+```
+
+Both services use **host networking** (required for Docker inside an unprivileged Proxmox LXC), so the app reaches the DB on `localhost:5432`. `DATABASE_URL` is passed through Turborepo, so no `.env` edits are needed inside the container. Ports 3000 (core-engine), 5173 (web), and 5432 (db) are exposed on the host.
+
 ## Database Setup
 
 This project uses PostgreSQL with Drizzle ORM.

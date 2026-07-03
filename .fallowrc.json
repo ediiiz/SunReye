@@ -17,5 +17,20 @@
   "rules": {
     "unused-dependencies": "warn",
     "unused-dev-dependencies": "warn"
+  },
+  "health": {
+    "thresholdOverrides": [
+      {
+        "files": [
+          "packages/inverter-core/**",
+          "packages/inverter-deye-sunsynk/**",
+          "apps/web/src/routes/dashboard/+page.svelte"
+        ],
+        "maxCyclomatic": 15,
+        "maxCognitive": 20,
+        "maxCrap": 200,
+        "reason": "WIP inverter integration scaffold; CRAP scores are inflated estimates while test coverage is absent. Tighten once these modules stabilize and are covered."
+      }
+    ]
   }
 }

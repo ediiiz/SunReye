@@ -1,19 +1,25 @@
-import { integer, pgTable, smallint, timestamp } from "drizzle-orm/pg-core";
+import { doublePrecision, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 /**
- * 1-second resolution live inverter samples.
+ * 1-second resolution inverter samples in long ("narrow") form: one row per
+ * metric per tick. This keeps the schema fixed while the *set* of metrics is
+ * defined entirely by the active inverter profile — so new inverters /
+ * downloadable config packages need no migration.
  *
- * This table is promoted to a TimescaleDB hypertable (partitioned on `time`)
- * by the raw SQL in `src/timescale.sql`. Drizzle only manages the column
- * shape; the hypertable + continuous aggregate DDL is applied separately via
- * `bun run db:timescale` because drizzle-kit cannot express those.
+ * Promoted to a TimescaleDB hypertable (partitioned on `time`) with per-metric
+ * continuous-aggregate rollups by the raw SQL in `src/timescale.sql`; drizzle
+ * only manages the column shape. Apply via `bun run db:timescale`.
  */
-export const metricsRaw = pgTable("metrics_raw", {
-  time: timestamp("time", { withTimezone: true }).notNull().defaultNow(),
-  pvPowerW: integer("pv_power_w").notNull(),
-  batterySoc: smallint("battery_soc").notNull(),
-  gridPowerW: integer("grid_power_w").notNull(),
-});
+export const metricsRaw = pgTable(
+  "metrics_raw",
+  {
+    time: timestamp("time", { withTimezone: true }).notNull().defaultNow(),
+    inverterId: text("inverter_id").notNull(),
+    metric: text("metric").notNull(),
+    value: doublePrecision("value").notNull(),
+  },
+  (t) => [index("metrics_raw_metric_time_idx").on(t.inverterId, t.metric, t.time)],
+);
 
 export type MetricsRow = typeof metricsRaw.$inferSelect;
 export type MetricsInsert = typeof metricsRaw.$inferInsert;

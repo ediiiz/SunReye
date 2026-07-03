@@ -1,0 +1,17 @@
+{
+  "name": "@ReyeON/inverter-core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "modbus-serial": "^8.0.21"
+  },
+  "devDependencies": {
+    "@ReyeON/config": "workspace:*",
+    "@types/bun": "catalog:",
+    "typescript": "catalog:"
+  }
+}

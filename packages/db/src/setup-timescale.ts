@@ -1,8 +1,13 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { env } from "@ReyeON/env/server";
+import dotenv from "dotenv";
 import { Client } from "pg";
+
+// Load the server env file before importing the env schema, so this works when
+// run via turbo (CWD = packages/db) the same way `drizzle.config.ts` does.
+dotenv.config({ path: fileURLToPath(new URL("../../../apps/server/.env", import.meta.url)) });
+const { env } = await import("@ReyeON/env/server");
 
 /**
  * Applies the TimescaleDB DDL (hypertable + continuous aggregates + policies)

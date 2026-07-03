@@ -1,0 +1,17 @@
+{
+  "name": "@ReyeON/inverter-deye-sunsynk",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@ReyeON/inverter-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@ReyeON/config": "workspace:*",
+    "@types/bun": "catalog:",
+    "typescript": "catalog:"
+  }
+}

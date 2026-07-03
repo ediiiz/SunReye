@@ -1,6 +1,7 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
+  "globalPassThroughEnv": ["DATABASE_URL"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -34,18 +35,17 @@
       "cache": false,
       "persistent": true
     },
-    "db:start": {
-      "cache": false,
-      "persistent": true
-    },
-    "db:stop": {
+    "//#db:start": {
       "cache": false
     },
-    "db:watch": {
+    "//#db:stop": {
+      "cache": false
+    },
+    "//#db:watch": {
       "cache": false,
       "persistent": true
     },
-    "db:down": {
+    "//#db:down": {
       "cache": false
     }
   }

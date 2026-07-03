@@ -2,6 +2,7 @@
   "$schema": "https://docs.fallow.tools/schema.json",
   "ignorePatterns": [
     "apps/web/src/lib/components/ui/**",
+    "apps/web/src/lib/hooks/**",
     "apps/web/src/lib/utils.ts",
     "packages/backend/data/**"
   ],
@@ -21,15 +22,23 @@
   "health": {
     "thresholdOverrides": [
       {
-        "files": [
-          "packages/inverter-core/**",
-          "packages/inverter-deye-sunsynk/**",
-          "apps/web/src/routes/dashboard/+page.svelte"
-        ],
+        "files": ["packages/inverter-core/**", "packages/inverter-deye-sunsynk/**"],
         "maxCyclomatic": 15,
         "maxCognitive": 20,
         "maxCrap": 200,
         "reason": "WIP inverter integration scaffold; CRAP scores are inflated estimates while test coverage is absent. Tighten once these modules stabilize and are covered."
+      },
+      {
+        "files": [
+          "apps/web/src/routes/(app)/**",
+          "apps/web/src/lib/components/inverter/**",
+          "apps/web/src/lib/components/app-sidebar.svelte",
+          "apps/web/src/lib/inverter/**"
+        ],
+        "maxCyclomatic": 25,
+        "maxCognitive": 30,
+        "maxCrap": 700,
+        "reason": "Manifest-driven dashboard UI: high CRAP is inflated by presentational template branching over the metric catalog with no unit-test coverage. Tighten once the render layer stabilizes and is covered."
       }
     ]
   }

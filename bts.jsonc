@@ -1,0 +1,31 @@
+// Better-T-Stack
+//
+// Website: https://www.better-t-stack.dev/
+// Stack Builder: https://www.better-t-stack.dev/new
+// Analytics: https://www.better-t-stack.dev/analytics
+// Showcase: https://www.better-t-stack.dev/showcase
+// Sponsor: https://github.com/sponsors/AmanVarshney01
+//
+// Add new addons with: bun create better-t-stack add
+// This file is safe to delete
+
+{
+  "$schema": "https://r2.better-t-stack.dev/schema.json",
+  "version": "3.35.2",
+  "createdAt": "2026-07-03T19:49:26.523Z",
+  "reproducibleCommand": "bun create better-t-stack@latest ReyeON --frontend svelte --backend elysia --runtime bun --database postgres --orm drizzle --api none --auth better-auth --payments none --addons turborepo oxlint husky starlight --examples none --db-setup docker --web-deploy docker --server-deploy docker --git --package-manager bun --install",
+  "database": "postgres",
+  "orm": "drizzle",
+  "backend": "elysia",
+  "runtime": "bun",
+  "frontend": ["svelte"],
+  "addons": ["turborepo", "oxlint", "husky", "starlight"],
+  "examples": [],
+  "auth": "better-auth",
+  "payments": "none",
+  "packageManager": "bun",
+  "dbSetup": "docker",
+  "api": "none",
+  "webDeploy": "docker",
+  "serverDeploy": "docker",
+}

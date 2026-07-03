@@ -1,0 +1,24 @@
+{
+  "name": "@ReyeON/auth",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {},
+  "dependencies": {
+    "@ReyeON/db": "workspace:*",
+    "@ReyeON/env": "workspace:*",
+    "better-auth": "catalog:",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@ReyeON/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}

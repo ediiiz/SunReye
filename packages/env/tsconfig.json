@@ -1,0 +1,3 @@
+{
+  "extends": "@ReyeON/config/tsconfig.base.json"
+}

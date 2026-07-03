@@ -58,6 +58,15 @@ SELECT add_continuous_aggregate_policy('daily_rollups',
   if_not_exists => TRUE);
 --> statement-breakpoint
 
+-- Real-time aggregation: the view unions materialized buckets with the most
+-- recent (not-yet-materialized) window computed on the fly from raw rows, so a
+-- chart always includes the latest data without waiting for the refresh policy.
+ALTER MATERIALIZED VIEW hourly_rollups SET (timescaledb.materialized_only = false);
+--> statement-breakpoint
+
+ALTER MATERIALIZED VIEW daily_rollups SET (timescaledb.materialized_only = false);
+--> statement-breakpoint
+
 -- Compress raw rows older than 7 days, segmented by series, to hit the
 -- long-horizon storage target.
 ALTER TABLE metrics_raw SET (

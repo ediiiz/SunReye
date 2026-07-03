@@ -4,7 +4,7 @@ import { db } from "@ReyeON/db";
 import { metricsRaw } from "@ReyeON/db/schema/metrics";
 import { env } from "@ReyeON/env/server";
 import { buildManifest } from "@ReyeON/inverter-core";
-import { and, desc, eq, gte } from "drizzle-orm";
+import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { Elysia, t } from "elysia";
 import { inverter, profile } from "./inverter";
 
@@ -71,6 +71,50 @@ const app = new Elysia()
         limit: t.Number({ default: 5000, minimum: 1, maximum: 50000 }),
         metric: t.Optional(t.String()),
         inverterId: t.Optional(t.String()),
+      }),
+    },
+  )
+  // Downsampled history for charts. Reads TimescaleDB continuous aggregates
+  // (`hourly_rollups` / `daily_rollups`) — pre-computed avg/max/min per
+  // (inverter, metric) bucket — so a multi-week chart stays cheap. Returns
+  // ascending time order (what charts expect). The views are created/refreshed
+  // by raw SQL in packages/db (timescale.sql), so they're queried via `sql`
+  // rather than a drizzle table.
+  .get(
+    "/api/history/rollup",
+    async ({ query }) => {
+      const view = query.bucket === "day" ? sql.raw("daily_rollups") : sql.raw("hourly_rollups");
+      const spanMs = query.hours * 60 * 60 * 1000;
+      const since = new Date(Date.now() - spanMs);
+      const inverterId = query.inverterId ?? profile.id;
+      const result = await db.execute<{
+        bucket: string | Date;
+        avg_value: number;
+        max_value: number;
+        min_value: number;
+      }>(sql`
+        select bucket, avg_value, max_value, min_value
+        from ${view}
+        where metric = ${query.metric}
+          and inverter_id = ${inverterId}
+          and bucket >= ${since}
+        order by bucket asc
+        limit ${query.limit}
+      `);
+      return result.rows.map((r) => ({
+        time: new Date(r.bucket).toISOString(),
+        avg: Number(r.avg_value),
+        max: Number(r.max_value),
+        min: Number(r.min_value),
+      }));
+    },
+    {
+      query: t.Object({
+        metric: t.String(),
+        inverterId: t.Optional(t.String()),
+        bucket: t.Optional(t.Union([t.Literal("hour"), t.Literal("day")])),
+        hours: t.Number({ default: 168, minimum: 1 }),
+        limit: t.Number({ default: 5000, minimum: 1, maximum: 50000 }),
       }),
     },
   )

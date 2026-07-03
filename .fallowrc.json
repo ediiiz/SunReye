@@ -1,7 +1,19 @@
 {
   "$schema": "https://docs.fallow.tools/schema.json",
-  "ignorePatterns": ["apps/web/src/lib/components/ui/**", "packages/backend/data/**"],
-  "ignoreDependencies": ["bits-ui", "tailwind-variants", "@convex/_generated"],
+  "ignorePatterns": [
+    "apps/web/src/lib/components/ui/**",
+    "apps/web/src/lib/utils.ts",
+    "packages/backend/data/**"
+  ],
+  "ignoreDependencies": [
+    "bits-ui",
+    "tailwind-variants",
+    "@convex/_generated",
+    "svelte-sonner",
+    "mode-watcher",
+    "@internationalized/date",
+    "phosphor-svelte"
+  ],
   "rules": {
     "unused-dependencies": "warn",
     "unused-dev-dependencies": "warn"

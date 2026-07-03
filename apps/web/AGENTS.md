@@ -1,0 +1,69 @@
+# Frontend Agent Instructions
+
+**This project uses [bun](https://bun.sh/) as its JavaScript runtime and package manager.**
+
+Use this file for work in `apps/web`.
+
+If a task also requires direct Convex backend changes or live deployment inspection, also follow `packages/backend/AGENTS.md`.
+
+If adding, reading, validating, or renaming env vars, also follow `packages/env/AGENTS.md`. Env schemas live there only; import shared env exports instead of making app-local duplicates.
+
+For frontend UI/UX work, also read `apps/web/DESIGN.md`.
+For frontend testing work, and after adding/changing pages or user-visible components, also read `apps/web/TESTING.md`.
+
+<!-- ShadCN-Svelte:BEGIN -->
+
+For ANY question regarding **Shadcn Svelte UI components**, use the `shadcn-svelte-components` (mcpdoc) server to provide accurate, up-to-date answers.
+
+To install components, use:
+
+```bash
+bun x shadcn-svelte@latest add -y -o ${ComponentName}
+```
+
+**Default UI policy for this repo:**
+
+- Always prefer composing UI from existing shadcn-svelte components in `apps/web/src/lib/components/ui/`.
+- Before building custom UI, check whether an existing shadcn component or subcomponent already covers the need.
+- If a matching shadcn component does not exist yet, install/add the canonical shadcn component first when one exists upstream.
+- If no upstream shadcn component exists for the pattern, build a local reusable component instead of duplicating ad-hoc styled markup across routes.
+- When a shadcn component supports `child`/render snippet composition, prefer that over replacing it with raw custom elements.
+- Raw HTML should be limited to semantic structure and content inside composed shadcn components, not used as a replacement for available shadcn surfaces, controls, dialogs, navigation, or form primitives.
+
+1. **Discover Sources**: Call the `list_doc_sources` tool to identify available documentation sets.
+2. **Retrieve Index**: Call the `fetch_docs` tool on the primary `llms.txt` file for the relevant technology.
+3. **Analyze Content**:
+   - Reflect on the structure and URLs provided within the `llms.txt` file.
+   - Reflect on the specific user request.
+4. **Targeted Retrieval**: Call `fetch_docs` on the specific sub-URLs or sections identified in the index that are directly relevant to the question.
+5. **Synthesize**: Use the retrieved documentation context to generate a code-accurate and idiomatic response.
+
+<!-- ShadCN-Svelte:END -->
+
+<!-- Svelte-MCP:BEGIN -->
+
+You can use the Svelte MCP server, where you have access to comprehensive Svelte 5 and SvelteKit documentation.
+
+## Available MCP Tools
+
+### 1. `list-sections`
+
+Use this FIRST to discover all available documentation sections. Returns a structured list with titles, use_cases, and paths.
+When asked about Svelte or SvelteKit topics, ALWAYS use this tool at the start of the chat to find relevant sections.
+
+### 2. `get-documentation`
+
+Retrieves full documentation content for specific sections. Accepts single or multiple sections.
+After calling `list-sections`, you MUST analyze the returned documentation sections, especially the `use_cases` field, and then use `get-documentation` to fetch ALL documentation sections that are relevant for the user's task.
+
+### 3. `svelte-autofixer`
+
+Analyzes Svelte code and returns issues and suggestions.
+You MUST use this tool whenever writing Svelte code before sending it to the user. Keep calling it until no issues or suggestions are returned.
+
+### 4. `playground-link`
+
+Generates a Svelte Playground link with the provided code.
+After completing the code, ask the user if they want a playground link. Only call this tool after user confirmation and NEVER if code was written to files in their project.
+
+<!-- Svelte-MCP:END -->

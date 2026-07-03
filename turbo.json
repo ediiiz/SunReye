@@ -27,6 +27,9 @@
       "cache": false,
       "persistent": true
     },
+    "db:timescale": {
+      "cache": false
+    },
     "db:studio": {
       "cache": false,
       "persistent": true

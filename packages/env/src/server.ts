@@ -9,6 +9,18 @@ export const env = createEnv({
     BETTER_AUTH_URL: z.url(),
     CORS_ORIGIN: z.url(),
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+
+    // Deye inverter (Modbus TCP) connection
+    DEYE_HOST: z.string().min(1).default("192.168.1.100"),
+    DEYE_PORT: z.coerce.number().int().positive().default(502),
+    DEYE_UNIT_ID: z.coerce.number().int().min(1).default(1),
+    // Polling cadence for the 1Hz God-loop (milliseconds)
+    POLL_INTERVAL_MS: z.coerce.number().int().positive().default(1000),
+    // When true, generate synthetic metrics instead of talking to hardware
+    DEYE_SIMULATE: z
+      .enum(["true", "false"])
+      .default("true")
+      .transform((v) => v === "true"),
   },
   runtimeEnv: process.env,
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,

@@ -49,7 +49,7 @@ services:
     restart: unless-stopped
 
   postgres:
-    image: postgres
+    image: timescale/timescaledb:latest-pg17
     container_name: ReyeON-postgres
     environment:
       POSTGRES_DB: ReyeON

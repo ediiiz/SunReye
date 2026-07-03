@@ -1,0 +1,9 @@
+{
+  "$schema": "https://docs.fallow.tools/schema.json",
+  "ignorePatterns": ["apps/web/src/lib/components/ui/**", "packages/backend/data/**"],
+  "ignoreDependencies": ["bits-ui", "tailwind-variants", "@convex/_generated"],
+  "rules": {
+    "unused-dependencies": "warn",
+    "unused-dev-dependencies": "warn"
+  }
+}

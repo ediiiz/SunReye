@@ -44,6 +44,7 @@
   "devDependencies": {
     "@ReyeON/config": "workspace:*",
     "@types/bun": "catalog:",
+    "fallow": "^2.104.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.0.7",
     "oxfmt": "^0.53.0",
@@ -55,6 +56,9 @@
     "*": [
       "oxlint",
       "oxfmt --write"
+    ],
+    "**/*.{ts,tsx,js,jsx,svelte,json,jsonc}": [
+      "sh -c 'bunx fallow audit --gate new-only --quiet'"
     ]
   },
   "packageManager": "bun@1.3.13"

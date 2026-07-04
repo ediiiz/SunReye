@@ -9,8 +9,10 @@ import type {
   ManifestMetric,
 } from "./types";
 
-/** Points kept per metric for live sparklines (~5 min at 1 Hz). */
-const BUFFER = 300;
+/** Trailing time window kept per metric for live sparklines. */
+const WINDOW_MS = 5 * 60 * 1000;
+/** Hard per-metric point cap so a faster-than-1 Hz feed can't grow unbounded. */
+const MAX_POINTS = 5000;
 
 type Status = "idle" | "connecting" | "live" | "closed";
 
@@ -89,7 +91,7 @@ class InverterStore {
 
   async #backfill(): Promise<void> {
     const { data } = await api.api.history.recent.get({
-      query: { seconds: BUFFER, limit: 40000 },
+      query: { seconds: WINDOW_MS / 1000, limit: 40000 },
     });
     if (!data) return;
     const byMetric = new Map<string, LivePoint[]>();
@@ -99,10 +101,17 @@ class InverterStore {
       byMetric.set(row.metric, points);
     }
     for (const [key, points] of byMetric) {
-      // Rows arrive newest-first; sort ascending and keep the last window.
+      // Rows arrive newest-first; sort ascending and keep the trailing window.
       points.sort((a, b) => a.t - b.t);
-      this.#series.set(key, points.slice(-BUFFER));
+      this.#series.set(key, this.#trim(points));
     }
+  }
+
+  /** Keep points within the trailing window, bounded by the hard cap. */
+  #trim(points: LivePoint[]): LivePoint[] {
+    const cutoff = (points.at(-1)?.t ?? 0) - WINDOW_MS;
+    const windowed = points.filter((p) => p.t >= cutoff);
+    return windowed.length > MAX_POINTS ? windowed.slice(-MAX_POINTS) : windowed;
   }
 
   #connect(): void {
@@ -114,11 +123,9 @@ class InverterStore {
       this.status = "live";
       const t = new Date(sample.time).getTime();
       for (const [key, v] of Object.entries(sample.metrics)) {
-        const prev = this.#series.get(key) ?? [];
-        // New array reference each tick so consumers re-render.
-        const next = prev.length >= BUFFER ? prev.slice(prev.length - BUFFER + 1) : prev.slice();
-        next.push({ t, v });
-        this.#series.set(key, next);
+        // New array reference each tick so consumers re-render; trim to window.
+        const next = [...(this.#series.get(key) ?? []), { t, v }];
+        this.#series.set(key, this.#trim(next));
       }
     });
     this.#ws = ws;

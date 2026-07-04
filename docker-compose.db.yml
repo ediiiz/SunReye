@@ -11,6 +11,8 @@ services:
     image: timescale/timescaledb:latest-pg17
     container_name: ReyeON-timescaledb
     network_mode: host
+    expose:
+      - 5432
     environment:
       POSTGRES_DB: ReyeON
       POSTGRES_USER: postgres

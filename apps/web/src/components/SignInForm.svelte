@@ -3,109 +3,116 @@
 	import { z } from 'zod';
 	import { authClient } from '$lib/auth-client';
 	import { goto } from '$app/navigation';
+	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
+	import { Button } from '$lib/components/ui/button';
 
-	let { switchToSignUp } = $props<{ switchToSignUp: () => void }>();
+	let { switchToSignUp }: { switchToSignUp: () => void } = $props();
+
+	let formError = $state('');
 
 	const validationSchema = z.object({
 		email: z.email('Invalid email address'),
-		password: z.string().min(1, 'Password is required'),
+		password: z.string().min(1, 'Password is required')
 	});
 
 	const form = createForm(() => ({
 		defaultValues: { email: '', password: '' },
 		onSubmit: async ({ value }) => {
-				await authClient.signIn.email(
-					{ email: value.email, password: value.password },
-					{
-						onSuccess: () => goto('/dashboard'),
-						onError: (error) => {
-							console.log(error.error.message || 'Sign in failed. Please try again.');
-						},
+			formError = '';
+			await authClient.signIn.email(
+				{ email: value.email, password: value.password },
+				{
+					onSuccess: () => goto('/'),
+					onError: (error) => {
+						formError = error.error.message || 'Sign in failed. Please try again.';
 					}
-				);
-
+				}
+			);
 		},
-		validators: {
-			onSubmit: validationSchema,
-		},
+		validators: { onSubmit: validationSchema }
 	}));
 
 	type SubmitState = Pick<typeof form.state, 'canSubmit' | 'isSubmitting'>;
 </script>
 
-<div class="mx-auto mt-10 w-full max-w-md p-6">
-	<h1 class="mb-6 text-center font-bold text-3xl">Welcome Back</h1>
+<form
+	class="flex flex-col gap-4"
+	onsubmit={(e) => {
+		e.preventDefault();
+		e.stopPropagation();
+		form.handleSubmit();
+	}}
+>
+	<form.Field name="email">
+		{#snippet children(field)}
+			<div class="flex flex-col gap-1.5">
+				<Label for={field.name}>Email</Label>
+				<Input
+					id={field.name}
+					name={field.name}
+					type="email"
+					autocomplete="email"
+					placeholder="you@example.com"
+					aria-invalid={field.state.meta.isTouched && field.state.meta.errors.length > 0}
+					onblur={field.handleBlur}
+					value={field.state.value}
+					oninput={(e) => field.handleChange(e.currentTarget.value)}
+				/>
+				{#if field.state.meta.isTouched}
+					{#each field.state.meta.errors as error (error)}
+						<p class="text-xs text-destructive" role="alert">{error}</p>
+					{/each}
+				{/if}
+			</div>
+		{/snippet}
+	</form.Field>
 
-	<form
-		class="space-y-4"
-		onsubmit={(e) => {
-			e.preventDefault();
-			e.stopPropagation();
-			form.handleSubmit();
-		}}
+	<form.Field name="password">
+		{#snippet children(field)}
+			<div class="flex flex-col gap-1.5">
+				<Label for={field.name}>Password</Label>
+				<Input
+					id={field.name}
+					name={field.name}
+					type="password"
+					autocomplete="current-password"
+					placeholder="••••••••"
+					aria-invalid={field.state.meta.isTouched && field.state.meta.errors.length > 0}
+					onblur={field.handleBlur}
+					value={field.state.value}
+					oninput={(e) => field.handleChange(e.currentTarget.value)}
+				/>
+				{#if field.state.meta.isTouched}
+					{#each field.state.meta.errors as error (error)}
+						<p class="text-xs text-destructive" role="alert">{error}</p>
+					{/each}
+				{/if}
+			</div>
+		{/snippet}
+	</form.Field>
+
+	{#if formError}
+		<p class="text-sm text-destructive" role="alert">{formError}</p>
+	{/if}
+
+	<form.Subscribe
+		selector={(state: typeof form.state): SubmitState => ({
+			canSubmit: state.canSubmit,
+			isSubmitting: state.isSubmitting
+		})}
 	>
-		<form.Field name="email">
-			{#snippet children(field)}
-				<div class="space-y-1">
-					<label for={field.name}>Email</label>
-					<input
-						id={field.name}
-						name={field.name}
-						type="email"
-						class="w-full border"
-						onblur={field.handleBlur}
-						value={field.state.value}
-						oninput={(e: Event) => {
-							const target = e.target as HTMLInputElement;
-							field.handleChange(target.value);
-						}}
-					/>
-					{#if field.state.meta.isTouched}
-						{#each field.state.meta.errors as error}
-							<p class="text-sm text-red-500" role="alert">{error}</p>
-						{/each}
-					{/if}
-				</div>
-			{/snippet}
-		</form.Field>
+		{#snippet children(state: SubmitState)}
+			<Button type="submit" class="w-full" disabled={!state.canSubmit || state.isSubmitting}>
+				{state.isSubmitting ? 'Signing in…' : 'Sign in'}
+			</Button>
+		{/snippet}
+	</form.Subscribe>
+</form>
 
-		<form.Field name="password">
-			{#snippet children(field)}
-				<div class="space-y-1">
-					<label for={field.name}>Password</label>
-					<input
-						id={field.name}
-						name={field.name}
-						type="password"
-						class="w-full border"
-						onblur={field.handleBlur}
-						value={field.state.value}
-						oninput={(e: Event) => {
-							const target = e.target as HTMLInputElement;
-							field.handleChange(target.value);
-						}}
-					/>
-					{#if field.state.meta.isTouched}
-						{#each field.state.meta.errors as error}
-							<p class="text-sm text-red-500" role="alert">{error}</p>
-						{/each}
-					{/if}
-				</div>
-			{/snippet}
-		</form.Field>
-
-		<form.Subscribe selector={(state: typeof form.state): SubmitState => ({ canSubmit: state.canSubmit, isSubmitting: state.isSubmitting })}>
-			{#snippet children(state: SubmitState)}
-				<button type="submit" class="w-full" disabled={!state.canSubmit || state.isSubmitting}>
-					{state.isSubmitting ? 'Submitting...' : 'Sign In'}
-				</button>
-			{/snippet}
-		</form.Subscribe>
-	</form>
-
-	<div class="mt-4 text-center">
-		<button type="button" class="text-indigo-600 hover:text-indigo-800" onclick={switchToSignUp}>
-			Need an account? Sign Up
-		</button>
-	</div>
-</div>
+<p class="mt-4 text-center text-sm text-muted-foreground">
+	Need an account?
+	<button type="button" class="font-medium text-primary hover:underline" onclick={switchToSignUp}>
+		Create one
+	</button>
+</p>

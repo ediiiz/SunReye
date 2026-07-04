@@ -6,14 +6,14 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
 	import AppSidebar from '$lib/components/app-sidebar.svelte';
-	import { authClient } from '$lib/auth-client';
+	import { useAppSession } from '$lib/session';
 	import { inverter } from '$lib/inverter/store.svelte';
 	import SunIcon from 'phosphor-svelte/lib/Sun';
 	import MoonIcon from 'phosphor-svelte/lib/Moon';
 
 	const { children } = $props();
 
-	const sessionQuery = authClient.useSession();
+	const sessionQuery = useAppSession();
 
 	// Client-side guard (matches the existing app auth pattern).
 	$effect(() => {

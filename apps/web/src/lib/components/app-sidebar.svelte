@@ -4,6 +4,7 @@
 	import { goto } from '$app/navigation';
 	import * as Sidebar from '$lib/components/ui/sidebar';
 	import { authClient } from '$lib/auth-client';
+	import { useAppSession } from '$lib/session';
 	import { inverter } from '$lib/inverter/store.svelte';
 	import GaugeIcon from 'phosphor-svelte/lib/Gauge';
 	import ChartLineIcon from 'phosphor-svelte/lib/ChartLine';
@@ -12,7 +13,7 @@
 	import SignOutIcon from 'phosphor-svelte/lib/SignOut';
 	import UserIcon from 'phosphor-svelte/lib/User';
 
-	const sessionQuery = authClient.useSession();
+	const sessionQuery = useAppSession();
 
 	type NavItem = { href: string; label: string; icon: Component };
 
@@ -29,8 +30,13 @@
 			$sessionQuery.data?.user?.email?.split('@')[0] ||
 			'Signed in'
 	);
+	const isDev = $derived($sessionQuery.isDev);
 
 	async function signOut() {
+		if (isDev) {
+			await goto('/login');
+			return;
+		}
 		await authClient.signOut({ fetchOptions: { onSuccess: () => goto('/login') } });
 	}
 </script>
@@ -83,6 +89,11 @@
 				>
 					<UserIcon class="size-4 shrink-0" />
 					<span class="truncate">{userName}</span>
+					{#if isDev}
+						<span class="shrink-0 bg-primary/15 px-1 text-[10px] font-medium uppercase text-primary">
+							dev
+						</span>
+					{/if}
 				</div>
 			</Sidebar.MenuItem>
 			<Sidebar.MenuItem>

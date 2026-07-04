@@ -90,8 +90,13 @@ class InverterStore {
   }
 
   async #backfill(): Promise<void> {
+    // Over-fetch: pull the whole 5-minute buffer across every metric at the
+    // endpoint's max row cap. `desc + limit` returns the most-recent rows, so a
+    // small cap would only reach back a few seconds under a dense/multi-metric
+    // feed and leave the sparkline window unfilled. Downsample-to-1Hz keeps the
+    // client cheap regardless of how many rows come back.
     const { data } = await api.api.history.recent.get({
-      query: { seconds: WINDOW_MS / 1000, limit: 40000 },
+      query: { seconds: WINDOW_MS / 1000, limit: 200000 },
     });
     if (!data) return;
     const byMetric = new Map<string, LivePoint[]>();

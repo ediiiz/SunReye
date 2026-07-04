@@ -89,7 +89,13 @@ const app = new Elysia()
   .get(
     "/api/history/rollup",
     async ({ query }) => {
-      const view = query.bucket === "day" ? sql.raw("daily_rollups") : sql.raw("hourly_rollups");
+      const viewName =
+        query.bucket === "day"
+          ? "daily_rollups"
+          : query.bucket === "minute"
+            ? "minute_rollups"
+            : "hourly_rollups";
+      const view = sql.raw(viewName);
       const spanMs = query.hours * 60 * 60 * 1000;
       const since = new Date(Date.now() - spanMs);
       const inverterId = query.inverterId ?? profile.id;
@@ -118,7 +124,7 @@ const app = new Elysia()
       query: t.Object({
         metric: t.String(),
         inverterId: t.Optional(t.String()),
-        bucket: t.Optional(t.Union([t.Literal("hour"), t.Literal("day")])),
+        bucket: t.Optional(t.Union([t.Literal("minute"), t.Literal("hour"), t.Literal("day")])),
         hours: t.Number({ default: 168, minimum: 1 }),
         limit: t.Number({ default: 5000, minimum: 1, maximum: 50000 }),
       }),

@@ -13,7 +13,7 @@
 	}: {
 		metric: ManifestMetric;
 		hours: number;
-		bucket: 'hour' | 'day';
+		bucket: 'minute' | 'hour' | 'day';
 		color?: string;
 	} = $props();
 

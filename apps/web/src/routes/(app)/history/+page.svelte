@@ -5,11 +5,13 @@
 	import type { CanonicalRole, ManifestMetric } from '$lib/inverter/types';
 
 	const RANGES = [
+		{ id: '1h', label: '1 hour', hours: 1, bucket: 'minute' as const },
+		{ id: '6h', label: '6 hours', hours: 6, bucket: 'minute' as const },
 		{ id: '24h', label: '24 hours', hours: 24, bucket: 'hour' as const },
 		{ id: '7d', label: '7 days', hours: 168, bucket: 'hour' as const },
 		{ id: '30d', label: '30 days', hours: 720, bucket: 'day' as const }
 	];
-	let rangeId = $state('24h');
+	let rangeId = $state('6h');
 	const range = $derived(RANGES.find((r) => r.id === rangeId) ?? RANGES[0]);
 
 	// Curated chartable metrics (by role), colored from the chart palette.

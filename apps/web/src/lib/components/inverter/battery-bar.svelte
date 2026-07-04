@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
+	import { Tween } from 'svelte/motion';
+	import { cubicOut } from 'svelte/easing';
 	import { Progress } from '$lib/components/ui/progress';
 	import AnimatedNumber from './animated-number.svelte';
 	import { formatMagnitude } from '$lib/inverter/format';
@@ -15,6 +18,14 @@
 	const state = $derived(
 		power === undefined || power === 0 ? 'Idle' : power > 0 ? 'Charging' : 'Discharging'
 	);
+
+	// Drive the bar with the same tween as the number (450ms cubicOut) so both
+	// glide together. Only advance the target on a finite reading, so a tick that
+	// omits SoC holds the last position instead of snapping to 0 and flickering.
+	const socTween = new Tween(untrack(() => soc ?? 0), { duration: 450, easing: cubicOut });
+	$effect(() => {
+		if (soc !== undefined && Number.isFinite(soc)) socTween.target = soc;
+	});
 </script>
 
 <div class="flex flex-col gap-3">
@@ -32,5 +43,9 @@
 			<div class="text-sm font-medium tabular-nums">{formatMagnitude(power)} W</div>
 		</div>
 	</div>
-	<Progress value={soc ?? 0} max={100} />
+	<Progress
+		value={socTween.current}
+		max={100}
+		class="**:data-[slot=progress-indicator]:transition-none"
+	/>
 </div>

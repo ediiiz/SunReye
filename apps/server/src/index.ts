@@ -2,18 +2,26 @@ import { cors } from "@elysiajs/cors";
 import { openapi } from "@elysiajs/openapi";
 import { auth } from "@ReyeON/auth";
 import { db } from "@ReyeON/db";
+import { inverterConfigSchema } from "@ReyeON/db/inverter-config";
+import { maskMqttConfig } from "@ReyeON/db/mqtt-config";
 import { metricsRaw } from "@ReyeON/db/schema/metrics";
 import { env } from "@ReyeON/env/server";
-import { buildManifest } from "@ReyeON/inverter-core";
+import { buildManifest, listProfiles } from "@ReyeON/inverter-core";
 import { and, desc, eq, gte } from "drizzle-orm";
 import { Elysia, t } from "elysia";
+import {
+  getInverterConfig,
+  getMqttConfig,
+  mergeMqttConfig,
+  setInverterConfig,
+  setMqttConfig,
+} from "./config";
 import { computeCost, resolveRange } from "./cost";
 import { entitiesApi, validateWrite } from "./entities";
 import { queryRollup } from "./history";
-import { inverter, profile } from "./inverter";
-import { startMqttBridge } from "./mqtt";
+import { profile } from "./inverter";
+import * as runtime from "./runtime";
 import { getTariff, setTariff } from "./settings";
-import { liveState } from "./state";
 
 // Capability + render metadata contract; built once (profile is static).
 const manifest = buildManifest(profile);
@@ -65,8 +73,9 @@ const app = new Elysia()
     }),
   )
   // Auto-generated `/api/v1` integration surface (entity catalog, state,
-  // history, and one validated write route per writable entity).
-  .use(entitiesApi())
+  // history, and one validated write route per writable entity). Writes go
+  // through the runtime controller's live source.
+  .use(entitiesApi({ write: runtime.write }))
   .all("/api/auth/*", async (context) => {
     const { request, status } = context;
     if (["POST", "GET"].includes(request.method)) {
@@ -176,7 +185,7 @@ const app = new Elysia()
     async ({ body, status }) => {
       const error = validateWrite(body.key, body.value);
       if (error) return status(400, { error });
-      await inverter.write(body.key, body.value);
+      await runtime.write(body.key, body.value);
       return { ok: true, key: body.key, value: body.value };
     },
     { body: t.Object({ key: t.String(), value: t.Number() }) },
@@ -216,47 +225,81 @@ const app = new Elysia()
       }),
     },
   )
+  // --- Runtime configuration (inverter + MQTT), editable from the UI. Saving
+  // persists and hot-applies via the runtime controller; no restart needed. ---
+  .get("/api/settings/inverter", () => getInverterConfig())
+  .put(
+    "/api/settings/inverter",
+    async ({ body, status }) => {
+      try {
+        const config = await setInverterConfig(body);
+        await runtime.applyInverterConfig(config);
+        return config;
+      } catch (error) {
+        return status(400, { error: error instanceof Error ? error.message : "Invalid config" });
+      }
+    },
+    { body: t.Unknown() },
+  )
+  .post(
+    "/api/settings/inverter/test",
+    async ({ body, status }) => {
+      try {
+        return await runtime.testInverter(inverterConfigSchema.parse(body));
+      } catch (error) {
+        return status(400, { error: error instanceof Error ? error.message : "Invalid config" });
+      }
+    },
+    { body: t.Unknown() },
+  )
+  // MQTT config: the password is masked on read and preserved on write when the
+  // client omits it (write-only secret).
+  .get("/api/settings/mqtt", async () => maskMqttConfig(await getMqttConfig()))
+  .put(
+    "/api/settings/mqtt",
+    async ({ body, status }) => {
+      try {
+        const config = await setMqttConfig(body);
+        await runtime.applyMqttConfig(config);
+        return maskMqttConfig(config);
+      } catch (error) {
+        return status(400, { error: error instanceof Error ? error.message : "Invalid config" });
+      }
+    },
+    { body: t.Unknown() },
+  )
+  .post(
+    "/api/settings/mqtt/test",
+    async ({ body, status }) => {
+      try {
+        return await runtime.testMqtt(await mergeMqttConfig(body));
+      } catch (error) {
+        return status(400, { error: error instanceof Error ? error.message : "Invalid config" });
+      }
+    },
+    { body: t.Unknown() },
+  )
+  // Live connection health (inverter + MQTT) for the settings dashboard.
+  .get("/api/status", () => runtime.status())
+  // Installed inverter profiles (read-only; profile switching lands in P3).
+  .get("/api/profiles", () =>
+    listProfiles().map((p) => ({ id: p.id, name: p.name, manufacturer: p.manufacturer })),
+  )
   .listen(env.PORT, () => {
-    console.log(
-      `Server running on http://localhost:${env.PORT} — profile "${profile.id}" (simulate=${env.INVERTER_SIMULATE})`,
-    );
+    console.log(`Server running on http://localhost:${env.PORT} — profile "${profile.id}"`);
   });
 
-// Optional MQTT integration bridge (retained state topics, `.../set` writes,
-// Home Assistant discovery). `null` when MQTT_ENABLED=false.
-const mqttBridge = startMqttBridge();
+// Start the runtime controller: it owns the poll loop, the live source, and the
+// MQTT bridge (all hot-reconfigurable). Each sample is broadcast to WebSocket
+// subscribers here; persistence + MQTT publishing happen inside the controller.
+runtime.start((sample) => {
+  app.server?.publish(METRICS_TOPIC, JSON.stringify(sample));
+});
 
-/**
- * The God-loop: poll the inverter at 1Hz, persist every metric to TimescaleDB
- * (one row per metric), broadcast the sample to every WebSocket client, and
- * publish it to the MQTT bridge when enabled.
- */
-const pollTimer = setInterval(async () => {
-  try {
-    const sample = await inverter.read();
-    // Cache for the "current value" REST endpoints (/api/v1/state, /entities/:key).
-    liveState.set(sample);
-    const rows = Object.entries(sample.metrics).map(([metric, value]) => ({
-      time: new Date(sample.time),
-      inverterId: sample.inverterId,
-      metric,
-      value,
-    }));
-    if (rows.length > 0) await db.insert(metricsRaw).values(rows);
-    app.server?.publish(METRICS_TOPIC, JSON.stringify(sample));
-    mqttBridge?.publishSample(sample);
-  } catch (error) {
-    console.error("poll loop error:", error);
-  }
-}, env.POLL_INTERVAL_MS);
-
-// Graceful shutdown: stop polling and release the inverter transport (closes
-// the Modbus socket on real sources; a no-op for the simulator).
+// Graceful shutdown: stop polling and release the transport + broker.
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.on(signal, async () => {
-    clearInterval(pollTimer);
-    await mqttBridge?.close();
-    await inverter.close();
+    await runtime.stop();
     process.exit(0);
   });
 }

@@ -59,8 +59,19 @@
 
 	// byDay bar chart scaling (net cost per day, signed).
 	const maxAbs = $derived(Math.max(1e-9, ...(cost?.byDay ?? []).map((d) => Math.abs(d.net))));
-	const dayLabel = (iso: string) =>
-		new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+	// byDay dates are typed as `YYYY-MM-DD`, but at runtime may arrive as a Date or
+	// timestamp. Parse a bare date at local midnight so it isn't shifted a day in
+	// negative UTC offsets; hand everything else straight to `new Date`. Fall back
+	// to the raw value rather than rendering "Invalid Date".
+	const dayLabel = (iso: string) => {
+		const d =
+			typeof iso === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(iso)
+				? new Date(`${iso}T00:00:00`)
+				: new Date(iso);
+		return Number.isNaN(d.getTime())
+			? String(iso ?? '')
+			: d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+	};
 </script>
 
 <div class="flex w-full flex-col gap-6 p-4 sm:p-6">
@@ -79,7 +90,7 @@
 	{:else if cost}
 		{@const c = cost}
 		<!-- Headline tiles -->
-		<div class="grid gap-px border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
+		<div class="grid gap-px border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
 			{#snippet tile(label: string, value: string, sub?: string, accent?: string)}
 				<div class="flex flex-col gap-1 bg-background px-4 py-3">
 					<span class="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">

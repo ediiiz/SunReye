@@ -56,7 +56,9 @@ const app = new Elysia()
     },
   })
   // Historical data (long form). Filter by metric / inverter; rollups live in
-  // TimescaleDB continuous aggregates, this reads the raw hypertable.
+  // TimescaleDB continuous aggregates, this reads the raw hypertable. Capped to
+  // the raw retention window (30 days) so it never queries dropped chunks —
+  // longer spans must go through /api/history/rollup.
   .get(
     "/api/history",
     async ({ query }) => {
@@ -73,7 +75,7 @@ const app = new Elysia()
     },
     {
       query: t.Object({
-        hours: t.Number({ default: 24, minimum: 1 }),
+        hours: t.Number({ default: 24, minimum: 1, maximum: 720 }),
         limit: t.Number({ default: 5000, minimum: 1, maximum: 50000 }),
         metric: t.Optional(t.String()),
         inverterId: t.Optional(t.String()),

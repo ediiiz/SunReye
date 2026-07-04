@@ -103,3 +103,21 @@ ALTER TABLE metrics_raw SET (
 --> statement-breakpoint
 
 SELECT add_compression_policy('metrics_raw', INTERVAL '7 days', if_not_exists => TRUE);
+--> statement-breakpoint
+
+-- Retention (cleanup). Drop raw 1 Hz rows after 30 days: by then they are
+-- compressed (>7d) and fully materialized into every rollup, so nothing that
+-- reads the aggregates loses data. 30d comfortably exceeds the widest
+-- continuous-aggregate refresh window (daily start_offset = 3 days), so the
+-- real-time union never reaches for chunks that retention has dropped.
+SELECT add_retention_policy('metrics_raw', INTERVAL '30 days', if_not_exists => TRUE);
+--> statement-breakpoint
+
+-- Tiered rollup retention. Each aggregate is built directly from metrics_raw
+-- (not from a coarser rollup), so these policies are independent and drop only
+-- their own already-materialized buckets. daily_rollups has no policy — kept
+-- forever as the cheap long-horizon record.
+SELECT add_retention_policy('minute_rollups', INTERVAL '90 days', if_not_exists => TRUE);
+--> statement-breakpoint
+
+SELECT add_retention_policy('hourly_rollups', INTERVAL '730 days', if_not_exists => TRUE);

@@ -111,14 +111,14 @@
 			const v = power('load.power');
 			const s = sense(v, { flow: 'out', state: 'Consuming' }, { flow: 'out', state: 'Consuming' });
 			nodes.push({ id: 'load', label: 'Load', icon: House, value: v, accent: 'var(--color-chart-5)', at: LOAD, ...s });
-			segments.push({ id: 'load-hub', type: 'AC', flow: s.flow, value: v, pts: [LOAD, { x: LOAD.x, y: HUB.y }] });
+			segments.push({ id: 'load-hub', type: 'AC', flow: s.flow, value: v, pts: [LOAD, { x: LOAD.x, y: HUB.y }, HUB] });
 		}
 
 		if (caps?.generator) {
 			const v = power('generator.power');
 			const s = sense(v, { flow: 'in', state: 'Running' }, { flow: 'idle', state: 'Off' });
 			nodes.push({ id: 'generator', label: 'Generator', icon: Engine, value: v, accent: 'var(--color-chart-2)', at: GEN, ...s });
-			segments.push({ id: 'gen-hub', type: 'AC', flow: s.flow, value: v, pts: [GEN, { x: GEN.x, y: HUB.y }] });
+			segments.push({ id: 'gen-hub', type: 'AC', flow: s.flow, value: v, pts: [GEN, { x: GEN.x, y: HUB.y }, HUB] });
 		}
 
 		if (caps?.grid) {
@@ -170,9 +170,13 @@
 	<div class="relative h-100 w-full min-w-200" bind:clientWidth={w} bind:clientHeight={h}>
 		{#if w > 0}
 			<svg class="absolute inset-0" width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden="true">
+				<!-- Static rails first (all segments) so a later segment's idle rail never
+				     overpaints an earlier segment's coloured flow where routes share a leg. -->
 				{#each lines as l (l.id)}
-					<!-- Static rail keeps the topology readable when idle. -->
 					<polyline class="text-border" points={l.points} fill="none" stroke="currentColor" stroke-width="1.5" />
+				{/each}
+				<!-- Active flow lines on top. -->
+				{#each lines as l (`flow-${l.id}`)}
 					{#if l.flow !== 'idle'}
 						<polyline
 							class={`flow-line ${l.flow === 'in' ? 'flow-in' : 'flow-out'} ${dirClass(l.flow)}`}
@@ -234,7 +238,7 @@
 						{#if n.value === undefined}
 							—
 						{:else}
-							<AnimatedNumber value={Math.abs(n.value)} />
+							<AnimatedNumber value={Math.abs(n.value)} unit="W" />
 						{/if}
 						<span class="text-[0.6rem] text-muted-foreground">W</span>
 					</span>

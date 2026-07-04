@@ -35,7 +35,7 @@
 	</span>
 	<div class="flex items-baseline gap-1.5">
 		{#if animate}
-			<AnimatedNumber value={value as number} class="text-2xl font-semibold tabular-nums leading-none" />
+			<AnimatedNumber value={value as number} {unit} class="text-2xl font-semibold tabular-nums leading-none" />
 		{:else}
 			<span class="text-2xl font-semibold tabular-nums leading-none">{text}</span>
 		{/if}

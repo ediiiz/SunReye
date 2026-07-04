@@ -4,7 +4,6 @@
 	import { cubicOut } from 'svelte/easing';
 	import { Progress } from '$lib/components/ui/progress';
 	import AnimatedNumber from './animated-number.svelte';
-	import { formatMagnitude } from '$lib/inverter/format';
 
 	let {
 		soc,
@@ -40,7 +39,14 @@
 		</div>
 		<div class="min-w-0 text-right">
 			<div class="text-xs uppercase tracking-wide text-muted-foreground">{state}</div>
-			<div class="text-sm font-medium tabular-nums">{formatMagnitude(power)} W</div>
+			<div class="flex items-baseline justify-end gap-0.5 text-sm font-medium tabular-nums">
+				{#if power === undefined || !Number.isFinite(power)}
+					—
+				{:else}
+					<AnimatedNumber value={Math.abs(power)} unit="W" />
+				{/if}
+				<span class="text-muted-foreground">W</span>
+			</div>
 		</div>
 	</div>
 	<Progress

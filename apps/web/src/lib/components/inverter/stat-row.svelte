@@ -19,6 +19,7 @@
 			{#if numeric}
 				<AnimatedNumber
 					value={value as number}
+					unit={metric.unit}
 					class={`font-medium tabular-nums ${kindValueClass(metric.kind)}`}
 				/>
 			{:else}

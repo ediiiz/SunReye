@@ -1,9 +1,39 @@
 import type { ManifestMetric } from "./types";
 
-/** Locale-aware number: always ≥1 decimal (so `2` reads `2.0`), capped at 2. */
-function formatNumber(v: number): string {
+/**
+ * Per-unit decimal precision. This is the single place that decides which value
+ * types render with decimals: map a unit to a fixed number of fraction digits to
+ * override the default. Power is whole-number only — fractional watts are noise
+ * at inverter scale. Units not listed here fall back to {@link DEFAULT_DECIMALS}.
+ */
+const UNIT_DECIMALS: Record<string, number> = {
+  W: 0,
+};
+
+/** Fallback when a unit has no explicit entry: ≥1 decimal (so `2` reads `2.0`), capped at 2. */
+const DEFAULT_DECIMALS = { min: 1, max: 2 } as const;
+
+/** Fixed decimal count configured for a unit, or `undefined` to use the default. */
+export function configuredDecimals(unit: string | null | undefined): number | undefined {
+  return unit ? UNIT_DECIMALS[unit] : undefined;
+}
+
+/** `toLocaleString` fraction-digit options for a value's unit. */
+export function fractionDigits(unit: string | null | undefined): {
+  minimumFractionDigits: number;
+  maximumFractionDigits: number;
+} {
+  const fixed = configuredDecimals(unit);
+  return {
+    minimumFractionDigits: fixed ?? DEFAULT_DECIMALS.min,
+    maximumFractionDigits: fixed ?? DEFAULT_DECIMALS.max,
+  };
+}
+
+/** Locale-aware number formatted with its unit's configured precision. */
+function formatNumber(v: number, unit?: string | null): string {
   if (!Number.isFinite(v)) return "—";
-  return v.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+  return v.toLocaleString(undefined, fractionDigits(unit));
 }
 
 /**
@@ -15,11 +45,5 @@ export function formatValue(metric: ManifestMetric, v: number | undefined): stri
   if (metric.kind === "status" && metric.enumLabels) {
     return metric.enumLabels[v] ?? String(v);
   }
-  return formatNumber(v);
-}
-
-/** Absolute value formatted for display (direction is shown separately). */
-export function formatMagnitude(v: number | undefined): string {
-  if (v === undefined) return "—";
-  return formatNumber(Math.abs(v));
+  return formatNumber(v, metric.unit);
 }

@@ -2,6 +2,7 @@
 	import { AreaChart, Area, LinearGradient } from 'layerchart';
 	import { curveCatmullRom } from 'd3-shape';
 	import * as Chart from '$lib/components/ui/chart';
+	import { fractionDigits } from '$lib/inverter/format';
 	import type { LivePoint } from '$lib/inverter/types';
 
 	let {
@@ -107,6 +108,6 @@
 {#snippet tooltipValue({ value }: { value: unknown })}
 	<span class="text-muted-foreground">{label}</span>
 	<span class="ml-auto font-mono font-medium tabular-nums text-foreground">
-		{Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 })}{unit ? ` ${unit}` : ''}
+		{Number(value).toLocaleString(undefined, fractionDigits(unit))}{unit ? ` ${unit}` : ''}
 	</span>
 {/snippet}

@@ -6,7 +6,7 @@ import type { App } from "server";
  * End-to-end type-safe client for the ElysiaJS core engine.
  *
  * HTTP:  await api.api.history.get({ query: { hours: 24, limit: 5000 } })
- *        await api.api.commands["charge-amps"].post({ amps: 50 })
+ *        await api.api.commands.setting.post({ key, value })
  *
  * WebSocket (live metrics):
  *        const ws = api.ws.metrics.subscribe()

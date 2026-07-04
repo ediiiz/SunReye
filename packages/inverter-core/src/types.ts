@@ -207,6 +207,8 @@ export interface InverterCapabilities {
 /** Serialized, render-ready view of a metric (no functions, no addresses). */
 export interface ManifestMetric {
   key: string;
+  /** MQTT topic suffix (`/`-separated) — the transport mapping for this entity. */
+  topic: string;
   label: string;
   unit: string | null;
   group: string;

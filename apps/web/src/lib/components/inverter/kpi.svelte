@@ -1,7 +1,6 @@
 <script lang="ts">
-	import { AreaChart } from 'layerchart';
-	import * as Chart from '$lib/components/ui/chart';
 	import AnimatedNumber from './animated-number.svelte';
+	import LiveArea from './live-area.svelte';
 	import type { LivePoint } from '$lib/inverter/types';
 
 	let {
@@ -11,6 +10,7 @@
 		unit = '',
 		points = [],
 		accent = 'var(--color-chart-2)',
+		diverging = false,
 		sub = null
 	}: {
 		label: string;
@@ -21,22 +21,12 @@
 		unit?: string;
 		points?: LivePoint[];
 		accent?: string;
+		/** Signed metric: split the chart red (consuming) / green (exporting) at 0. */
+		diverging?: boolean;
 		sub?: string | null;
 	} = $props();
 
 	const animate = $derived(value !== undefined && Number.isFinite(value));
-
-	// Sparkline is a fixed-width scrolling window: pin the x-domain to the last
-	// `SPARK_WINDOW_MS` ending at the newest sample so it slides left over time
-	// instead of cramming an ever-growing buffer into the same box.
-	const SPARK_WINDOW_MS = 2 * 60 * 1000;
-	const lastT = $derived(points.at(-1)?.t);
-	const spark = $derived(
-		lastT === undefined ? points : points.filter((p) => p.t >= lastT - SPARK_WINDOW_MS)
-	);
-	const xDomain = $derived(
-		lastT === undefined ? undefined : [lastT - SPARK_WINDOW_MS, lastT]
-	);
 </script>
 
 <div class="flex flex-col gap-2 px-4 py-3">
@@ -54,22 +44,9 @@
 	{#if sub}
 		<span class="text-xs text-muted-foreground">{sub}</span>
 	{/if}
-	<div class="mt-1 h-16" style="--color-primary: {accent}">
-		{#if spark.length > 1}
-			<Chart.Container config={{}} class="aspect-auto h-16 w-full">
-				<AreaChart
-					data={spark}
-					x="t"
-					{xDomain}
-					y="v"
-					axis={false}
-					grid={false}
-					rule={false}
-					legend={false}
-					tooltipContext={false}
-					padding={{ top: 4, bottom: 2, left: 0, right: 0 }}
-				/>
-			</Chart.Container>
+	<div class="mt-2">
+		{#if points.length > 1}
+			<LiveArea {points} {accent} {diverging} />
 		{/if}
 	</div>
 </div>

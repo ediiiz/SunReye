@@ -10,11 +10,11 @@
 
 	const caps = $derived(inverter.capabilities);
 
-	const KPI_DEFS: { role: CanonicalRole; accent: string }[] = [
+	const KPI_DEFS: { role: CanonicalRole; accent: string; diverging?: boolean }[] = [
 		{ role: 'pv.total.power', accent: 'var(--color-chart-1)' },
 		{ role: 'battery.soc', accent: 'var(--color-chart-2)' },
 		{ role: 'battery.power', accent: 'var(--color-chart-3)' },
-		{ role: 'grid.power', accent: 'var(--color-chart-4)' },
+		{ role: 'grid.power', accent: 'var(--color-chart-4)', diverging: true },
 		{ role: 'load.power', accent: 'var(--color-chart-5)' },
 		{ role: 'production.today', accent: 'var(--color-chart-2)' }
 	];
@@ -57,10 +57,10 @@
 		<PowerFlow />
 	</section>
 
-	<section class="grid grid-cols-2 border border-border sm:grid-cols-3 lg:grid-cols-6">
+	<section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 		{#each kpis as k (k.role)}
 			{@const v = inverter.value(k.metric.key)}
-			<div class="border-b border-r border-border last:border-r-0 lg:[&:nth-child(6n)]:border-r-0">
+			<div class="border border-border">
 				<Kpi
 					label={k.metric.label}
 					value={v}
@@ -68,6 +68,7 @@
 					unit={k.metric.unit ?? ''}
 					points={inverter.series(k.metric.key)}
 					accent={k.accent}
+					diverging={k.diverging ?? false}
 					sub={flowLabel(k.metric, v)}
 				/>
 			</div>

@@ -60,7 +60,6 @@
         "@ReyeON/env": "workspace:*",
         "@ReyeON/inverter-core": "workspace:*",
         "@elysiajs/eden": "^1.4.1",
-        "@tanstack/svelte-form": "^1.28.0",
         "better-auth": "catalog:",
         "dotenv": "catalog:",
         "zod": "catalog:",
@@ -748,18 +747,6 @@
     "@tailwindcss/oxide-win32-x64-msvc": ["@tailwindcss/oxide-win32-x64-msvc@4.3.2", "", { "os": "win32", "cpu": "x64" }, "sha512-QI9BO7KlNZsp2GuO0jwAAj5jCDABOKXRkCk2XuKTSaNEFSdfzqswYVTtCHBNKHLsqyjFyFkqlDiwkNbTYSssMQ=="],
 
     "@tailwindcss/vite": ["@tailwindcss/vite@4.3.2", "", { "dependencies": { "@tailwindcss/node": "4.3.2", "@tailwindcss/oxide": "4.3.2", "tailwindcss": "4.3.2" }, "peerDependencies": { "vite": "^5.2.0 || ^6 || ^7 || ^8" } }, "sha512-eHpMeX4JXfVNJDEcsouTeCBubJBTcTLigeaw/NTUW6PB5ATKKXdyonnXgTBX2VuRbjz1hjfz6C5XAhr52ImQXA=="],
-
-    "@tanstack/devtools-event-client": ["@tanstack/devtools-event-client@0.4.4", "", { "bin": { "intent": "./bin/intent.js" } }, "sha512-6T5Yop/793YI+H+5J8Hsyj4kCih9sl4t3ElLgKioW5hk3ocn+ZdSJ94tT7vL7uabxSugWYBZlOTMPzEw2puvQw=="],
-
-    "@tanstack/form-core": ["@tanstack/form-core@1.33.0", "", { "dependencies": { "@tanstack/devtools-event-client": "^0.4.1", "@tanstack/pacer-lite": "^0.1.1", "@tanstack/store": "^0.11.0" } }, "sha512-AV4Pw9Dk4orFsuPBcDssfWMJFs+yMYBae7zZ4oTqrCf4ftNGQKxvrQRZeqKHG6A4TkiLeSvf2kzIjcVkrW7E6w=="],
-
-    "@tanstack/pacer-lite": ["@tanstack/pacer-lite@0.1.1", "", {}, "sha512-y/xtNPNt/YeyoVxE/JCx+T7yjEzpezmbb+toK8DDD1P4m7Kzs5YR956+7OKexG3f8aXgC3rLZl7b1V+yNUSy5w=="],
-
-    "@tanstack/store": ["@tanstack/store@0.11.0", "", {}, "sha512-WlzzCt3xi0G6pCAJu1U+2jiECwabETDpQDi3hfkFZvJii9AuZqEKbOiVarX1/bWhTNjU486yQtJCCasi/0q+Cw=="],
-
-    "@tanstack/svelte-form": ["@tanstack/svelte-form@1.33.0", "", { "dependencies": { "@tanstack/form-core": "1.33.0", "@tanstack/svelte-store": "^0.12.0" }, "peerDependencies": { "svelte": "^5.0.0" } }, "sha512-Omf00K2iNqDVXYWY+W8nqh4+J6AVcmQdqGX3Ru/mfTw7WpqIq6DhAXYZwwsNeriOXnpfdwfWOv8WgGFspdEK5g=="],
-
-    "@tanstack/svelte-store": ["@tanstack/svelte-store@0.12.0", "", { "dependencies": { "@tanstack/store": "0.11.0" }, "peerDependencies": { "svelte": "^5.0.0" } }, "sha512-XhXlU3jIO/WxikfeVczRdsAvRWzsLBh8Ic6sC7nzfzvMbPut7ZSdCbE7/usfm0bMjVGMmZmyzZy2xRu73QYWAA=="],
 
     "@tokenizer/inflate": ["@tokenizer/inflate@0.4.1", "", { "dependencies": { "debug": "^4.4.3", "token-types": "^6.1.1" } }, "sha512-2mAv+8pkG6GIZiF1kNg1jAjh27IDxEPKwdGul3snfztFerfPGI1LjDezZp3i7BElXompqEtPmoPx6c2wgtWsOA=="],
 

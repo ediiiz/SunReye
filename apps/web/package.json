@@ -15,7 +15,6 @@
     "@ReyeON/env": "workspace:*",
     "@ReyeON/inverter-core": "workspace:*",
     "@elysiajs/eden": "^1.4.1",
-    "@tanstack/svelte-form": "^1.28.0",
     "better-auth": "catalog:",
     "dotenv": "catalog:",
     "zod": "catalog:"

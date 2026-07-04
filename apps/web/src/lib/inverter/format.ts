@@ -1,11 +1,9 @@
 import type { ManifestMetric } from "./types";
 
-/** Locale-aware number: integers plain, decimals capped at 2 places. */
+/** Locale-aware number: always ≥1 decimal (so `2` reads `2.0`), capped at 2. */
 function formatNumber(v: number): string {
   if (!Number.isFinite(v)) return "—";
-  return Number.isInteger(v)
-    ? v.toLocaleString()
-    : v.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  return v.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 });
 }
 
 /**

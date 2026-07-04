@@ -18,13 +18,15 @@
 		tween.target = value;
 	});
 
-	// Decimal places of the *target* value (capped at 2). Locking every frame to
-	// this exact count — min = max — keeps the digit shape fixed mid-tween, so
-	// intermediate frames can't sprout an extra decimal and make the text jump.
+	// Decimal places of the *target* value, floored at 1 (so `2` reads `2.0`) and
+	// capped at 2. Locking every frame to this exact count — min = max — keeps the
+	// digit shape fixed mid-tween, so intermediate frames can't sprout an extra
+	// decimal and make the text jump.
 	const decimals = $derived.by(() => {
-		if (Number.isInteger(value)) return 0;
+		if (Number.isInteger(value)) return 1;
 		const dot = String(value).indexOf('.');
-		return dot === -1 ? 0 : Math.min(String(value).length - dot - 1, 2);
+		const places = dot === -1 ? 0 : String(value).length - dot - 1;
+		return Math.min(Math.max(places, 1), 2);
 	});
 	const display = $derived(
 		tween.current.toLocaleString(undefined, {

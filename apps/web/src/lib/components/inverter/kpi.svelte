@@ -25,11 +25,6 @@
 	} = $props();
 
 	const animate = $derived(value !== undefined && Number.isFinite(value));
-
-	// Fixed 5-minute window ending at the latest sample, so the trace scrolls
-	// left in real time instead of rescaling as points accumulate.
-	const WINDOW_MS = 5 * 60 * 1000;
-	const maxT = $derived(points.at(-1)?.t ?? 0);
 </script>
 
 <div class="flex flex-col gap-2 px-4 py-3">
@@ -54,7 +49,6 @@
 					data={points}
 					x="t"
 					y="v"
-					xDomain={[maxT - WINDOW_MS, maxT]}
 					axis={false}
 					grid={false}
 					rule={false}

@@ -51,7 +51,7 @@
 	const phaseRoles: CanonicalRole[] = ['grid.phase.voltage', 'grid.phase.current', 'grid.phase.power'];
 </script>
 
-<div class="mx-auto flex w-full max-w-7xl flex-col gap-8 p-4 sm:p-6">
+<div class="flex w-full flex-col gap-8 p-4 sm:p-6">
 	<section class="flex flex-col gap-3">
 		<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">Power flow</h2>
 		<PowerFlow />
@@ -63,7 +63,8 @@
 			<div class="border-b border-r border-border last:border-r-0 lg:[&:nth-child(6n)]:border-r-0">
 				<Kpi
 					label={k.metric.label}
-					value={formatValue(k.metric, v)}
+					value={v}
+					text={formatValue(k.metric, v)}
 					unit={k.metric.unit ?? ''}
 					points={inverter.series(k.metric.key)}
 					accent={k.accent}

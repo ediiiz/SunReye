@@ -9,7 +9,7 @@
 	import ArrowDown from 'phosphor-svelte/lib/ArrowDown';
 	import ArrowUp from 'phosphor-svelte/lib/ArrowUp';
 	import type { CanonicalRole } from '$lib/inverter/types';
-	import { formatMagnitude } from '$lib/inverter/format';
+	import AnimatedNumber from './animated-number.svelte';
 	import { inverter } from '$lib/inverter/store.svelte';
 
 	type Dir = 'in' | 'out' | 'idle';
@@ -88,7 +88,14 @@
 		<div class="flex min-w-[7rem] flex-1 flex-col items-center justify-center gap-1 border border-border px-4 py-4">
 			<Icon class="size-6 text-muted-foreground" weight="duotone" />
 			<span class="text-xs font-medium uppercase tracking-wide">{n.label}</span>
-			<span class="text-lg font-semibold tabular-nums leading-none">{formatMagnitude(n.value)}</span>
+			{#if n.value === undefined}
+				<span class="text-lg font-semibold tabular-nums leading-none">—</span>
+			{:else}
+				<AnimatedNumber
+					value={Math.abs(n.value)}
+					class="text-lg font-semibold tabular-nums leading-none"
+				/>
+			{/if}
 			<span class="text-[0.65rem] text-muted-foreground">{n.unit}</span>
 			<span
 				class="flex items-center gap-1 text-[0.7rem] uppercase tracking-wide"

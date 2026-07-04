@@ -1,7 +1,7 @@
 import type { ManifestMetric } from "./types";
 
 /** Locale-aware number: integers plain, decimals capped at 2 places. */
-export function formatNumber(v: number): string {
+function formatNumber(v: number): string {
   if (!Number.isFinite(v)) return "—";
   return Number.isInteger(v)
     ? v.toLocaleString()

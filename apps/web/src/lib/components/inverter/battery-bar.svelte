@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Progress } from '$lib/components/ui/progress';
-	import { formatNumber, formatMagnitude } from '$lib/inverter/format';
+	import AnimatedNumber from './animated-number.svelte';
+	import { formatMagnitude } from '$lib/inverter/format';
 
 	let {
 		soc,
@@ -19,9 +20,11 @@
 <div class="flex flex-col gap-3">
 	<div class="flex items-end justify-between">
 		<div class="flex items-baseline gap-1.5">
-			<span class="text-3xl font-semibold tabular-nums leading-none">
-				{soc === undefined ? '—' : formatNumber(soc)}
-			</span>
+			{#if soc === undefined}
+				<span class="text-3xl font-semibold tabular-nums leading-none">—</span>
+			{:else}
+				<AnimatedNumber value={soc} class="text-3xl font-semibold tabular-nums leading-none" />
+			{/if}
 			<span class="text-sm text-muted-foreground">%</span>
 		</div>
 		<div class="text-right">

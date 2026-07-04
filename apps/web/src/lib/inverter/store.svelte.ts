@@ -8,8 +8,8 @@ import type {
   ManifestMetric,
 } from "./types";
 
-/** Points kept per metric for live sparklines (~3 min at 1 Hz). */
-const BUFFER = 180;
+/** Points kept per metric for live sparklines (~5 min at 1 Hz). */
+const BUFFER = 300;
 
 type Status = "idle" | "connecting" | "live" | "closed";
 

@@ -67,17 +67,42 @@ class InverterStore {
     return this.metrics.filter((m) => m.group === group);
   }
 
-  /** Fetch the manifest and open the live stream. Idempotent. */
+  /** Fetch the manifest, backfill live buffers, and open the live stream. Idempotent. */
   start(): void {
     if (this.#started) return;
     this.#started = true;
-    void this.#loadManifest();
+    void this.#init();
+  }
+
+  async #init(): Promise<void> {
+    await this.#loadManifest();
+    // Seed sparklines with the last window of raw samples so they're populated
+    // on load, then attach the live stream which appends from here on.
+    await this.#backfill();
     this.#connect();
   }
 
   async #loadManifest(): Promise<void> {
     const { data } = await api.api.profile.get();
     if (data) this.manifest = data as unknown as InverterManifest;
+  }
+
+  async #backfill(): Promise<void> {
+    const { data } = await api.api.history.recent.get({
+      query: { seconds: BUFFER, limit: 40000 },
+    });
+    if (!data) return;
+    const byMetric = new Map<string, LivePoint[]>();
+    for (const row of data) {
+      const points = byMetric.get(row.metric) ?? [];
+      points.push({ t: new Date(row.time).getTime(), v: row.value });
+      byMetric.set(row.metric, points);
+    }
+    for (const [key, points] of byMetric) {
+      // Rows arrive newest-first; sort ascending and keep the last window.
+      points.sort((a, b) => a.t - b.t);
+      this.#series.set(key, points.slice(-BUFFER));
+    }
   }
 
   #connect(): void {

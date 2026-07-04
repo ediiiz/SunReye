@@ -80,6 +80,32 @@ const app = new Elysia()
       }),
     },
   )
+  // Recent raw samples across all metrics, ascending — used to backfill the
+  // client's in-memory live buffers so sparklines are populated immediately on
+  // page load instead of rebuilding over several minutes.
+  .get(
+    "/api/history/recent",
+    async ({ query }) => {
+      const since = new Date(Date.now() - query.seconds * 1000);
+      const inverterId = query.inverterId ?? profile.id;
+      // Most-recent-first so a capped result keeps the latest samples (the
+      // client sorts ascending per metric).
+      const rows = await db
+        .select()
+        .from(metricsRaw)
+        .where(and(gte(metricsRaw.time, since), eq(metricsRaw.inverterId, inverterId)))
+        .orderBy(desc(metricsRaw.time))
+        .limit(query.limit);
+      return rows.map((r) => ({ time: r.time.toISOString(), metric: r.metric, value: r.value }));
+    },
+    {
+      query: t.Object({
+        seconds: t.Number({ default: 300, minimum: 1, maximum: 3600 }),
+        inverterId: t.Optional(t.String()),
+        limit: t.Number({ default: 50000, minimum: 1, maximum: 200000 }),
+      }),
+    },
+  )
   // Downsampled history for charts. Reads TimescaleDB continuous aggregates
   // (`hourly_rollups` / `daily_rollups`) — pre-computed avg/max/min per
   // (inverter, metric) bucket — so a multi-week chart stays cheap. Returns

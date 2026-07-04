@@ -18,12 +18,19 @@
 		tween.target = value;
 	});
 
-	// Integer targets count in whole units; fractional targets keep 1–2 places so
-	// the animation never flickers spurious decimals on a value meant to be whole.
+	// Decimal places of the *target* value (capped at 2). Locking every frame to
+	// this exact count — min = max — keeps the digit shape fixed mid-tween, so
+	// intermediate frames can't sprout an extra decimal and make the text jump.
+	const decimals = $derived.by(() => {
+		if (Number.isInteger(value)) return 0;
+		const dot = String(value).indexOf('.');
+		return dot === -1 ? 0 : Math.min(String(value).length - dot - 1, 2);
+	});
 	const display = $derived(
-		Number.isInteger(value)
-			? Math.round(tween.current).toLocaleString()
-			: tween.current.toLocaleString(undefined, { maximumFractionDigits: 2 })
+		tween.current.toLocaleString(undefined, {
+			minimumFractionDigits: decimals,
+			maximumFractionDigits: decimals
+		})
 	);
 </script>
 

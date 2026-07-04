@@ -3,7 +3,7 @@
 	import { formatValue } from '$lib/inverter/format';
 	import type { CanonicalRole, ManifestMetric } from '$lib/inverter/types';
 	import Kpi from '$lib/components/inverter/kpi.svelte';
-	import PowerFlow from '$lib/components/inverter/power-flow.svelte';
+	import PowerFlow from '$lib/components/inverter/power-flow-diagram.svelte';
 	import BatteryBar from '$lib/components/inverter/battery-bar.svelte';
 	import SubsystemSection from '$lib/components/inverter/subsystem-section.svelte';
 	import IndexedGroup from '$lib/components/inverter/indexed-group.svelte';

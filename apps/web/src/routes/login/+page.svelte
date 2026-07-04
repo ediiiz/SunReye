@@ -5,10 +5,26 @@
 	import { Button } from '$lib/components/ui/button';
 	import LightningIcon from 'phosphor-svelte/lib/Lightning';
 	import ArrowRightIcon from 'phosphor-svelte/lib/ArrowRight';
-	import SignInForm from '../../components/SignInForm.svelte';
-	import SignUpForm from '../../components/SignUpForm.svelte';
+	import AuthForm from '../../components/AuthForm.svelte';
 
 	let showSignIn = $state(true);
+
+	// Copy resolved once per mode so the template stays branch-free.
+	const copy = $derived(
+		showSignIn
+			? {
+					title: 'Sign in',
+					description: 'Enter your credentials to access the console.',
+					prompt: 'Need an account?',
+					action: 'Create one'
+				}
+			: {
+					title: 'Create account',
+					description: 'Register to start monitoring your inverter.',
+					prompt: 'Already have an account?',
+					action: 'Sign in'
+				}
+	);
 </script>
 
 <div class="relative grid min-h-svh place-items-center overflow-hidden bg-background p-4">
@@ -31,19 +47,21 @@
 
 		<Card.Root>
 			<Card.Header>
-				<Card.Title>{showSignIn ? 'Sign in' : 'Create account'}</Card.Title>
-				<Card.Description>
-					{showSignIn
-						? 'Enter your credentials to access the console.'
-						: 'Register to start monitoring your inverter.'}
-				</Card.Description>
+				<Card.Title>{copy.title}</Card.Title>
+				<Card.Description>{copy.description}</Card.Description>
 			</Card.Header>
-			<Card.Content>
-				{#if showSignIn}
-					<SignInForm switchToSignUp={() => (showSignIn = false)} />
-				{:else}
-					<SignUpForm switchToSignIn={() => (showSignIn = true)} />
-				{/if}
+			<Card.Content class="flex flex-col gap-4">
+				<AuthForm mode={showSignIn ? 'signin' : 'signup'} />
+				<p class="text-center text-sm text-muted-foreground">
+					{copy.prompt}
+					<button
+						type="button"
+						class="font-medium text-primary hover:underline"
+						onclick={() => (showSignIn = !showSignIn)}
+					>
+						{copy.action}
+					</button>
+				</p>
 			</Card.Content>
 		</Card.Root>
 

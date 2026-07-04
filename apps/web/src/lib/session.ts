@@ -3,7 +3,7 @@ import { derived, type Readable } from "svelte/store";
 import { authClient } from "$lib/auth-client";
 
 /** Spoofed identity used only when running the dev server with no real session. */
-export const DEV_USER = { id: "dev", name: "Developer", email: "dev@reyeon.local" };
+const DEV_USER = { id: "dev", name: "Developer", email: "dev@reyeon.local" };
 
 export type AppUser = { id: string; name?: string | null; email?: string | null };
 export type AppSession = { data: { user: AppUser } | null; isPending: boolean; isDev: boolean };

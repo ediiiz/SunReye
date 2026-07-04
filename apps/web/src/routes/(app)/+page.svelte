@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { inverter } from '$lib/inverter/store.svelte';
-	import { formatValue, flowLabel } from '$lib/inverter/format';
+	import { formatValue } from '$lib/inverter/format';
 	import type { CanonicalRole, ManifestMetric } from '$lib/inverter/types';
 	import Kpi from '$lib/components/inverter/kpi.svelte';
 	import PowerFlow from '$lib/components/inverter/power-flow.svelte';
@@ -69,7 +69,6 @@
 					points={inverter.series(k.metric.key)}
 					accent={k.accent}
 					diverging={k.diverging ?? false}
-					sub={flowLabel(k.metric, v)}
 				/>
 			</div>
 		{/each}

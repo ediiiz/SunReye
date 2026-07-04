@@ -1,9 +1,16 @@
 <script lang="ts">
 	import { api } from '$lib/api';
-	import * as Tabs from '$lib/components/ui/tabs';
+	import RangeSwitcher from '$lib/components/inverter/range-switcher.svelte';
 	import TariffForm from '$lib/components/settings/tariff-form.svelte';
 	import InverterForm from '$lib/components/settings/inverter-form.svelte';
 	import MqttForm from '$lib/components/settings/mqtt-form.svelte';
+
+	const TABS = [
+		{ id: 'inverter', label: 'Inverter' },
+		{ id: 'mqtt', label: 'MQTT & Home Assistant' },
+		{ id: 'tariff', label: 'Tariff' }
+	] as const;
+	let tab = $state<(typeof TABS)[number]['id']>('inverter');
 
 	type Status = {
 		inverter: {
@@ -37,26 +44,23 @@
 <div class="mx-auto flex w-full max-w-3xl flex-col gap-6 p-4 sm:p-6">
 	<header class="flex flex-col gap-1">
 		<h1 class="text-lg font-semibold">Settings</h1>
-		<p class="text-sm text-muted-foreground">
-			Tariff, inverter connection, and MQTT — changes apply live (no restart).
-		</p>
 	</header>
 
-	<Tabs.Root value="inverter">
-		<Tabs.List>
-			<Tabs.Trigger value="inverter">Inverter</Tabs.Trigger>
-			<Tabs.Trigger value="mqtt">MQTT &amp; Home Assistant</Tabs.Trigger>
-			<Tabs.Trigger value="tariff">Tariff</Tabs.Trigger>
-		</Tabs.List>
+	<div class="flex flex-col gap-6">
+		<RangeSwitcher options={TABS} bind:value={tab} />
 
-		<Tabs.Content value="inverter" class="flex flex-col gap-6">
-			<InverterForm status={status?.inverter ?? null} />
-		</Tabs.Content>
-		<Tabs.Content value="mqtt" class="flex flex-col gap-6">
-			<MqttForm status={status?.mqtt ?? null} />
-		</Tabs.Content>
-		<Tabs.Content value="tariff" class="flex flex-col gap-6">
-			<TariffForm />
-		</Tabs.Content>
-	</Tabs.Root>
+		{#if tab === 'inverter'}
+			<div class="flex flex-col gap-6">
+				<InverterForm status={status?.inverter ?? null} />
+			</div>
+		{:else if tab === 'mqtt'}
+			<div class="flex flex-col gap-6">
+				<MqttForm status={status?.mqtt ?? null} />
+			</div>
+		{:else if tab === 'tariff'}
+			<div class="flex flex-col gap-6">
+				<TariffForm />
+			</div>
+		{/if}
+	</div>
 </div>

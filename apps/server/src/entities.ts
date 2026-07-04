@@ -21,7 +21,7 @@ import {
 } from "@ReyeON/inverter-core";
 import { Elysia, t } from "elysia";
 import { queryRawHistory, queryRollup } from "./history";
-import { inverter, profile } from "./inverter";
+import { profile } from "./inverter";
 import { liveState } from "./state";
 
 const manifest = buildManifest(profile);
@@ -82,8 +82,13 @@ function checkApiKey(request: Request): { status: number; error: string } | null
   return null;
 }
 
+/** Injected transport dependencies (keeps this module free of the singleton). */
+export interface EntitiesApiDeps {
+  write(key: string, value: number): Promise<void>;
+}
+
 /** Mount the generated `/api/v1` integration API onto an Elysia app. */
-export function entitiesApi() {
+export function entitiesApi(deps: EntitiesApiDeps) {
   const app = new Elysia({ prefix: "/api/v1", name: "entities" })
     .onError(({ error, code, set }) => {
       // Preserve the status of known request errors; sanitize everything else to
@@ -216,7 +221,7 @@ export function entitiesApi() {
       return acc.put(
         `/entities/${metric.key}`,
         async ({ body }: { body: { value: number } }) => {
-          await inverter.write(metric.key, body.value);
+          await deps.write(metric.key, body.value);
           return { ok: true, key: metric.key, value: body.value };
         },
         {

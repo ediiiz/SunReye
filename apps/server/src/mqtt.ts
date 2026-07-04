@@ -12,28 +12,21 @@
  * all derive from {@link ManifestMetric} / {@link EntityConstraint}. Adding a
  * metric to a profile extends the MQTT surface with zero code here.
  *
- * Disabled by default (`MQTT_ENABLED=false`); `startMqttBridge()` returns `null`
- * so the God-loop simply never publishes.
+ * Config-driven and hot-swappable: `startMqttBridge(config, deps)` returns
+ * `null` when disabled. The runtime controller owns the lifecycle and injects
+ * the inverter `write`, so this module has no singleton/env coupling.
  */
 
-import { env } from "@ReyeON/env/server";
+import type { MqttConfig } from "@ReyeON/db/mqtt-config";
 import type { EntityConstraint, InverterSample, ManifestMetric } from "@ReyeON/inverter-core";
 import { buildManifest, entityConstraint, metricByKey } from "@ReyeON/inverter-core";
 import mqtt from "mqtt";
 import type { MqttClient } from "mqtt";
 import { validateWrite } from "./entities";
-import { inverter, profile } from "./inverter";
+import { profile } from "./inverter";
 
 const manifest = buildManifest(profile);
 const defByKey = metricByKey(profile);
-
-/** Root topic for this inverter, e.g. `reyeon/deye-sunsynk`. */
-const base = `${env.MQTT_TOPIC_PREFIX}/${profile.id}`;
-/** Retained online/offline flag (LWT); referenced by HA discovery availability. */
-const availabilityTopic = `${base}/status`;
-
-const stateTopic = (m: ManifestMetric): string => `${base}/${m.topic}`;
-const commandTopic = (m: ManifestMetric): string => `${base}/${m.topic}/set`;
 
 /** HA object ids / unique ids must be a restricted charset; keys are dotted. */
 const slug = (s: string): string => s.replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -45,6 +38,18 @@ const haDevice = {
   manufacturer: manifest.manufacturer,
   model: profile.id,
 };
+
+/** Topic builders for a given prefix (`<prefix>/<inverterId>/...`). */
+function topicsFor(prefix: string) {
+  const base = `${prefix}/${profile.id}`;
+  return {
+    base,
+    availability: `${base}/status`,
+    state: (m: ManifestMetric): string => `${base}/${m.topic}`,
+    command: (m: ManifestMetric): string => `${base}/${m.topic}/set`,
+  };
+}
+type Topics = ReturnType<typeof topicsFor>;
 
 /** HA `device_class` by unit. `%` depends on role, so it's handled separately. */
 const DEVICE_CLASS_BY_UNIT: Record<string, string> = {
@@ -90,13 +95,13 @@ type Discovery = { component: string; config: Record<string, unknown> };
  * - read-only enum/status → `sensor` with a template that renders the label.
  * - everything else → `sensor` with device/state class.
  */
-function discoveryConfig(m: ManifestMetric, c: EntityConstraint): Discovery {
+function discoveryConfig(m: ManifestMetric, c: EntityConstraint, topics: Topics): Discovery {
   const shared = clean({
     name: m.label,
     unique_id: `reyeon_${profile.id}_${slug(m.key)}`,
     object_id: `reyeon_${slug(m.key)}`,
-    state_topic: stateTopic(m),
-    availability_topic: availabilityTopic,
+    state_topic: topics.state(m),
+    availability_topic: topics.availability,
     unit_of_measurement: m.unit ?? undefined,
     device: haDevice,
   });
@@ -109,7 +114,7 @@ function discoveryConfig(m: ManifestMetric, c: EntityConstraint): Discovery {
       component: "select",
       config: {
         ...shared,
-        command_topic: commandTopic(m),
+        command_topic: topics.command(m),
         options: Object.values(labels),
         command_template: `{% set m = ${JSON.stringify(toValue)} %}{{ m[value] }}`,
         value_template: valueToLabelTemplate(labels),
@@ -122,7 +127,7 @@ function discoveryConfig(m: ManifestMetric, c: EntityConstraint): Discovery {
       component: "number",
       config: clean({
         ...shared,
-        command_topic: commandTopic(m),
+        command_topic: topics.command(m),
         min: c.min,
         max: c.max,
         mode: "box",
@@ -144,10 +149,21 @@ function discoveryConfig(m: ManifestMetric, c: EntityConstraint): Discovery {
   };
 }
 
+export interface MqttStatus {
+  connected: boolean;
+  lastError: string | null;
+}
+
 export interface MqttBridge {
   /** Publish every metric in a sample to its retained state topic. */
   publishSample(sample: InverterSample): void;
+  status(): MqttStatus;
   close(): Promise<void>;
+}
+
+export interface MqttBridgeDeps {
+  /** Apply an inbound command write (validated by the bridge first). */
+  write(key: string, value: number): Promise<void>;
 }
 
 /**
@@ -155,25 +171,31 @@ export interface MqttBridge {
  * disabled. Command subscriptions and (optional) HA discovery are (re)published
  * on every `connect` so they survive broker restarts and reconnects.
  */
-export function startMqttBridge(): MqttBridge | null {
-  if (!env.MQTT_ENABLED) return null;
+export function startMqttBridge(config: MqttConfig, deps: MqttBridgeDeps): MqttBridge | null {
+  if (!config.enabled) return null;
 
-  const client: MqttClient = mqtt.connect(env.MQTT_BROKER_URL, {
-    username: env.MQTT_USERNAME,
-    password: env.MQTT_PASSWORD,
+  const topics = topicsFor(config.topicPrefix);
+  let connected = false;
+  let lastError: string | null = null;
+
+  const client: MqttClient = mqtt.connect(config.brokerUrl, {
+    username: config.username,
+    password: config.password,
     // LWT: the broker flips us to "offline" if the connection drops, so HA
     // marks the entities unavailable instead of showing a stale last value.
-    will: { topic: availabilityTopic, payload: "offline", qos: 0, retain: true },
+    will: { topic: topics.availability, payload: "offline", qos: 0, retain: true },
   });
 
   // Writable entities, indexed by their command topic for O(1) inbound dispatch.
   const keyByCommandTopic = new Map<string, string>();
   for (const m of manifest.metrics) {
-    if (m.writable) keyByCommandTopic.set(commandTopic(m), m.key);
+    if (m.writable) keyByCommandTopic.set(topics.command(m), m.key);
   }
 
   client.on("connect", () => {
-    client.publish(availabilityTopic, "online", { retain: true });
+    connected = true;
+    lastError = null;
+    client.publish(topics.availability, "online", { retain: true });
 
     const commandTopics = [...keyByCommandTopic.keys()];
     if (commandTopics.length > 0) {
@@ -182,18 +204,22 @@ export function startMqttBridge(): MqttBridge | null {
       });
     }
 
-    if (env.HA_DISCOVERY_ENABLED) {
+    if (config.haDiscoveryEnabled) {
       for (const m of manifest.metrics) {
         const def = defByKey.get(m.key);
         if (!def) continue;
-        const { component, config } = discoveryConfig(m, entityConstraint(def));
-        const topic = `${env.HA_DISCOVERY_PREFIX}/${component}/reyeon_${profile.id}/${slug(m.key)}/config`;
-        client.publish(topic, JSON.stringify(config), { retain: true });
+        const { component, config: cfg } = discoveryConfig(m, entityConstraint(def), topics);
+        const topic = `${config.haDiscoveryPrefix}/${component}/reyeon_${profile.id}/${slug(m.key)}/config`;
+        client.publish(topic, JSON.stringify(cfg), { retain: true });
       }
       console.log(`[mqtt] published HA discovery for ${manifest.metrics.length} entities`);
     }
 
-    console.log(`[mqtt] connected to ${env.MQTT_BROKER_URL} (prefix "${base}")`);
+    console.log(`[mqtt] connected to ${config.brokerUrl} (prefix "${topics.base}")`);
+  });
+
+  client.on("close", () => {
+    connected = false;
   });
 
   client.on("message", async (topic, payload) => {
@@ -210,13 +236,16 @@ export function startMqttBridge(): MqttBridge | null {
       return;
     }
     try {
-      await inverter.write(key, value);
+      await deps.write(key, value);
     } catch (err) {
       console.error(`[mqtt] write ${key}=${value} failed:`, err);
     }
   });
 
-  client.on("error", (err) => console.error("[mqtt] client error:", err));
+  client.on("error", (err) => {
+    lastError = err instanceof Error ? err.message : String(err);
+    console.error("[mqtt] client error:", err);
+  });
 
   return {
     publishSample(sample) {
@@ -226,14 +255,17 @@ export function startMqttBridge(): MqttBridge | null {
       for (const m of manifest.metrics) {
         const value = sample.metrics[m.key];
         if (value === undefined) continue;
-        client.publish(stateTopic(m), String(value), { retain: true });
+        client.publish(topics.state(m), String(value), { retain: true });
       }
+    },
+    status() {
+      return { connected, lastError };
     },
     async close() {
       // Flip availability to "offline" cleanly before disconnecting so HA
       // doesn't have to wait for the LWT timeout.
       await new Promise<void>((resolve) => {
-        client.publish(availabilityTopic, "offline", { retain: true }, () => resolve());
+        client.publish(topics.availability, "offline", { retain: true }, () => resolve());
       });
       await client.endAsync();
     },

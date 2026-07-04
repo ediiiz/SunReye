@@ -44,9 +44,7 @@ describe("allocateCost", () => {
   });
 
   test("export earnings, net, savings and ratios", () => {
-    const hours = [
-      hour("2024-01-01T10:00:00", { import: 1, export: 4, load: 5, production: 10 }),
-    ];
+    const hours = [hour("2024-01-01T10:00:00", { import: 1, export: 4, load: 5, production: 10 })];
     const r = allocateCost(hours, tariff, 1);
     expect(r.exportEarnings).toBeCloseTo(0.2, 6); // 4 * 0.05
     expect(r.importCost).toBeCloseTo(0.4, 6); // 1 * 0.40
@@ -68,10 +66,7 @@ describe("allocateCost", () => {
 
   test("groups by local day", () => {
     const r = allocateCost(
-      [
-        hour("2024-01-01T10:00:00", { import: 1 }),
-        hour("2024-01-02T10:00:00", { import: 2 }),
-      ],
+      [hour("2024-01-01T10:00:00", { import: 1 }), hour("2024-01-02T10:00:00", { import: 2 })],
       tariff,
       2,
     );

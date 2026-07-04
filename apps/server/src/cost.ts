@@ -13,7 +13,7 @@ import { db } from "@ReyeON/db";
 import type { CanonicalRole, InverterProfile } from "@ReyeON/inverter-core";
 import { sql } from "drizzle-orm";
 import { type CostBreakdown, type HourEnergy, allocateCost } from "./cost-calc";
-import { inverter, profile } from "./inverter";
+import { profile } from "./inverter";
 import { getTariff } from "./settings";
 
 export type { CostBreakdown } from "./cost-calc";
@@ -95,7 +95,7 @@ export async function computeCost(opts: {
   to: Date;
   inverterId?: string;
 }): Promise<CostBreakdown> {
-  const inverterId = opts.inverterId ?? inverter.profile.id;
+  const inverterId = opts.inverterId ?? profile.id;
   const tariff = await getTariff();
   const hours = await fetchHourlyEnergy(inverterId, opts.from, opts.to);
   const rangeDays = Math.max(0, (opts.to.getTime() - opts.from.getTime()) / 86_400_000);

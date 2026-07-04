@@ -1,3 +1,4 @@
+import type { InverterConfig } from "@ReyeON/db/inverter-config";
 import { env } from "@ReyeON/env/server";
 import { createInverter, getProfile } from "@ReyeON/inverter-core";
 import type { InverterProfile, InverterSample, InverterSource } from "@ReyeON/inverter-core";
@@ -6,18 +7,26 @@ import type { InverterProfile, InverterSample, InverterSource } from "@ReyeON/in
 // "download" additional inverter support.
 import "@ReyeON/inverter-deye-sunsynk";
 
-/** Profile selected by env, resolved from the installed profile packages. */
+/**
+ * Active profile, selected by env and fixed for the process: it shapes the REST
+ * routes, manifest, and MQTT topics generated once at boot. Runtime settings
+ * (connection, simulate, interval) live in the inverter config and change
+ * without a restart; switching *profiles* is a boot concern (see P3).
+ */
 export const profile: InverterProfile = getProfile(env.INVERTER_PROFILE);
 
-/** Live source: simulator or real Modbus TCP, chosen by INVERTER_SIMULATE. */
-export const inverter: InverterSource = createInverter(profile, {
-  simulate: env.INVERTER_SIMULATE,
-  connection: {
-    host: env.INVERTER_HOST,
-    port: env.INVERTER_PORT,
-    unitId: env.INVERTER_UNIT_ID,
-  },
-});
+/** Build a live source — simulator or real Modbus TCP — for a config. */
+export function buildSource(config: InverterConfig): InverterSource {
+  return createInverter(profile, {
+    simulate: config.simulate,
+    connection: {
+      host: config.host,
+      port: config.port,
+      unitId: config.unitId,
+      timeoutMs: config.timeoutMs,
+    },
+  });
+}
 
 // fallow-ignore-next-line unused-type
 export type { InverterSample };

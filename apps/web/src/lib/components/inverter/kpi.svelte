@@ -47,9 +47,9 @@
 	{#if sub}
 		<span class="text-xs text-muted-foreground">{sub}</span>
 	{/if}
-	<div class="h-9" style="--color-primary: {accent}">
+	<div class="mt-1 h-16" style="--color-primary: {accent}">
 		{#if points.length > 1}
-			<Chart.Container config={{}} class="aspect-auto h-9 w-full">
+			<Chart.Container config={{}} class="aspect-auto h-16 w-full">
 				<AreaChart
 					data={points}
 					x="t"
@@ -60,7 +60,7 @@
 					rule={false}
 					legend={false}
 					tooltipContext={false}
-					padding={{ top: 3, bottom: 3, left: 0, right: 0 }}
+					padding={{ top: 4, bottom: 2, left: 0, right: 0 }}
 				/>
 			</Chart.Container>
 		{/if}

@@ -1,3 +1,4 @@
+import { SvelteMap } from "svelte/reactivity";
 import { api } from "$lib/api";
 import type {
   CanonicalRole,
@@ -24,8 +25,10 @@ class InverterStore {
   latest = $state<LiveSample | null>(null);
   status = $state<Status>("idle");
 
-  // Reactive map: metric key → recent points. Svelte 5 proxies Map mutations.
-  #series = $state(new Map<string, LivePoint[]>());
+  // Reactive map: metric key → recent points. Plain `Map` in `$state` is NOT
+  // reactive on get/set — SvelteMap tracks per-key mutations so sparklines
+  // update the instant a new point lands.
+  #series = new SvelteMap<string, LivePoint[]>();
   #ws: { close: () => void } | null = null;
   #started = false;
 

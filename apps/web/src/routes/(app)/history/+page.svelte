@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { inverter } from '$lib/inverter/store.svelte';
-	import { Button } from '$lib/components/ui/button';
+	import RangeSwitcher from '$lib/components/inverter/range-switcher.svelte';
 	import HistoryChart from '$lib/components/inverter/history-chart.svelte';
 	import type { CanonicalRole, ManifestMetric } from '$lib/inverter/types';
 
@@ -41,17 +41,7 @@
 				Downsampled trends from the continuous-aggregate rollups.
 			</p>
 		</div>
-		<div class="flex items-center gap-1 border border-border p-1">
-			{#each RANGES as r (r.id)}
-				<Button
-					variant={rangeId === r.id ? 'default' : 'ghost'}
-					size="sm"
-					onclick={() => (rangeId = r.id)}
-				>
-					{r.label}
-				</Button>
-			{/each}
-		</div>
+		<RangeSwitcher options={RANGES} bind:value={rangeId} />
 	</div>
 
 	{#if charts.length === 0}

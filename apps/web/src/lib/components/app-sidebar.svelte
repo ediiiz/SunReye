@@ -9,6 +9,8 @@
 	import GaugeIcon from 'phosphor-svelte/lib/Gauge';
 	import ChartLineIcon from 'phosphor-svelte/lib/ChartLine';
 	import SlidersIcon from 'phosphor-svelte/lib/SlidersHorizontal';
+	import CoinsIcon from 'phosphor-svelte/lib/Coins';
+	import GearIcon from 'phosphor-svelte/lib/Gear';
 	import LightningIcon from 'phosphor-svelte/lib/Lightning';
 	import SignOutIcon from 'phosphor-svelte/lib/SignOut';
 	import UserIcon from 'phosphor-svelte/lib/User';
@@ -20,9 +22,11 @@
 	const items = $derived<NavItem[]>([
 		{ href: '/', label: 'Overview', icon: GaugeIcon },
 		{ href: '/history', label: 'History', icon: ChartLineIcon },
+		{ href: '/costs', label: 'Costs', icon: CoinsIcon },
 		...((inverter.capabilities?.controls.length ?? 0) > 0
 			? [{ href: '/controls', label: 'Controls', icon: SlidersIcon }]
-			: [])
+			: []),
+		{ href: '/settings', label: 'Settings', icon: GearIcon }
 	]);
 
 	const userName = $derived(

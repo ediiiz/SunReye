@@ -23,7 +23,13 @@ const METRICS_TOPIC = "metrics";
 const app = new Elysia()
   .use(
     cors({
-      origin: env.CORS_ORIGIN,
+      // In dev the web app may be served on any localhost port (Vite fallback,
+      // VS Code port forwarding), so reflect any localhost origin. Production
+      // pins to the configured origin.
+      origin:
+        env.NODE_ENV === "production"
+          ? env.CORS_ORIGIN
+          : [/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/, env.CORS_ORIGIN],
       methods: ["GET", "POST", "OPTIONS"],
       allowedHeaders: ["Content-Type", "Authorization"],
       credentials: true,

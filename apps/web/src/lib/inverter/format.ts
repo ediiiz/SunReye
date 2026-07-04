@@ -18,17 +18,6 @@ export function formatValue(metric: ManifestMetric, v: number | undefined): stri
   return formatNumber(v);
 }
 
-/**
- * Direction label for a signed metric (e.g. battery Charging/Discharging, grid
- * Importing/Exporting). Null when the metric has no flow semantics.
- */
-export function flowLabel(metric: ManifestMetric, v: number | undefined): string | null {
-  if (v === undefined || !metric.flow) return null;
-  if (v > 0) return metric.flow.positive;
-  if (v < 0) return metric.flow.negative;
-  return "Idle";
-}
-
 /** Absolute value formatted for display (direction is shown separately). */
 export function formatMagnitude(v: number | undefined): string {
   if (v === undefined) return "—";

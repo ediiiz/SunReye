@@ -46,7 +46,7 @@
 	{/if}
 	<div class="mt-2">
 		{#if points.length > 1}
-			<LiveArea {points} {accent} {diverging} />
+			<LiveArea {points} {accent} {diverging} {label} {unit} />
 		{/if}
 	</div>
 </div>

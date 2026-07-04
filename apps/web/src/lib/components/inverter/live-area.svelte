@@ -9,7 +9,9 @@
 		accent = 'var(--color-chart-2)',
 		diverging = false,
 		windowMs = 2 * 60 * 1000,
-		height = 'h-40'
+		height = 'h-40',
+		label = 'Value',
+		unit = ''
 	}: {
 		points?: LivePoint[];
 		accent?: string;
@@ -18,7 +20,17 @@
 		windowMs?: number;
 		/** Tailwind height class for the chart box (fixed height — not h-full). */
 		height?: string;
+		/** Series name shown in the hover tooltip. */
+		label?: string;
+		/** Unit suffix appended to the tooltip value. */
+		unit?: string;
 	} = $props();
+
+	const timeFmt = new Intl.DateTimeFormat(undefined, {
+		hour: '2-digit',
+		minute: '2-digit',
+		second: '2-digit'
+	});
 
 	// Diverging semantics: above 0 = consumption (red), below 0 = export (green).
 	const IMPORT_COLOR = 'oklch(0.63 0.21 25)';
@@ -66,7 +78,7 @@
 {/snippet}
 
 <Chart.Container
-	config={{}}
+	config={{ v: { label, color: accent } }}
 	class={['aspect-auto w-full', height]}
 	style="--color-primary: {accent}"
 >
@@ -75,13 +87,26 @@
 		x="t"
 		{xDomain}
 		y="v"
-		axis={false}
-		grid={false}
+		axis="y"
+		grid
 		rule={false}
 		legend={false}
-		tooltipContext={false}
-		padding={{ top: 6, bottom: 2, left: 0, right: 0 }}
+		padding={{ top: 6, bottom: 6, left: 44, right: 6 }}
 		props={{ area: { curve: curveCatmullRom } }}
 		marks={diverging ? divergingMarks : undefined}
-	/>
+	>
+		{#snippet tooltip()}
+			<Chart.Tooltip
+				labelFormatter={(value) => timeFmt.format(new Date(Number(value)))}
+				formatter={tooltipValue}
+			/>
+		{/snippet}
+	</AreaChart>
 </Chart.Container>
+
+{#snippet tooltipValue({ value }: { value: unknown })}
+	<span class="text-muted-foreground">{label}</span>
+	<span class="ml-auto font-mono font-medium tabular-nums text-foreground">
+		{Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 })}{unit ? ` ${unit}` : ''}
+	</span>
+{/snippet}

@@ -103,8 +103,28 @@ class InverterStore {
     for (const [key, points] of byMetric) {
       // Rows arrive newest-first; sort ascending and keep the trailing window.
       points.sort((a, b) => a.t - b.t);
-      this.#series.set(key, this.#trim(points));
+      this.#series.set(key, this.#trim(this.#downsampleToHz(points)));
     }
+  }
+
+  /**
+   * Collapse the backfill to ~1 point/second so it matches the live stream's
+   * density. The raw table can hold denser-than-1 Hz rows, which would make a
+   * reloaded sparkline look far more compressed than one built live. Points are
+   * ascending; keep the last sample in each 1-second bucket.
+   */
+  #downsampleToHz(points: LivePoint[]): LivePoint[] {
+    const out: LivePoint[] = [];
+    let bucket = Number.NaN;
+    for (const p of points) {
+      const b = Math.floor(p.t / 1000);
+      if (b === bucket) out[out.length - 1] = p;
+      else {
+        out.push(p);
+        bucket = b;
+      }
+    }
+    return out;
   }
 
   /** Keep points within the trailing window, bounded by the hard cap. */

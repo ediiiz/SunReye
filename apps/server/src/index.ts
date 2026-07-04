@@ -1,12 +1,17 @@
 import { cors } from "@elysiajs/cors";
+import { openapi } from "@elysiajs/openapi";
 import { auth } from "@ReyeON/auth";
 import { db } from "@ReyeON/db";
 import { metricsRaw } from "@ReyeON/db/schema/metrics";
 import { env } from "@ReyeON/env/server";
 import { buildManifest } from "@ReyeON/inverter-core";
-import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { and, desc, eq, gte } from "drizzle-orm";
 import { Elysia, t } from "elysia";
+import { entitiesApi, validateWrite } from "./entities";
+import { queryRollup } from "./history";
 import { inverter, profile } from "./inverter";
+import { startMqttBridge } from "./mqtt";
+import { liveState } from "./state";
 
 // Capability + render metadata contract; built once (profile is static).
 const manifest = buildManifest(profile);
@@ -35,6 +40,31 @@ const app = new Elysia()
       credentials: true,
     }),
   )
+  // Browsable docs (Scalar UI at /openapi, spec at /openapi/json) for the
+  // auto-generated third-party API. Tags group the generated entity/command ops.
+  .use(
+    openapi({
+      // Entity keys are dotted (e.g. `settings.battery.grid_charge`) and appear
+      // in the generated write-route paths. Without this the plugin treats any
+      // path containing "." as a static file and omits every command route.
+      exclude: { staticFile: false },
+      documentation: {
+        info: {
+          title: "ReyeON Inverter API",
+          version: "1.0.0",
+          description:
+            "Third-party integration API. Every entity and command is generated from the active inverter profile.",
+        },
+        tags: [
+          { name: "Entities", description: "Read inverter entities and their history." },
+          { name: "Commands", description: "Write validated settings to the inverter." },
+        ],
+      },
+    }),
+  )
+  // Auto-generated `/api/v1` integration surface (entity catalog, state,
+  // history, and one validated write route per writable entity).
+  .use(entitiesApi())
   .all("/api/auth/*", async (context) => {
     const { request, status } = context;
     if (["POST", "GET"].includes(request.method)) {
@@ -117,36 +147,14 @@ const app = new Elysia()
   .get(
     "/api/history/rollup",
     async ({ query }) => {
-      const viewName =
-        query.bucket === "day"
-          ? "daily_rollups"
-          : query.bucket === "minute"
-            ? "minute_rollups"
-            : "hourly_rollups";
-      const view = sql.raw(viewName);
-      const spanMs = query.hours * 60 * 60 * 1000;
-      const since = new Date(Date.now() - spanMs);
-      const inverterId = query.inverterId ?? profile.id;
-      const result = await db.execute<{
-        bucket: string | Date;
-        avg_value: number;
-        max_value: number;
-        min_value: number;
-      }>(sql`
-        select bucket, avg_value, max_value, min_value
-        from ${view}
-        where metric = ${query.metric}
-          and inverter_id = ${inverterId}
-          and bucket >= ${since}
-        order by bucket asc
-        limit ${query.limit}
-      `);
-      return result.rows.map((r) => ({
-        time: new Date(r.bucket).toISOString(),
-        avg: Number(r.avg_value),
-        max: Number(r.max_value),
-        min: Number(r.min_value),
-      }));
+      const since = new Date(Date.now() - query.hours * 60 * 60 * 1000);
+      return queryRollup({
+        metric: query.metric,
+        inverterId: query.inverterId ?? profile.id,
+        since,
+        limit: query.limit,
+        bucket: query.bucket ?? "hour",
+      });
     },
     {
       query: t.Object({
@@ -158,45 +166,39 @@ const app = new Elysia()
       }),
     },
   )
-  // Real-time write pipeline: push any writable setting to the inverter.
+  // Internal write pipeline for the (session-authed) web app. Validates the key
+  // and value against the entity's metadata before touching the inverter — the
+  // external `/api/v1` surface enforces the same rules via generated schemas.
   .post(
     "/api/commands/setting",
-    async ({ body }) => {
+    async ({ body, status }) => {
+      const error = validateWrite(body.key, body.value);
+      if (error) return status(400, { error });
       await inverter.write(body.key, body.value);
       return { ok: true, key: body.key, value: body.value };
     },
     { body: t.Object({ key: t.String(), value: t.Number() }) },
   )
-  // Convenience aliases for the two most common battery-current settings.
-  .post(
-    "/api/commands/charge-amps",
-    async ({ body }) => {
-      await inverter.write("settings.battery.maximum_charge_current", body.amps);
-      return { ok: true, key: "settings.battery.maximum_charge_current", value: body.amps };
-    },
-    { body: t.Object({ amps: t.Number({ minimum: 0 }) }) },
-  )
-  .post(
-    "/api/commands/discharge-amps",
-    async ({ body }) => {
-      await inverter.write("settings.battery.maximum_discharge_current", body.amps);
-      return { ok: true, key: "settings.battery.maximum_discharge_current", value: body.amps };
-    },
-    { body: t.Object({ amps: t.Number({ minimum: 0 }) }) },
-  )
-  .listen(3000, () => {
+  .listen(env.PORT, () => {
     console.log(
-      `Server running on http://localhost:3000 — profile "${profile.id}" (simulate=${env.INVERTER_SIMULATE})`,
+      `Server running on http://localhost:${env.PORT} — profile "${profile.id}" (simulate=${env.INVERTER_SIMULATE})`,
     );
   });
 
+// Optional MQTT integration bridge (retained state topics, `.../set` writes,
+// Home Assistant discovery). `null` when MQTT_ENABLED=false.
+const mqttBridge = startMqttBridge();
+
 /**
  * The God-loop: poll the inverter at 1Hz, persist every metric to TimescaleDB
- * (one row per metric), and broadcast the sample to every WebSocket client.
+ * (one row per metric), broadcast the sample to every WebSocket client, and
+ * publish it to the MQTT bridge when enabled.
  */
 const pollTimer = setInterval(async () => {
   try {
     const sample = await inverter.read();
+    // Cache for the "current value" REST endpoints (/api/v1/state, /entities/:key).
+    liveState.set(sample);
     const rows = Object.entries(sample.metrics).map(([metric, value]) => ({
       time: new Date(sample.time),
       inverterId: sample.inverterId,
@@ -205,6 +207,7 @@ const pollTimer = setInterval(async () => {
     }));
     if (rows.length > 0) await db.insert(metricsRaw).values(rows);
     app.server?.publish(METRICS_TOPIC, JSON.stringify(sample));
+    mqttBridge?.publishSample(sample);
   } catch (error) {
     console.error("poll loop error:", error);
   }
@@ -215,6 +218,7 @@ const pollTimer = setInterval(async () => {
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.on(signal, async () => {
     clearInterval(pollTimer);
+    await mqttBridge?.close();
     await inverter.close();
     process.exit(0);
   });

@@ -60,6 +60,7 @@ export function deriveCapabilities(profile: InverterProfile): InverterCapabiliti
 export function toManifestMetric(def: MetricDef): ManifestMetric {
   return {
     key: def.key,
+    topic: def.topic,
     label: def.label,
     unit: def.unit,
     group: def.group,

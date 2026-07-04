@@ -25,6 +25,18 @@
 	} = $props();
 
 	const animate = $derived(value !== undefined && Number.isFinite(value));
+
+	// Sparkline is a fixed-width scrolling window: pin the x-domain to the last
+	// `SPARK_WINDOW_MS` ending at the newest sample so it slides left over time
+	// instead of cramming an ever-growing buffer into the same box.
+	const SPARK_WINDOW_MS = 2 * 60 * 1000;
+	const lastT = $derived(points.at(-1)?.t);
+	const spark = $derived(
+		lastT === undefined ? points : points.filter((p) => p.t >= lastT - SPARK_WINDOW_MS)
+	);
+	const xDomain = $derived(
+		lastT === undefined ? undefined : [lastT - SPARK_WINDOW_MS, lastT]
+	);
 </script>
 
 <div class="flex flex-col gap-2 px-4 py-3">
@@ -43,11 +55,12 @@
 		<span class="text-xs text-muted-foreground">{sub}</span>
 	{/if}
 	<div class="mt-1 h-16" style="--color-primary: {accent}">
-		{#if points.length > 1}
+		{#if spark.length > 1}
 			<Chart.Container config={{}} class="aspect-auto h-16 w-full">
 				<AreaChart
-					data={points}
+					data={spark}
 					x="t"
+					{xDomain}
 					y="v"
 					axis={false}
 					grid={false}

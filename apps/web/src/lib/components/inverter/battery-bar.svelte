@@ -29,8 +29,8 @@
 </script>
 
 <div class="flex flex-col gap-3">
-	<div class="flex items-end justify-between">
-		<div class="flex items-baseline gap-1.5">
+	<div class="flex items-end justify-between gap-3">
+		<div class="flex min-w-0 items-baseline gap-1.5">
 			{#if soc === undefined}
 				<span class="text-3xl font-semibold tabular-nums leading-none">—</span>
 			{:else}
@@ -38,7 +38,7 @@
 			{/if}
 			<span class="text-sm text-muted-foreground">%</span>
 		</div>
-		<div class="text-right">
+		<div class="min-w-0 text-right">
 			<div class="text-xs uppercase tracking-wide text-muted-foreground">{state}</div>
 			<div class="text-sm font-medium tabular-nums">{formatMagnitude(power)} W</div>
 		</div>

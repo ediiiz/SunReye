@@ -14,7 +14,7 @@
 	} = $props();
 </script>
 
-<section class="flex flex-col gap-4 border border-border p-4">
+<section class="flex min-w-0 flex-col gap-4 border border-border p-4">
 	<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">{title}</h2>
 	{@render children?.()}
 	{#if metrics.length > 0}

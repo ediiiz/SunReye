@@ -12,11 +12,9 @@
 
 	const KPI_DEFS: { role: CanonicalRole; accent: string; diverging?: boolean }[] = [
 		{ role: 'pv.total.power', accent: 'var(--color-chart-1)' },
-		{ role: 'battery.soc', accent: 'var(--color-chart-2)' },
 		{ role: 'battery.power', accent: 'var(--color-chart-3)' },
 		{ role: 'grid.power', accent: 'var(--color-chart-4)', diverging: true },
-		{ role: 'load.power', accent: 'var(--color-chart-5)' },
-		{ role: 'production.today', accent: 'var(--color-chart-2)' }
+		{ role: 'load.power', accent: 'var(--color-chart-5)' }
 	];
 
 	const kpis = $derived(
@@ -57,10 +55,10 @@
 		<PowerFlow />
 	</section>
 
-	<section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+	<section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
 		{#each kpis as k (k.role)}
 			{@const v = inverter.value(k.metric.key)}
-			<div class="border border-border">
+			<div class="min-w-0 border border-border">
 				<Kpi
 					label={k.metric.label}
 					value={v}

@@ -68,9 +68,26 @@ export class ModbusInverter implements InverterSource {
     if (this.connecting) return this.connecting;
     this.connecting = (async () => {
       const next = new ModbusRTU();
-      await next.connectTCP(this.conn.host, { port: this.conn.port });
+      const timeout = this.conn.timeoutMs ?? 2000;
+      try {
+        // `connectTCP` itself has no timeout, so an unreachable host would hang
+        // forever; race it so a bad address fails fast (test-connection, polling).
+        await Promise.race([
+          next.connectTCP(this.conn.host, { port: this.conn.port }),
+          new Promise<never>((_, reject) =>
+            setTimeout(
+              () => reject(new Error(`connect to ${this.conn.host}:${this.conn.port} timed out`)),
+              timeout,
+            ),
+          ),
+        ]);
+      } catch (err) {
+        next.close(() => {});
+        this.connecting = null;
+        throw err;
+      }
       next.setID(this.conn.unitId);
-      next.setTimeout(this.conn.timeoutMs ?? 2000);
+      next.setTimeout(timeout);
       this.client = next;
       this.connecting = null;
       return next;

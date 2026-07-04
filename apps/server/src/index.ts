@@ -7,10 +7,12 @@ import { env } from "@ReyeON/env/server";
 import { buildManifest } from "@ReyeON/inverter-core";
 import { and, desc, eq, gte } from "drizzle-orm";
 import { Elysia, t } from "elysia";
+import { computeCost, resolveRange } from "./cost";
 import { entitiesApi, validateWrite } from "./entities";
 import { queryRollup } from "./history";
 import { inverter, profile } from "./inverter";
 import { startMqttBridge } from "./mqtt";
+import { getTariff, setTariff } from "./settings";
 import { liveState } from "./state";
 
 // Capability + render metadata contract; built once (profile is static).
@@ -178,6 +180,41 @@ const app = new Elysia()
       return { ok: true, key: body.key, value: body.value };
     },
     { body: t.Object({ key: t.String(), value: t.Number() }) },
+  )
+  // Tariff config for the web app: read the active economic model, or replace
+  // it. The body is validated by the shared Zod schema (setTariff), so a bad
+  // payload becomes a 400 rather than a 500.
+  .get("/api/settings/tariff", () => getTariff())
+  .put(
+    "/api/settings/tariff",
+    async ({ body, status }) => {
+      try {
+        return await setTariff(body);
+      } catch (error) {
+        return status(400, { error: error instanceof Error ? error.message : "Invalid tariff" });
+      }
+    },
+    { body: t.Unknown() },
+  )
+  // Cost breakdown over a named range (today / month-to-date / year-to-date) or
+  // an explicit [from, to) window. Prices stored energy with the active tariff.
+  .get(
+    "/api/cost",
+    ({ query }) => {
+      const { from, to } =
+        query.from && query.to
+          ? { from: new Date(query.from), to: new Date(query.to) }
+          : resolveRange(query.range ?? "month");
+      return computeCost({ from, to, inverterId: query.inverterId });
+    },
+    {
+      query: t.Object({
+        range: t.Optional(t.Union([t.Literal("today"), t.Literal("month"), t.Literal("year")])),
+        from: t.Optional(t.String()),
+        to: t.Optional(t.String()),
+        inverterId: t.Optional(t.String()),
+      }),
+    },
   )
   .listen(env.PORT, () => {
     console.log(

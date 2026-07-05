@@ -109,7 +109,10 @@ export async function browseAvailable(): Promise<{
         });
       }
     } catch (error) {
-      errors.push({ source: src.url, error: error instanceof Error ? error.message : String(error) });
+      errors.push({
+        source: src.url,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
   return { profiles, errors };

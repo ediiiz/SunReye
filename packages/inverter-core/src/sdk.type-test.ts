@@ -10,11 +10,22 @@ import { metric } from "./define";
 // Indexed role requires `index`.
 // @ts-expect-error - pv.string.power is indexed; missing `index`
 metric("dc/pv1/power", { label: "PV1", group: "inverter", addr: 672, role: "pv.string.power" });
-metric("dc/pv1/power", { label: "PV1", group: "inverter", addr: 672, role: "pv.string.power", index: 1 });
+metric("dc/pv1/power", {
+  label: "PV1",
+  group: "inverter",
+  addr: 672,
+  role: "pv.string.power",
+  index: 1,
+});
 
 // Enum/status role requires `enumLabels`.
 // @ts-expect-error - inverter.status needs enumLabels
-metric("inverter/status", { label: "Status", group: "inverter", addr: 500, role: "inverter.status" });
+metric("inverter/status", {
+  label: "Status",
+  group: "inverter",
+  addr: 500,
+  role: "inverter.status",
+});
 metric("inverter/status", {
   label: "Status",
   group: "inverter",
@@ -25,7 +36,13 @@ metric("inverter/status", {
 
 // Writable role requires access "rw".
 // @ts-expect-error - setting.work_mode must be access "rw"
-metric("settings/workmode", { label: "WM", group: "settings", addr: 142, role: "setting.work_mode", enumLabels: { 0: "x" } });
+metric("settings/workmode", {
+  label: "WM",
+  group: "settings",
+  addr: 142,
+  role: "setting.work_mode",
+  enumLabels: { 0: "x" },
+});
 metric("settings/workmode", {
   label: "WM",
   group: "settings",

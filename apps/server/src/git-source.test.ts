@@ -15,7 +15,13 @@ const profileJson = JSON.stringify(
     manufacturer: "ACME",
     version: "1.0.0",
     metrics: [
-      metric("battery/soc", { label: "SOC", unit: "%", group: "battery", addr: 100, role: "battery.soc" }),
+      metric("battery/soc", {
+        label: "SOC",
+        unit: "%",
+        group: "battery",
+        addr: 100,
+        role: "battery.soc",
+      }),
     ],
   }),
 );
@@ -25,7 +31,13 @@ const indexJson = (version: string) =>
     name: "Test Repo",
     maintainer: "tester",
     profiles: [
-      { id: "acme-test", name: "ACME Test", manufacturer: "ACME", version, path: "profiles/acme-test.json" },
+      {
+        id: "acme-test",
+        name: "ACME Test",
+        manufacturer: "ACME",
+        version,
+        path: "profiles/acme-test.json",
+      },
     ],
   });
 

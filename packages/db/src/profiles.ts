@@ -41,9 +41,7 @@ export const profileSourceSchema = z.object({
 export type ProfileSource = z.infer<typeof profileSourceSchema>;
 
 export const profileSourcesSchema = z.object({
-  sources: z
-    .array(profileSourceSchema)
-    .default([{ ...STANDARD_PROFILE_SOURCE, enabled: true }]),
+  sources: z.array(profileSourceSchema).default([{ ...STANDARD_PROFILE_SOURCE, enabled: true }]),
 });
 export type ProfileSources = z.infer<typeof profileSourcesSchema>;
 

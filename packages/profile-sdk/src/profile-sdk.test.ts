@@ -15,7 +15,13 @@ function tinyProfile(): ProfileData {
     manufacturer: "ACME",
     version: "1.0.0",
     metrics: [
-      metric("battery/soc", { label: "SOC", unit: "%", group: "battery", addr: 1, role: "battery.soc" }),
+      metric("battery/soc", {
+        label: "SOC",
+        unit: "%",
+        group: "battery",
+        addr: 1,
+        role: "battery.soc",
+      }),
     ],
   });
 }
@@ -26,7 +32,14 @@ describe("validateProfile", () => {
   });
 
   test("reports readable issues for a broken profile", () => {
-    const broken = { schemaVersion: 1, id: "x", name: "X", manufacturer: "X", version: "1", metrics: [] };
+    const broken = {
+      schemaVersion: 1,
+      id: "x",
+      name: "X",
+      manufacturer: "X",
+      version: "1",
+      metrics: [],
+    };
     const { ok, issues } = validateProfile(broken);
     expect(ok).toBe(false);
     expect(issues.length).toBeGreaterThan(0);
@@ -68,7 +81,12 @@ describe("scaffoldFromCsv", () => {
       "total_energy,Total Production,kWh,inverter,534|535,U_DWORD,0.1,r",
       "settings/workmode,Work Mode,,settings,142,U_WORD,1,rw",
     ].join("\n");
-    const data = scaffoldFromCsv(csv, { id: "scaffolded", name: "Scaffolded", manufacturer: "ACME", version: "0.1.0" });
+    const data = scaffoldFromCsv(csv, {
+      id: "scaffolded",
+      name: "Scaffolded",
+      manufacturer: "ACME",
+      version: "0.1.0",
+    });
 
     expect(data.metrics).toHaveLength(3);
     const soc = data.metrics.find((m) => m.key === "battery.soc");

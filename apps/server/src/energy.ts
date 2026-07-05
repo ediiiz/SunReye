@@ -8,12 +8,7 @@
 
 import type { InverterProfile } from "@SunReye/inverter-core";
 import { fetchDailyEnergy } from "./cost";
-import {
-  type MonthEnergy,
-  emptyMonth,
-  monthWindow,
-  summarizeMonths,
-} from "./energy-calc";
+import { type MonthEnergy, emptyMonth, monthWindow, summarizeMonths } from "./energy-calc";
 
 export type { MonthEnergy } from "./energy-calc";
 

@@ -27,7 +27,9 @@ describe("Deye profile SDK refactor — golden equivalence", () => {
 
   test("the computed dc.total_power still sums the two PV strings", () => {
     const total = deyeSunsynk.metrics.find((m) => m.key === "dc.total_power");
-    expect(total?.compute?.({ "dc.pv1.power": 100, "dc.pv2.power": 200 })).toBe(golden.computeSample);
+    expect(total?.compute?.({ "dc.pv1.power": 100, "dc.pv2.power": 200 })).toBe(
+      golden.computeSample,
+    );
   });
 });
 

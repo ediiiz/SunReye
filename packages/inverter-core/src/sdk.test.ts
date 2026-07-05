@@ -13,9 +13,29 @@ function goodProfile(): ProfileData {
     manufacturer: "ACME",
     version: "1.0.0",
     metrics: [
-      metric("dc/pv1/power", { label: "PV1", unit: "W", group: "inverter", addr: 672, role: "pv.string.power", index: 1 }),
-      metric("dc/pv2/power", { label: "PV2", unit: "W", group: "inverter", addr: 673, role: "pv.string.power", index: 2 }),
-      metric("battery/soc", { label: "SOC", unit: "%", group: "battery", addr: 588, role: "battery.soc" }),
+      metric("dc/pv1/power", {
+        label: "PV1",
+        unit: "W",
+        group: "inverter",
+        addr: 672,
+        role: "pv.string.power",
+        index: 1,
+      }),
+      metric("dc/pv2/power", {
+        label: "PV2",
+        unit: "W",
+        group: "inverter",
+        addr: 673,
+        role: "pv.string.power",
+        index: 2,
+      }),
+      metric("battery/soc", {
+        label: "SOC",
+        unit: "%",
+        group: "battery",
+        addr: 588,
+        role: "battery.soc",
+      }),
       metric("inverter/status", {
         label: "Status",
         group: "inverter",
@@ -46,7 +66,12 @@ describe("role catalog", () => {
   test("CanonicalRole vocabulary is complete and lists the expected roles", () => {
     // Guards against accidental deletion when editing the catalog.
     expect(ROLE_NAMES.length).toBe(43);
-    for (const r of ["pv.string.power", "battery.power", "grid.power", "setting.work_mode"] as const) {
+    for (const r of [
+      "pv.string.power",
+      "battery.power",
+      "grid.power",
+      "setting.work_mode",
+    ] as const) {
       expect(ROLE_CATALOG[r]).toBeDefined();
     }
   });
@@ -131,7 +156,13 @@ describe("profileDataSchema", () => {
   test("rejects computeExpr forward-referencing a later computed metric", () => {
     const p = goodProfile();
     // total (computed) references a computed metric declared after it
-    p.metrics.push(metric("dc/derived", { label: "D", group: "inverter", computeExpr: { scale: ["dc.total_power", 2] } }));
+    p.metrics.push(
+      metric("dc/derived", {
+        label: "D",
+        group: "inverter",
+        computeExpr: { scale: ["dc.total_power", 2] },
+      }),
+    );
     p.metrics[5]!.computeExpr = { sum: ["dc.derived"] };
     expect(safeParseProfileData(p).success).toBe(false);
   });

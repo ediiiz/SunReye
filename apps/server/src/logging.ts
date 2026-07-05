@@ -24,8 +24,7 @@ const ROOT = "server" as const;
  * Lowest severity that reaches the console. Explicit `LOG_LEVEL` wins; otherwise
  * verbose in development, quiet elsewhere.
  */
-const lowestLevel: LogLevel =
-  env.LOG_LEVEL ?? (env.NODE_ENV === "development" ? "debug" : "info");
+const lowestLevel: LogLevel = env.LOG_LEVEL ?? (env.NODE_ENV === "development" ? "debug" : "info");
 
 let configured = false;
 

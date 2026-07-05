@@ -89,7 +89,10 @@ function toMetricDef(m: MetricDataDef): MetricDef {
  * First-party packages may pass a code {@link SimulateFn} (data profiles omit it
  * and fall back to the simulator's generic synthesis).
  */
-export function hydrateProfile(data: ProfileData, opts?: { simulate?: SimulateFn }): InverterProfile {
+export function hydrateProfile(
+  data: ProfileData,
+  opts?: { simulate?: SimulateFn },
+): InverterProfile {
   return {
     id: data.id,
     name: data.name,

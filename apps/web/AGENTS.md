@@ -4,8 +4,6 @@
 
 Use this file for work in `apps/web`.
 
-If a task also requires direct Convex backend changes or live deployment inspection, also follow `packages/backend/AGENTS.md`.
-
 If adding, reading, validating, or renaming env vars, also follow `packages/env/AGENTS.md`. Env schemas live there only; import shared env exports instead of making app-local duplicates.
 
 For frontend UI/UX work, also read `apps/web/DESIGN.md`.

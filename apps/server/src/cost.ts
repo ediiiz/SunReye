@@ -13,7 +13,6 @@ import { db } from "@SunReye/db";
 import type { CanonicalRole, InverterProfile } from "@SunReye/inverter-core";
 import { sql } from "drizzle-orm";
 import { type CostBreakdown, type HourEnergy, allocateCost } from "./cost-calc";
-import { profile } from "./inverter";
 import { getTariff } from "./settings";
 
 export type { CostBreakdown } from "./cost-calc";
@@ -38,7 +37,7 @@ type EnergyField = keyof Omit<HourEnergy, "time">;
 export type RollupView = "hourly_rollups" | "daily_rollups";
 
 /** Metric key → the HourEnergy field it feeds, for the roles this profile has. */
-export function resolveEnergyKeys(): Map<string, EnergyField> {
+export function resolveEnergyKeys(profile: InverterProfile): Map<string, EnergyField> {
   const fieldByKey = new Map<string, EnergyField>();
   for (const [field, role] of Object.entries(ENERGY_FIELDS)) {
     const key = keyForRole(profile, role);
@@ -54,12 +53,13 @@ export function resolveEnergyKeys(): Map<string, EnergyField> {
  * windows); both continuous aggregates share the same column shape.
  */
 async function fetchBucketEnergy(
+  profile: InverterProfile,
   inverterId: string,
   from: Date,
   to: Date,
   view: RollupView,
 ): Promise<HourEnergy[]> {
-  const fieldByKey = resolveEnergyKeys();
+  const fieldByKey = resolveEnergyKeys(profile);
   if (fieldByKey.size === 0) return [];
 
   // `view` is a fixed internal literal (not user input), so it is safe to
@@ -103,24 +103,37 @@ async function fetchBucketEnergy(
 }
 
 /** Read hourly energy for cost banding. Thin wrapper over {@link fetchBucketEnergy}. */
-export function fetchHourlyEnergy(inverterId: string, from: Date, to: Date): Promise<HourEnergy[]> {
-  return fetchBucketEnergy(inverterId, from, to, "hourly_rollups");
+export function fetchHourlyEnergy(
+  profile: InverterProfile,
+  inverterId: string,
+  from: Date,
+  to: Date,
+): Promise<HourEnergy[]> {
+  return fetchBucketEnergy(profile, inverterId, from, to, "hourly_rollups");
 }
 
 /** Read daily energy for long-window (e.g. monthly) aggregation. */
-export function fetchDailyEnergy(inverterId: string, from: Date, to: Date): Promise<HourEnergy[]> {
-  return fetchBucketEnergy(inverterId, from, to, "daily_rollups");
+export function fetchDailyEnergy(
+  profile: InverterProfile,
+  inverterId: string,
+  from: Date,
+  to: Date,
+): Promise<HourEnergy[]> {
+  return fetchBucketEnergy(profile, inverterId, from, to, "daily_rollups");
 }
 
 /** Full cost breakdown for an explicit [from, to) window. */
-export async function computeCost(opts: {
-  from: Date;
-  to: Date;
-  inverterId?: string;
-}): Promise<CostBreakdown> {
+export async function computeCost(
+  profile: InverterProfile,
+  opts: {
+    from: Date;
+    to: Date;
+    inverterId?: string;
+  },
+): Promise<CostBreakdown> {
   const inverterId = opts.inverterId ?? profile.id;
   const tariff = await getTariff();
-  const hours = await fetchHourlyEnergy(inverterId, opts.from, opts.to);
+  const hours = await fetchHourlyEnergy(profile, inverterId, opts.from, opts.to);
   const rangeDays = Math.max(0, (opts.to.getTime() - opts.from.getTime()) / 86_400_000);
   return {
     currency: tariff.currency,

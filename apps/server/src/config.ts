@@ -24,7 +24,6 @@ import { readSetting, writeSetting } from "./app-settings";
 /** Defaults seeded from env the first time a config is read (pre-save). */
 const envInverterConfig = (): InverterConfig =>
   inverterConfigSchema.parse({
-    simulate: env.INVERTER_SIMULATE,
     host: env.INVERTER_HOST,
     port: env.INVERTER_PORT,
     unitId: env.INVERTER_UNIT_ID,

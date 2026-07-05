@@ -8,7 +8,7 @@ import { maskMqttConfig } from "@SunReye/db/mqtt-config";
 import { metricsRaw } from "@SunReye/db/schema/metrics";
 import { user } from "@SunReye/db/schema/auth";
 import { env } from "@SunReye/env/server";
-import { buildManifest, listProfiles } from "@SunReye/inverter-core";
+import { listProfiles } from "@SunReye/inverter-core";
 import { and, count, desc, eq, gte } from "drizzle-orm";
 import { Elysia, t } from "elysia";
 import {
@@ -20,10 +20,19 @@ import {
 } from "./config";
 import { computeCost, resolveRange } from "./cost";
 import { monthlyEnergy } from "./energy";
-import { entitiesApi, validateWrite } from "./entities";
+import { entitiesApi } from "./entities";
 import { queryRollup } from "./history";
-import { profile } from "./inverter";
+import { buildProfileContext, getActiveProfile, initProfiles } from "./inverter";
 import { log, setupLogging } from "./logging";
+import {
+  browseAvailable,
+  getProfileSources,
+  installProfile,
+  listInstalled,
+  setActiveProfile,
+  setProfileSources,
+  uninstallProfile,
+} from "./profiles";
 import * as runtime from "./runtime";
 import { getTariff, setTariff } from "./settings";
 
@@ -32,8 +41,13 @@ import { getTariff, setTariff } from "./settings";
 await setupLogging();
 const serverLog = log();
 
-// Capability + render metadata contract; built once (profile is static).
-const manifest = buildManifest(profile);
+// Two-phase profile boot: built-in packages self-register on import, then DB
+// profiles are loaded and the active one resolved. Everything the transports
+// need (manifest, catalog, write validation) is derived once here and injected,
+// since the active profile is a boot concern (changing it requires a restart).
+const profile = await initProfiles();
+const ctx = buildProfileContext(profile);
+const { manifest } = ctx;
 
 // Live sample: arbitrary metric keys → numeric values, defined by the profile.
 const SampleSchema = t.Object({
@@ -87,7 +101,7 @@ const app = new Elysia()
   // Auto-generated `/api/v1` integration surface (entity catalog, state,
   // history, and one validated write route per writable entity). Writes go
   // through the runtime controller's live source.
-  .use(entitiesApi({ write: runtime.write }))
+  .use(entitiesApi({ ctx, write: runtime.write }))
   // Admin gate for privileged mutations (config + live inverter writes). Opt in
   // per route with `{ requireAdmin: true }`. Reads stay public. A real session
   // always decides the outcome; only an *unauthenticated* dev request is waved
@@ -239,7 +253,7 @@ const app = new Elysia()
   .post(
     "/api/commands/setting",
     async ({ body, status }) => {
-      const error = validateWrite(body.key, body.value);
+      const error = ctx.validateWrite(body.key, body.value);
       if (error) return status(400, { error });
       await runtime.write(body.key, body.value);
       return { ok: true, key: body.key, value: body.value };
@@ -270,7 +284,7 @@ const app = new Elysia()
         query.from && query.to
           ? { from: new Date(query.from), to: new Date(query.to) }
           : resolveRange(query.range ?? "month");
-      return computeCost({ from, to, inverterId: query.inverterId });
+      return computeCost(profile, { from, to, inverterId: query.inverterId });
     },
     {
       query: t.Object({
@@ -287,7 +301,7 @@ const app = new Elysia()
   // entries, zero-filling months with no data so the chart x-axis is stable.
   .get(
     "/api/energy/monthly",
-    ({ query }) => monthlyEnergy({ months: query.months, inverterId: query.inverterId }),
+    ({ query }) => monthlyEnergy(profile, { months: query.months, inverterId: query.inverterId }),
     {
       query: t.Object({
         months: t.Number({ default: 12, minimum: 1, maximum: 24 }),
@@ -351,9 +365,72 @@ const app = new Elysia()
   )
   // Live connection health (inverter + MQTT) for the settings dashboard.
   .get("/api/status", () => runtime.status())
-  // Installed inverter profiles (read-only; profile switching lands in P3).
-  .get("/api/profiles", () =>
-    listProfiles().map((p) => ({ id: p.id, name: p.name, manufacturer: p.manufacturer })),
+  // Registered profiles (built-in + DB-installed) with active/installed/version.
+  .get("/api/profiles", async () => {
+    const activeId = getActiveProfile().id;
+    const installed = new Map((await listInstalled()).map((p) => [p.id, p]));
+    return listProfiles().map((p) => ({
+      id: p.id,
+      name: p.name,
+      manufacturer: p.manufacturer,
+      active: p.id === activeId,
+      installed: installed.has(p.id),
+      version: installed.get(p.id)?.version,
+    }));
+  })
+  // --- Downloadable profiles: git repo sources + install/activate flow. ---
+  // Repo sources: public read (just URLs), admin write.
+  .get("/api/settings/profile-sources", () => getProfileSources())
+  .put(
+    "/api/settings/profile-sources",
+    async ({ body, status }) => {
+      try {
+        return await setProfileSources(body);
+      } catch (error) {
+        return status(400, { error: error instanceof Error ? error.message : "Invalid sources" });
+      }
+    },
+    { requireAdmin: true, body: t.Unknown() },
+  )
+  // Browse profiles across enabled repos (clones/pulls each — admin only).
+  .get("/api/profiles/available", () => browseAvailable(), { requireAdmin: true })
+  // Download + validate + persist a profile. Selectable after a restart.
+  .post(
+    "/api/profiles/install",
+    async ({ body, status }) => {
+      try {
+        return await installProfile(body.source, body.id);
+      } catch (error) {
+        return status(400, { error: error instanceof Error ? error.message : "Install failed" });
+      }
+    },
+    { requireAdmin: true, body: t.Object({ source: t.String(), id: t.String() }) },
+  )
+  // Uninstall a profile (cannot remove the currently active one).
+  .delete(
+    "/api/profiles/:id",
+    async ({ params, status }) => {
+      if (params.id === getActiveProfile().id) {
+        return status(409, { error: "Cannot uninstall the active profile" });
+      }
+      await uninstallProfile(params.id);
+      return { ok: true, id: params.id };
+    },
+    { requireAdmin: true, params: t.Object({ id: t.String() }) },
+  )
+  // Set the active profile. Applies on the next restart (it shapes boot-time
+  // routes/manifest/topics), so signal that to the UI.
+  .put(
+    "/api/settings/active-profile",
+    async ({ body, status }) => {
+      try {
+        const { id } = await setActiveProfile(body);
+        return { id, restartRequired: id !== getActiveProfile().id };
+      } catch (error) {
+        return status(400, { error: error instanceof Error ? error.message : "Invalid profile" });
+      }
+    },
+    { requireAdmin: true, body: t.Object({ id: t.String() }) },
   )
   .listen(env.PORT, () => {
     serverLog.info("server running on http://localhost:{port} — profile {profile}", {
@@ -367,7 +444,7 @@ const app = new Elysia()
 // subscribers here; persistence + MQTT publishing happen inside the controller.
 runtime.start((sample) => {
   app.server?.publish(METRICS_TOPIC, JSON.stringify(sample));
-});
+}, ctx);
 
 // Graceful shutdown: stop polling and release the transport + broker.
 for (const signal of ["SIGINT", "SIGTERM"] as const) {

@@ -13,43 +13,14 @@
 
 import { env } from "@SunReye/env/server";
 import type { EntityConstraint } from "@SunReye/inverter-core";
-import {
-  buildManifest,
-  entityConstraint,
-  metricByKey,
-  writableMetrics,
-} from "@SunReye/inverter-core";
+import { entityConstraint, writableMetrics } from "@SunReye/inverter-core";
 import { Elysia, t } from "elysia";
 import { queryRawHistory, queryRollup } from "./history";
-import { profile } from "./inverter";
+import type { ProfileContext } from "./inverter";
 import { log } from "./logging";
 import { liveState } from "./state";
 
 const logger = log("api");
-const manifest = buildManifest(profile);
-const metaByKey = new Map(manifest.metrics.map((m) => [m.key, m]));
-const defByKey = metricByKey(profile);
-
-/**
- * Runtime validation for a write, shared by the internal command endpoint and
- * the external API (and, later, the MQTT command bridge). Returns an error
- * message or `null` when the value is acceptable for the entity. Enforces the
- * same bounds/enum the generated TypeBox schemas advertise.
- */
-export function validateWrite(key: string, value: number): string | null {
-  const def = defByKey.get(key);
-  if (!def) return `Unknown entity: ${key}`;
-  const c = entityConstraint(def);
-  if (!c.writable) return `Entity is not writable: ${key}`;
-  if (c.valueType === "enum") {
-    return c.enumValues?.includes(value)
-      ? null
-      : `Value must be one of: ${c.enumValues?.join(", ")}`;
-  }
-  if (c.min !== undefined && value < c.min) return `Value ${value} is below minimum ${c.min}`;
-  if (c.max !== undefined && value > c.max) return `Value ${value} is above maximum ${c.max}`;
-  return null;
-}
 
 /** TypeBox validator for a writable entity's value, from its constraint. */
 function valueSchema(c: EntityConstraint) {
@@ -86,11 +57,14 @@ function checkApiKey(request: Request): { status: number; error: string } | null
 
 /** Injected transport dependencies (keeps this module free of the singleton). */
 export interface EntitiesApiDeps {
+  /** The active profile context (manifest, catalog), resolved at boot. */
+  ctx: ProfileContext;
   write(key: string, value: number): Promise<void>;
 }
 
 /** Mount the generated `/api/v1` integration API onto an Elysia app. */
 export function entitiesApi(deps: EntitiesApiDeps) {
+  const { profile, manifest, metaByKey } = deps.ctx;
   const app = new Elysia({ prefix: "/api/v1", name: "entities" })
     .onError(({ error, code, set }) => {
       // Preserve the status of known request errors; sanitize everything else to

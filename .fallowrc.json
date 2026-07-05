@@ -9,7 +9,6 @@
   "ignoreDependencies": [
     "bits-ui",
     "tailwind-variants",
-    "@convex/_generated",
     "svelte-sonner",
     "mode-watcher",
     "@internationalized/date",

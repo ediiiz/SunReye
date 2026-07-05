@@ -17,3 +17,25 @@ export const appSettings = pgTable("app_settings", {
 
 export type AppSettingRow = typeof appSettings.$inferSelect;
 export type AppSettingInsert = typeof appSettings.$inferInsert;
+
+/**
+ * Inverter profiles downloaded from a git repo source and installed into this
+ * instance. `data` is the validated, serializable `ProfileData` (the source of
+ * truth — the git clone cache is disposable). The server registers every row
+ * into the profile registry at boot, so a restart is all it takes for a newly
+ * downloaded profile to become selectable. See {@link @SunReye/db/profiles}.
+ */
+export const installedProfiles = pgTable("installed_profiles", {
+  /** Profile id (`ProfileData.id`), e.g. `deye-sunsynk`. */
+  id: text("id").primaryKey(),
+  /** Git repo URL this profile was downloaded from. */
+  source: text("source").notNull(),
+  /** `ProfileData.version` at install time (drives update detection). */
+  version: text("version").notNull(),
+  /** The full validated `ProfileData` blob. */
+  data: jsonb("data").notNull(),
+  installedAt: timestamp("installed_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type InstalledProfileRow = typeof installedProfiles.$inferSelect;
+export type InstalledProfileInsert = typeof installedProfiles.$inferInsert;

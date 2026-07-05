@@ -25,18 +25,6 @@
         "stdio"
       ]
     },
-    "convex-react-documentation": {
-      "command": "uvx",
-      "args": [
-        "--from",
-        "mcpdoc",
-        "mcpdoc",
-        "--urls",
-        "convex-react:https://docs.convex.dev/llms.txt",
-        "--transport",
-        "stdio"
-      ]
-    },
     "layerchart-v2-next-documentation": {
       "command": "uvx",
       "args": [

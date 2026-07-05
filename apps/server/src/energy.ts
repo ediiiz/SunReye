@@ -6,6 +6,7 @@
  * {@link ./cost}.
  */
 
+import type { InverterProfile } from "@SunReye/inverter-core";
 import { fetchDailyEnergy } from "./cost";
 import {
   type MonthEnergy,
@@ -13,7 +14,6 @@ import {
   monthWindow,
   summarizeMonths,
 } from "./energy-calc";
-import { profile } from "./inverter";
 
 export type { MonthEnergy } from "./energy-calc";
 
@@ -22,17 +22,20 @@ export type { MonthEnergy } from "./energy-calc";
  * first. Always returns exactly `months` entries: months with no rollup data
  * are zero-filled so the chart x-axis is stable.
  */
-export async function monthlyEnergy(opts?: {
-  months?: number;
-  inverterId?: string;
-  now?: Date;
-}): Promise<MonthEnergy[]> {
+export async function monthlyEnergy(
+  profile: InverterProfile,
+  opts?: {
+    months?: number;
+    inverterId?: string;
+    now?: Date;
+  },
+): Promise<MonthEnergy[]> {
   const months = opts?.months ?? 12;
   const inverterId = opts?.inverterId ?? profile.id;
   const now = opts?.now ?? new Date();
 
   const from = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
-  const days = await fetchDailyEnergy(inverterId, from, now);
+  const days = await fetchDailyEnergy(profile, inverterId, from, now);
   const summarized = summarizeMonths(days);
 
   const byMonth = new Map(summarized.map((m) => [m.month, m]));

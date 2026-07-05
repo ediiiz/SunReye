@@ -69,11 +69,19 @@ export class ModbusInverter implements InverterSource {
     this.connecting = (async () => {
       const next = new ModbusRTU();
       const timeout = this.conn.timeoutMs ?? 2000;
+      const opts = { port: this.conn.port };
+      // Modbus TCP (MBAP framing) vs RTU frames tunneled over the socket, the
+      // latter common with RS485→Ethernet gateways.
+      const connect =
+        this.conn.transport === "rtu-over-tcp"
+          ? next.connectTcpRTUBuffered(this.conn.host, opts)
+          : next.connectTCP(this.conn.host, opts);
       try {
-        // `connectTCP` itself has no timeout, so an unreachable host would hang
-        // forever; race it so a bad address fails fast (test-connection, polling).
+        // The connect call itself has no timeout, so an unreachable host would
+        // hang forever; race it so a bad address fails fast (test-connection,
+        // polling).
         await Promise.race([
-          next.connectTCP(this.conn.host, { port: this.conn.port }),
+          connect,
           new Promise<never>((_, reject) =>
             setTimeout(
               () => reject(new Error(`connect to ${this.conn.host}:${this.conn.port} timed out`)),

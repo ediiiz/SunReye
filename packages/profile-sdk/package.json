@@ -1,20 +1,24 @@
 {
-  "name": "@SunReye/inverter-core",
+  "name": "@SunReye/profile-sdk",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
   },
+  "bin": {
+    "profile": "./src/cli.ts"
+  },
   "scripts": {
-    "test": "bun test src"
+    "test": "bun test src",
+    "profile": "bun run src/cli.ts"
   },
   "dependencies": {
-    "modbus-serial": "^8.0.21",
-    "zod": "catalog:"
+    "@SunReye/inverter-core": "workspace:*"
   },
   "devDependencies": {
     "@SunReye/config": "workspace:*",
+    "@SunReye/inverter-deye-sunsynk": "workspace:*",
     "@types/bun": "catalog:",
     "typescript": "catalog:"
   }

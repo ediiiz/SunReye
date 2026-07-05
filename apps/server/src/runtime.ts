@@ -12,10 +12,11 @@ import { db } from "@SunReye/db";
 import type { InverterConfig } from "@SunReye/db/inverter-config";
 import type { MqttConfig } from "@SunReye/db/mqtt-config";
 import { metricsRaw } from "@SunReye/db/schema/metrics";
+import { env } from "@SunReye/env/server";
 import type { InverterSample, InverterSource } from "@SunReye/inverter-core";
 import mqtt from "mqtt";
 import { getInverterConfig, getMqttConfig } from "./config";
-import { buildSource, profile } from "./inverter";
+import { buildSource, type ProfileContext } from "./inverter";
 import { log } from "./logging";
 import { type MqttBridge, startMqttBridge } from "./mqtt";
 import { liveState } from "./state";
@@ -24,15 +25,22 @@ const logger = log("runtime");
 
 type SampleListener = (sample: InverterSample) => void;
 
+let ctx: ProfileContext | null = null;
 let source: InverterSource | null = null;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let bridge: MqttBridge | null = null;
 let onSample: SampleListener = () => {};
 let polling = false;
 
+/** The active profile context, set by {@link start} before the loop runs. */
+function context(): ProfileContext {
+  if (!ctx) throw new Error("runtime not started");
+  return ctx;
+}
+
 const inverterStatus = {
   connected: false,
-  simulate: true,
+  simulate: env.INVERTER_SIMULATE,
   lastError: null as string | null,
   lastSampleAt: null as string | null,
 };
@@ -81,11 +89,10 @@ export async function write(key: string, value: number): Promise<void> {
 
 async function rebuildInverter(config: InverterConfig): Promise<void> {
   const previous = source;
-  source = buildSource(config);
-  inverterStatus.simulate = config.simulate;
+  source = buildSource(context().profile, config);
   // The simulator is always "connected"; a real Modbus source only proves it on
   // the first successful read, so start pessimistic and let pollOnce flip it.
-  inverterStatus.connected = config.simulate;
+  inverterStatus.connected = env.INVERTER_SIMULATE;
   inverterStatus.lastError = null;
   restartLoop(config.pollIntervalMs);
   if (previous) await previous.close();
@@ -93,12 +100,13 @@ async function rebuildInverter(config: InverterConfig): Promise<void> {
 
 async function rebuildBridge(config: MqttConfig): Promise<void> {
   const previous = bridge;
-  bridge = startMqttBridge(config, { write });
+  bridge = startMqttBridge(config, { ctx: context(), write });
   if (previous) await previous.close();
 }
 
 /** Boot the controller: build the source + bridge and start polling. */
-export async function start(listener: SampleListener): Promise<void> {
+export async function start(listener: SampleListener, profileCtx: ProfileContext): Promise<void> {
+  ctx = profileCtx;
   onSample = listener;
   await rebuildInverter(await getInverterConfig());
   await rebuildBridge(await getMqttConfig());
@@ -117,21 +125,61 @@ export async function applyMqttConfig(config: MqttConfig): Promise<void> {
 /** Live health for `/api/status`. */
 export function status() {
   return {
-    inverter: { ...inverterStatus, profile: profile.id },
+    inverter: { ...inverterStatus, profile: context().profile.id },
     mqtt: bridge
       ? { enabled: true, ...bridge.status() }
       : { enabled: false, connected: false, lastError: null },
   };
 }
 
-/** Try a config against a throwaway source without disturbing the live one. */
-export async function testInverter(
-  config: InverterConfig,
-): Promise<{ ok: boolean; error?: string; metricCount?: number }> {
-  const probe = buildSource(config);
+/** One captured value from a test read, enriched for a plausibility check. */
+export interface TestSnapshotMetric {
+  key: string;
+  label: string;
+  unit: string | null;
+  group: string;
+  value: number;
+  /** Enum label for the raw value, when the metric is an enum/status. */
+  display?: string;
+}
+
+export interface TestInverterResult {
+  ok: boolean;
+  error?: string;
+  metricCount?: number;
+  /** Wall-clock duration of the single test read, ms. */
+  durationMs?: number;
+  /** Full snapshot of captured values, sorted by group then label. */
+  metrics?: TestSnapshotMetric[];
+}
+
+/**
+ * Try a config against a throwaway source without disturbing the live one.
+ * Times the read and returns the full captured snapshot so the operator can
+ * eyeball every value for plausibility before saving.
+ */
+export async function testInverter(config: InverterConfig): Promise<TestInverterResult> {
+  const ctx = context();
+  const probe = buildSource(ctx.profile, config);
   try {
+    const started = performance.now();
     const sample = await probe.read();
-    return { ok: true, metricCount: Object.keys(sample.metrics).length };
+    const durationMs = Math.round(performance.now() - started);
+    const metrics = Object.entries(sample.metrics)
+      .map(([key, value]) => {
+        const meta = ctx.metaByKey.get(key);
+        const display = meta?.enumLabels?.[value];
+        return {
+          key,
+          label: meta?.label ?? key,
+          unit: meta?.unit ?? null,
+          group: meta?.group ?? "other",
+          value,
+          ...(display ? { display } : {}),
+        };
+      })
+      .sort((a, b) => a.group.localeCompare(b.group) || a.label.localeCompare(b.label));
+    return { ok: true, metricCount: metrics.length, durationMs, metrics };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : String(error) };
   } finally {

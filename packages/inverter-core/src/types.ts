@@ -8,6 +8,8 @@
  * the core engine.
  */
 
+import type { CanonicalRole } from "./roles";
+
 /**
  * Modbus register encodings we support.
  *
@@ -43,58 +45,11 @@ export type MetricKind = "measurement" | "cumulative" | "status" | "setting";
  * vocabulary the UI renders against; adapters map device-specific metrics onto
  * these roles so the UI never hard-codes vendor keys. Indexed concepts
  * (strings, phases) carry the position in {@link MetricDef.index}.
+ *
+ * Defined by (and derived from) the {@link ROLE_CATALOG} in `./roles`, which
+ * also records each role's expected shape (indexed / writable / enum / signed).
  */
-export type CanonicalRole =
-  // Solar
-  | "pv.string.power"
-  | "pv.string.voltage"
-  | "pv.string.current"
-  | "pv.total.power"
-  | "production.today"
-  | "production.total"
-  // Battery
-  | "battery.soc"
-  | "battery.power"
-  | "battery.voltage"
-  | "battery.current"
-  | "battery.temperature"
-  | "battery.energy.charged.today"
-  | "battery.energy.charged.total"
-  | "battery.energy.discharged.today"
-  | "battery.energy.discharged.total"
-  // Grid
-  | "grid.power"
-  | "grid.phase.voltage"
-  | "grid.phase.current"
-  | "grid.phase.power"
-  | "grid.energy.imported.today"
-  | "grid.energy.imported.total"
-  | "grid.energy.exported.today"
-  | "grid.energy.exported.total"
-  // Backup / load
-  | "load.power"
-  | "load.phase.power"
-  | "load.phase.voltage"
-  | "load.energy.today"
-  | "load.energy.total"
-  // Generator
-  | "generator.power"
-  | "generator.phase.power"
-  | "generator.phase.voltage"
-  | "generator.energy.today"
-  // Inverter
-  | "inverter.status"
-  | "inverter.relay_status"
-  | "inverter.temperature.dc"
-  | "inverter.temperature.ac"
-  // Settings / controls
-  | "setting.battery.max_charge_current"
-  | "setting.battery.max_discharge_current"
-  | "setting.battery.max_grid_charge_current"
-  | "setting.battery.grid_charge"
-  | "setting.work_mode"
-  | "setting.solar_sell.max_power"
-  | "setting.solar_sell.enabled";
+export type { CanonicalRole };
 
 /** Expected value bounds for gauge-style widgets. */
 export interface MetricRange {
@@ -233,12 +188,23 @@ export interface InverterManifest {
   metrics: ManifestMetric[];
 }
 
+/**
+ * Modbus framing over a TCP socket:
+ * - `tcp`          standard Modbus TCP (MBAP header, no CRC).
+ * - `rtu-over-tcp` RTU frames (with CRC) tunneled over TCP — what many
+ *                  RS485→Ethernet gateways (USR, Waveshare, PUSR) and some
+ *                  inverter loggers actually speak.
+ */
+export type InverterTransport = "tcp" | "rtu-over-tcp";
+
 export interface InverterConnection {
   host: string;
   port: number;
   unitId: number;
   /** Per-request Modbus timeout, ms. */
   timeoutMs?: number;
+  /** Framing over the socket; defaults to `tcp`. */
+  transport?: InverterTransport;
 }
 
 /** One timestamped reading of every numeric metric in a profile. */

@@ -19,31 +19,23 @@
 
 import type { MqttConfig } from "@SunReye/db/mqtt-config";
 import type { EntityConstraint, InverterSample, ManifestMetric } from "@SunReye/inverter-core";
-import { buildManifest, entityConstraint, metricByKey } from "@SunReye/inverter-core";
+import { entityConstraint } from "@SunReye/inverter-core";
 import mqtt from "mqtt";
 import type { MqttClient } from "mqtt";
-import { validateWrite } from "./entities";
-import { profile } from "./inverter";
+import type { ProfileContext } from "./inverter";
 import { log } from "./logging";
 
 const logger = log("mqtt");
-const manifest = buildManifest(profile);
-const defByKey = metricByKey(profile);
+
+/** The stable HA device (per profile) that all entities attach to. */
+type HaDevice = { identifiers: string[]; name: string; manufacturer: string; model: string };
 
 /** HA object ids / unique ids must be a restricted charset; keys are dotted. */
 const slug = (s: string): string => s.replace(/[^a-zA-Z0-9_-]/g, "_");
 
-/** Stable HA device the entities attach to. */
-const haDevice = {
-  identifiers: [`sunreye_${profile.id}`],
-  name: manifest.name,
-  manufacturer: manifest.manufacturer,
-  model: profile.id,
-};
-
 /** Topic builders for a given prefix (`<prefix>/<inverterId>/...`). */
-function topicsFor(prefix: string) {
-  const base = `${prefix}/${profile.id}`;
+function topicsFor(prefix: string, profileId: string) {
+  const base = `${prefix}/${profileId}`;
   return {
     base,
     availability: `${base}/status`,
@@ -97,10 +89,16 @@ type Discovery = { component: string; config: Record<string, unknown> };
  * - read-only enum/status → `sensor` with a template that renders the label.
  * - everything else → `sensor` with device/state class.
  */
-function discoveryConfig(m: ManifestMetric, c: EntityConstraint, topics: Topics): Discovery {
+function discoveryConfig(
+  m: ManifestMetric,
+  c: EntityConstraint,
+  topics: Topics,
+  profileId: string,
+  haDevice: HaDevice,
+): Discovery {
   const shared = clean({
     name: m.label,
-    unique_id: `sunreye_${profile.id}_${slug(m.key)}`,
+    unique_id: `sunreye_${profileId}_${slug(m.key)}`,
     object_id: `sunreye_${slug(m.key)}`,
     state_topic: topics.state(m),
     availability_topic: topics.availability,
@@ -164,6 +162,8 @@ export interface MqttBridge {
 }
 
 export interface MqttBridgeDeps {
+  /** The active profile context (manifest, catalog, write validator). */
+  ctx: ProfileContext;
   /** Apply an inbound command write (validated by the bridge first). */
   write(key: string, value: number): Promise<void>;
 }
@@ -176,7 +176,14 @@ export interface MqttBridgeDeps {
 export function startMqttBridge(config: MqttConfig, deps: MqttBridgeDeps): MqttBridge | null {
   if (!config.enabled) return null;
 
-  const topics = topicsFor(config.topicPrefix);
+  const { profile, manifest, defByKey, validateWrite } = deps.ctx;
+  const haDevice: HaDevice = {
+    identifiers: [`sunreye_${profile.id}`],
+    name: manifest.name,
+    manufacturer: manifest.manufacturer,
+    model: profile.id,
+  };
+  const topics = topicsFor(config.topicPrefix, profile.id);
   let connected = false;
   let lastError: string | null = null;
 
@@ -210,7 +217,13 @@ export function startMqttBridge(config: MqttConfig, deps: MqttBridgeDeps): MqttB
       for (const m of manifest.metrics) {
         const def = defByKey.get(m.key);
         if (!def) continue;
-        const { component, config: cfg } = discoveryConfig(m, entityConstraint(def), topics);
+        const { component, config: cfg } = discoveryConfig(
+          m,
+          entityConstraint(def),
+          topics,
+          profile.id,
+          haDevice,
+        );
         const topic = `${config.haDiscoveryPrefix}/${component}/sunreye_${profile.id}/${slug(m.key)}/config`;
         client.publish(topic, JSON.stringify(cfg), { retain: true });
       }

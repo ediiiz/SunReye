@@ -15,30 +15,36 @@ export const INVERTER_KEY = "inverter";
 
 export const inverterConfigSchema = z
   .object({
-    /** When true, run the built-in simulator instead of dialing Modbus. */
-    simulate: z.boolean().default(true),
-    /** Modbus TCP host. */
+    /** Modbus host. */
     host: z.string().default("192.168.1.100"),
     port: z.number().int().default(502),
+    /**
+     * Framing over the socket: standard Modbus `tcp`, or `rtu-over-tcp` (RTU
+     * frames tunneled over TCP — common with RS485→Ethernet gateways).
+     */
+    transport: z.enum(["tcp", "rtu-over-tcp"]).default("tcp"),
     /** Modbus unit / slave id. */
     unitId: z.number().int().default(1),
     /** Per-request Modbus timeout, ms. */
     timeoutMs: z.number().int().default(2000),
-    /** Poll cadence for the God-loop, ms. */
-    pollIntervalMs: z.number().int().min(200).max(3_600_000).default(1000),
+    /**
+     * Poll cadence for the God-loop, ms. Floored at 1000: a full read is
+     * several sequential Modbus block requests, and the app is designed around
+     * a 1 s cadence — faster ticks just get dropped by the in-flight guard.
+     */
+    pollIntervalMs: z.number().int().min(1000).max(3_600_000).default(1000),
   })
-  // Connection settings only matter for a real Modbus source. When `simulate`
-  // is on they're ignored, so don't reject an otherwise-fine config for a blank
-  // host or out-of-range port — validate them only when dialing for real.
+  // Simulation is a deploy-level concern (env `INVERTER_SIMULATE`), not part of
+  // this saved config, so the connection settings always describe a real target
+  // and are always validated. The defaults are valid, so a fresh config passes.
   .superRefine((cfg, ctx) => {
-    if (cfg.simulate) return;
     for (const c of CONNECTION_CHECKS) {
       if (c.ok(cfg)) continue;
       ctx.addIssue({ code: "custom", path: [c.path], message: c.message });
     }
   });
 
-/** Range checks applied to connection settings only when dialing a real inverter. */
+/** Range checks applied to the Modbus connection settings. */
 const CONNECTION_CHECKS: ReadonlyArray<{
   path: keyof InverterConfig;
   message: string;

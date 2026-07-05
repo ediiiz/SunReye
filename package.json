@@ -1,5 +1,5 @@
 {
-  "name": "ReyeON",
+  "name": "SunReye",
   "private": true,
   "workspaces": {
     "packages": [
@@ -11,25 +11,27 @@
       "zod": "^4.1.13",
       "typescript": "^6",
       "@types/bun": "^1.3.4",
-      "better-auth": "1.6.22"
+      "better-auth": "1.6.22",
+      "@better-auth/api-key": "1.6.22"
     }
   },
   "type": "module",
   "scripts": {
-    "dev": "turbo run dev",
+    "dev": "turbo run dev db:watch db:studio",
     "build": "turbo run build",
     "check-types": "turbo run check-types",
     "dev:web": "turbo run dev -F web",
     "dev:server": "turbo run dev -F server",
-    "db:push": "turbo run db:push -F @ReyeON/db",
-    "db:studio": "turbo run db:studio -F @ReyeON/db",
-    "db:generate": "turbo run db:generate -F @ReyeON/db",
-    "db:migrate": "turbo run db:migrate -F @ReyeON/db",
-    "db:timescale": "turbo run db:timescale -F @ReyeON/db",
-    "db:start": "docker compose up -d postgres",
-    "db:watch": "docker compose up postgres",
-    "db:stop": "docker compose stop postgres",
-    "db:down": "docker compose down postgres",
+    "preview": "turbo run preview -F web -F server",
+    "db:push": "turbo run db:push -F @SunReye/db",
+    "db:studio": "turbo run db:studio -F @SunReye/db",
+    "db:generate": "turbo run db:generate -F @SunReye/db",
+    "db:migrate": "turbo run db:migrate -F @SunReye/db",
+    "db:timescale": "turbo run db:timescale -F @SunReye/db",
+    "db:start": "docker compose -f docker-compose.db.yml up -d --wait",
+    "db:watch": "docker compose -f docker-compose.db.yml logs -f",
+    "db:stop": "docker compose -f docker-compose.db.yml stop",
+    "db:down": "docker compose -f docker-compose.db.yml down",
     "docker:build": "docker compose build",
     "docker:up": "docker compose up -d --build",
     "docker:down": "docker compose down",
@@ -38,12 +40,12 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@ReyeON/env": "workspace:*",
+    "@SunReye/env": "workspace:*",
     "dotenv": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@ReyeON/config": "workspace:*",
+    "@SunReye/config": "workspace:*",
     "@types/bun": "catalog:",
     "fallow": "^2.104.0",
     "husky": "^9.1.7",
@@ -54,13 +56,19 @@
     "typescript": "catalog:"
   },
   "lint-staged": {
-    "*": [
+    "**/*.{ts,tsx,js,jsx,mjs,cjs}": [
       "oxlint",
       "oxfmt --write"
+    ],
+    "**/*.svelte": [
+      "oxlint"
     ],
     "**/*.{ts,tsx,js,jsx,svelte,json,jsonc}": [
       "sh -c 'bunx fallow audit --gate new-only --quiet'"
     ]
   },
-  "packageManager": "bun@1.3.13"
+  "packageManager": "bun@1.3.13",
+  "patchedDependencies": {
+    "svelte@5.56.4": "patches/svelte@5.56.4.patch"
+  }
 }

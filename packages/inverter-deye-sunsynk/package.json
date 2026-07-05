@@ -1,0 +1,20 @@
+{
+  "name": "@SunReye/inverter-deye-sunsynk",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "bun test src"
+  },
+  "dependencies": {
+    "@SunReye/inverter-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@SunReye/config": "workspace:*",
+    "@types/bun": "catalog:",
+    "typescript": "catalog:"
+  }
+}

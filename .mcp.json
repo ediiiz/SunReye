@@ -4,6 +4,15 @@
       "type": "http",
       "url": "https://mcp.svelte.dev/mcp"
     },
+    "chrome-devtools": {
+      "command": "bunx",
+      "args": [
+        "-y",
+        "chrome-devtools-mcp@latest",
+        "--slim",
+        "--headless"
+      ]
+    },
     "shadcn-svelte-components": {
       "command": "uvx",
       "args": [
@@ -12,18 +21,6 @@
         "mcpdoc",
         "--urls",
         "ShadcnSvelte:https://shadcn-svelte.com/llms.txt",
-        "--transport",
-        "stdio"
-      ]
-    },
-    "convex-react-documentation": {
-      "command": "uvx",
-      "args": [
-        "--from",
-        "mcpdoc",
-        "mcpdoc",
-        "--urls",
-        "convex-react:https://docs.convex.dev/llms.txt",
         "--transport",
         "stdio"
       ]

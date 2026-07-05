@@ -1,39 +1,64 @@
 ---
-title: Welcome to Starlight
-description: Get started building your docs site with Starlight.
-template: splash # Remove or comment out this line to display the site sidebar on this page.
+title: SunReye
+description: A self-hosted monitoring, control, and integration platform for solar / hybrid inverters.
+template: splash
 hero:
-  tagline: Congrats on setting up a new Starlight project!
+  tagline: Self-hosted monitoring, control, and integration for solar / hybrid inverters. An inverter is data, not code.
   image:
-    file: ../../assets/houston.webp
+    file: ../../assets/logo.svg
   actions:
-    - text: Example Guide
-      link: /guides/example/
+    - text: Quick Start
+      link: /start/quick-start/
       icon: right-arrow
-    - text: Read the Starlight docs
-      link: https://starlight.astro.build
+    - text: View on GitHub
+      link: https://github.com/ediiiz/SunReye
       icon: external
       variant: minimal
 ---
 
-import { Card, CardGrid } from "@astrojs/starlight/components";
+import { Card, CardGrid, LinkCard } from "@astrojs/starlight/components";
 
-## Next steps
+SunReye polls your inverter over Modbus, stores every reading as time-series data, and
+gives you a live dashboard, a typed REST API, and an MQTT bridge with Home Assistant
+auto-discovery — all generated from a single description of the inverter.
 
-<CardGrid stagger>
-  <Card title="Update content" icon="pencil">
-    Edit `src/content/docs/index.mdx` to see this page change.
+![The SunReye dashboard showing a live power-flow diagram and KPI cards.](../../assets/screenshots/dashboard.png)
+
+## What it does
+
+<CardGrid>
+  <Card title="Live monitoring" icon="laptop">
+    1 Hz polling streamed to the browser over WebSocket. The dashboard renders itself
+    from the active inverter's capabilities — PV strings, battery, grid phases,
+    generator, backup load.
   </Card>
-  <Card title="Change page layout" icon="document">
-    Delete `template: splash` in `src/content/docs/index.mdx` to display a sidebar on this page.
+  <Card title="History & analytics" icon="bars">
+    Every sample persisted to TimescaleDB, with per-minute / hourly / daily rollups so
+    multi-week charts stay cheap. Automatic retention cleanup.
   </Card>
-  <Card title="Add new content" icon="add-document">
-    Add Markdown or MDX files to `src/content/docs` to create new pages.
+  <Card title="Control" icon="setting">
+    Writable settings — charge/discharge currents, work mode, grid charge, solar-sell —
+    exposed as validated controls, guarded by the same validation everywhere.
   </Card>
-  <Card title="Configure your site" icon="setting">
-    Edit your `sidebar` and other config in `astro.config.mjs`.
+  <Card title="Costs & tariffs" icon="seti:shell">
+    Turn energy flows into money: import/export tariffs, time-of-use bands, savings vs.
+    grid-only, self-sufficiency and self-consumption.
   </Card>
-  <Card title="Read the docs" icon="open-book">
-    Learn more in [the Starlight Docs](https://starlight.astro.build/).
+  <Card title="Integrations" icon="puzzle">
+    An auto-generated REST API (`/api/v1`) with OpenAPI docs, plus an MQTT bridge with
+    Home Assistant MQTT Discovery.
   </Card>
+  <Card title="Profiles as data" icon="open-book">
+    An inverter ships as a *profile* — a description of its register map plus semantic
+    metadata. Adding hardware means adding data, not forking the engine.
+  </Card>
+</CardGrid>
+
+## Start here
+
+<CardGrid>
+  <LinkCard title="Quick Start" href="/start/quick-start/" description="Run the whole stack against the built-in simulator in five minutes — no hardware." />
+  <LinkCard title="Architecture" href="/start/architecture/" description="How the profile drives the dashboard, the API, and the MQTT topics." />
+  <LinkCard title="Deploy with Docker" href="/deploy/docker/" description="Build and run web + server with Docker Compose." />
+  <LinkCard title="Author a profile" href="/profiles/authoring/" description="Describe a new inverter with the typed profile SDK." />
 </CardGrid>

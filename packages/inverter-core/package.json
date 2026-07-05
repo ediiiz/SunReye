@@ -1,0 +1,21 @@
+{
+  "name": "@SunReye/inverter-core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "bun test src"
+  },
+  "dependencies": {
+    "modbus-serial": "^8.0.21",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@SunReye/config": "workspace:*",
+    "@types/bun": "catalog:",
+    "typescript": "catalog:"
+  }
+}

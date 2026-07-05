@@ -1,49 +1,24 @@
-# Starlight Starter Kit: Basics
+# SunReye Docs
 
-[![Built with Starlight](https://astro.badg.es/v2/built-with-starlight/tiny.svg)](https://starlight.astro.build)
+The documentation site for [SunReye](../../README.md), built with
+[Astro Starlight](https://starlight.astro.build/).
 
-```
-bun create astro@latest -- --template starlight
-```
+## Develop
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
-
-## 🚀 Project Structure
-
-Inside of your Astro + Starlight project, you'll see the following folders and files:
-
-```
-.
-├── public/
-├── src/
-│   ├── assets/
-│   ├── content/
-│   │   └── docs/
-│   └── content.config.ts
-├── astro.config.mjs
-├── package.json
-└── tsconfig.json
+```bash
+bun dev        # local dev server at http://localhost:4321
+bun build      # build the static site to ./dist/
+bun preview    # preview the build
 ```
 
-Starlight looks for `.md` or `.mdx` files in the `src/content/docs/` directory. Each file is exposed as a route based on its file name.
+Run from this directory, or from the repo root with `-F docs`.
 
-Images can be added to `src/assets/` and embedded in Markdown with a relative link.
+## Structure
 
-Static assets, like favicons, can be placed in the `public/` directory.
+- Pages are Markdown / MDX under `src/content/docs/`. Each file is a route based on its path.
+- The sidebar and site config live in `astro.config.mjs`.
+- Brand styling is in `src/styles/theme.css`; assets in `src/assets/`.
 
-## 🧞 Commands
-
-All commands are run from the root of the project, from a terminal:
-
-| Command               | Action                                           |
-| :-------------------- | :----------------------------------------------- |
-| `bun install`         | Installs dependencies                            |
-| `bun dev`             | Starts local dev server at `localhost:4321`      |
-| `bun build`           | Build your production site to `./dist/`          |
-| `bun preview`         | Preview your build locally, before deploying     |
-| `bun astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `bun astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Check out [Starlight’s docs](https://starlight.astro.build/), read [the Astro documentation](https://docs.astro.build), or jump into the [Astro Discord server](https://astro.build/chat).
+When adding a page, create the Markdown file **and** add it to the `sidebar` in
+`astro.config.mjs` (Starlight validates that sidebar slugs resolve to real pages at build
+time).

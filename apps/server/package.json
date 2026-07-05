@@ -6,24 +6,31 @@
     "build": "tsdown",
     "check-types": "tsc -b",
     "compile": "bun build --compile --minify --sourcemap --bytecode ./src/index.ts --outfile server",
-    "dev": "bun run --hot src/index.ts",
-    "start": "bun run dist/index.mjs"
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run dist/index.mjs",
+    "preview": "bun run dist/index.mjs",
+    "test": "bun test src"
   },
   "dependencies": {
-    "@ReyeON/auth": "workspace:*",
-    "@ReyeON/db": "workspace:*",
-    "@ReyeON/env": "workspace:*",
+    "@SunReye/auth": "workspace:*",
+    "@SunReye/db": "workspace:*",
+    "@SunReye/env": "workspace:*",
+    "@SunReye/inverter-core": "workspace:*",
+    "@SunReye/inverter-deye-sunsynk": "workspace:*",
     "@elysiajs/cors": "^1.4.1",
+    "@elysiajs/openapi": "^1.4.0",
+    "@logtape/elysia": "^2.2.3",
+    "@logtape/logtape": "^2.2.3",
     "@sinclair/typebox": "^0.34.49",
     "better-auth": "catalog:",
     "dotenv": "catalog:",
     "drizzle-orm": "^0.45.1",
     "elysia": "^1.4.28",
-    "modbus-serial": "^8.0.21",
+    "mqtt": "^5.10.1",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@ReyeON/config": "workspace:*",
+    "@SunReye/config": "workspace:*",
     "@types/bun": "catalog:",
     "tsdown": "^0.21.9",
     "typescript": "catalog:"

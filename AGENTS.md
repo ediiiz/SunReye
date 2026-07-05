@@ -28,7 +28,6 @@ Load relevant repo-local skills from `.agents/skills/` when matching work:
 - Before digging through Fallow docs, fetch `https://docs.fallow.tools/llms.txt` and use it as page index.
 
 - Frontend work in `apps/web` → follow `apps/web/AGENTS.md`.
-- Backend or Convex work in `packages/backend` → follow `packages/backend/AGENTS.md`.
 - Env var work anywhere → follow `packages/env/AGENTS.md` first.
 - Env schemas live only in `packages/env`. Do not duplicate env parsing/validation inside apps or feature packages.
 - Env package work in `packages/env` → follow `packages/env/AGENTS.md`.

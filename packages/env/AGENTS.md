@@ -12,7 +12,6 @@ Single source of truth for env vars.
 
 - Add every new env var here first.
 - Do not create app-local or package-local env schemas.
-- Apps/packages import from `@sveltekit-convex-shadcn-monorepo-starter/env/web` or `@sveltekit-convex-shadcn-monorepo-starter/env/server`.
 - Add vars to file that owns them.
 - Public vars must start `PUBLIC_`.
 - Keep browser-safe and server-only vars split.
@@ -22,10 +21,6 @@ Single source of truth for env vars.
 ## Example envs
 
 `apps/web/.env.example`
-
-```bash
-PUBLIC_CONVEX_URL=http://127.0.0.1:3220
-```
 
 ## Rules
 

@@ -1,98 +1,108 @@
-# ReyeON
+# SunReye
 
-This project was created with [Better-T-Stack](https://github.com/AmanVarshney01/create-better-t-stack), a modern TypeScript stack that combines SvelteKit, Elysia, and more.
+**A self-hosted monitoring, control, and integration platform for solar / hybrid inverters.**
 
-## Features
+SunReye polls your inverter over Modbus, stores every reading as time-series data, and gives
+you a live dashboard, a typed REST API, and an MQTT bridge with Home Assistant
+auto-discovery — all generated from a single description of the inverter.
 
-- **TypeScript** - For type safety and improved developer experience
-- **SvelteKit** - Web framework for building Svelte apps
-- **TailwindCSS** - Utility-first CSS for rapid UI development
-- **Elysia** - Type-safe, high-performance framework
-- **Bun** - Runtime environment
-- **Drizzle** - TypeScript-first ORM
-- **PostgreSQL** - Database engine
-- **Authentication** - Better-Auth
-- **Turborepo** - Optimized monorepo build system
-- **Oxlint** - Oxlint + Oxfmt (linting & formatting)
-- **Husky** - Git hooks for code quality
-- **Starlight** - Documentation site with Astro
+The core idea: **an inverter is data, not code.** Each supported inverter ships as a
+*profile* — a plain description of its Modbus register map plus semantic metadata (what each
+value *means*). The dashboard, the REST routes, the MQTT topics, and Home Assistant discovery
+all build themselves from that profile. Adding a metric, or a whole new inverter, means
+adding data — not touching the engine.
 
-## Getting Started
+> 📖 **Full documentation lives in the docs site** (`apps/docs`) — installation, usage, the
+> REST API, MQTT/Home-Assistant, and the profile-authoring guide. Run it with
+> `cd apps/docs && bun dev`.
 
-First, install the dependencies:
+---
+
+## What it does today
+
+- **Live monitoring** — 1 Hz Modbus polling streamed to the browser over WebSocket; a
+  manifest-driven dashboard that renders itself from the active inverter's capabilities.
+- **History & analytics** — every sample in **TimescaleDB**, with per-minute / hourly / daily
+  rollups and automatic retention.
+- **Control** — writable settings exposed as validated controls.
+- **Costs & tariffs** — import/export tariffs, time-of-use bands, savings, self-sufficiency.
+- **Third-party REST API (`/api/v1`)** — auto-generated from the profile, with OpenAPI docs.
+- **MQTT bridge** — retained per-entity topics, validated writes, and Home Assistant MQTT
+  Discovery.
+- **Downloadable profiles** — install inverter profiles from git repos at runtime; a typed
+  **profile SDK** to author your own.
+- **Built-in simulator** — run the whole stack with no hardware.
+- **Auth** — email/password sessions with admin roles and first-run onboarding.
+
+**Supported inverters:** Deye / Sunsynk hybrid (≈99 metrics, ≈38 writable). Add more as data.
+
+---
+
+## Quick start
 
 ```bash
 bun install
+bun run db:start        # local TimescaleDB via Docker
+bun run db:push         # apply schema
+bun run db:timescale    # hypertable + rollups
+bun run dev             # start everything
 ```
 
-## Database Setup
+Open [http://localhost:5173](http://localhost:5173) for the dashboard; the API + OpenAPI docs
+are at [http://localhost:3000](http://localhost:3000) (`/openapi`). `INVERTER_SIMULATE`
+defaults to `true`, so no inverter is needed.
 
-This project uses PostgreSQL with Drizzle ORM.
+See the docs for [Manual Setup](apps/docs/src/content/docs/deploy/manual-setup.md),
+[Docker Compose](apps/docs/src/content/docs/deploy/docker.md), and the full
+[Environment Variables](apps/docs/src/content/docs/reference/environment.md) reference.
 
-1. Make sure you have a PostgreSQL database set up.
-2. Update your `apps/server/.env` file with your PostgreSQL connection details.
+---
 
-3. Apply the schema to your database:
-
-```bash
-bun run db:push
-```
-
-Then, run the development server:
-
-```bash
-bun run dev
-```
-
-Open [http://localhost:5173](http://localhost:5173) in your browser to see the web application.
-The API is running at [http://localhost:3000](http://localhost:3000).
-
-## Deployment
-
-### Docker Compose
-
-- Target: web + server
-- Config: `docker-compose.yml` (app Dockerfiles live in `apps/*/Dockerfile`)
-- Build images: bun run docker:build
-- Start: bun run docker:up
-- Logs: bun run docker:logs
-- Stop: bun run docker:down
-
-Environment variables are read from each app's `.env` file (baked into web builds for public variables) and overridden in `docker-compose.yml` for container networking.
-
-## Git Hooks and Formatting
-
-- Initialize hooks: `bun run prepare`
-- Run checks: `bun run check`
-
-## Project Structure
+## Architecture
 
 ```
-ReyeON/
+Inverter (Modbus TCP)  ──►  Core engine (Elysia)  ──►  TimescaleDB (time-series)
+        │                        │  ├─ WebSocket   ──►  Web dashboard (SvelteKit)
+        │                        │  ├─ REST /api/v1 ──►  Third-party integrations
+        └── (or simulator)       │  └─ MQTT bridge  ──►  Home Assistant / brokers
+                                 ▲
+                    Inverter profile (data)
+             register map + semantic metadata  ──►  drives every surface above
+```
+
+```
+SunReye/
 ├── apps/
-│   ├── web/         # Frontend application (SvelteKit)
-│   ├── docs/        # Documentation site (Astro Starlight)
-│   └── server/      # Backend API (Elysia)
-├── packages/
-│   ├── auth/        # Authentication configuration & logic
-│   └── db/          # Database schema & queries
+│   ├── web/          # SvelteKit dashboard (manifest-driven UI)
+│   ├── server/       # Elysia core engine: poll loop, WS, REST /api/v1, MQTT bridge
+│   └── docs/         # Astro Starlight documentation site
+└── packages/
+    ├── inverter-core/         # Modbus engine, profile registry, entity model
+    ├── inverter-deye-sunsynk/ # Deye / Sunsynk profile package
+    ├── profile-sdk/           # Profile authoring: validate / coverage / scaffold
+    ├── db/                    # Drizzle schema + TimescaleDB + runtime settings
+    ├── auth/ env/ config/     # Auth, env schema (single source of truth), tooling
 ```
 
-## Available Scripts
+**Stack:** TypeScript · Bun · Turborepo · SvelteKit 5 + Tailwind v4 · Elysia · Drizzle +
+PostgreSQL/TimescaleDB · Better-Auth · MQTT.
 
-- `bun run dev`: Start all applications in development mode
-- `bun run build`: Build all applications
-- `bun run dev:web`: Start only the web application
-- `bun run dev:server`: Start only the server
-- `bun run check-types`: Check TypeScript types across all apps
-- `bun run db:push`: Push schema changes to database
-- `bun run db:generate`: Generate database client/types
-- `bun run db:migrate`: Run database migrations
-- `bun run db:studio`: Open database studio UI
-- `bun run check`: Run Oxlint and Oxfmt
-- `cd apps/docs && bun run dev`: Start documentation site
-- `cd apps/docs && bun run build`: Build documentation site
-- `bun run docker:build`: Build the Docker Compose images
-- `bun run docker:up`: Build and start the Docker Compose stack
-- `bun run docker:logs`: Tail logs from the Docker Compose stack
-- `bun run docker:down`: Stop the Docker Compose stack
+For the boot sequence, the registry seam, and the entity model, see the
+[Architecture Deep-Dive](apps/docs/src/content/docs/reference/internals.md).
+
+---
+
+## Roadmap
+
+**Shipped:** cost tracking & tariffs · UI-based runtime configuration · downloadable
+inverter profiles + authoring SDK · admin roles & onboarding · simulator.
+
+**Planned:** threshold alerts & notifications · scheduled reports & data export ·
+tariff-aware charge/discharge automation · multi-inverter aggregation · installable PWA ·
+community profile catalog.
+
+See the [full roadmap](apps/docs/src/content/docs/reference/roadmap.md).
+
+---
+
+*Bootstrapped with [Better-T-Stack](https://github.com/AmanVarshney01/create-better-t-stack).*

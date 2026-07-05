@@ -1,0 +1,25 @@
+{
+  "name": "@SunReye/profile-sdk",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "bin": {
+    "profile": "./src/cli.ts"
+  },
+  "scripts": {
+    "test": "bun test src",
+    "profile": "bun run src/cli.ts"
+  },
+  "dependencies": {
+    "@SunReye/inverter-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@SunReye/config": "workspace:*",
+    "@SunReye/inverter-deye-sunsynk": "workspace:*",
+    "@types/bun": "catalog:",
+    "typescript": "catalog:"
+  }
+}

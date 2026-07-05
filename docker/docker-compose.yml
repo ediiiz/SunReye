@@ -1,0 +1,60 @@
+name: sunreye
+
+# Runs SunReye from the images published to GHCR by the CI pipelines — no local
+# build. Copy .env.example to .env, fill in the secrets, then `docker compose up -d`.
+#
+# Pin a release by exporting SUNREYE_TAG (e.g. SUNREYE_TAG=v1.2.3) or leave it
+# at "latest".
+
+services:
+  web:
+    image: ghcr.io/ediiiz/sunreye-web:${SUNREYE_TAG:-latest}
+    init: true
+    ports:
+      - "${WEB_PORT:-3001}:3001"
+    environment:
+      NODE_ENV: production
+      # NOTE: PUBLIC_SERVER_URL is baked into the web image at build time and
+      # cannot be overridden here. Set the `PUBLIC_SERVER_URL` repository
+      # variable before the docker-web pipeline runs so the image points at the
+      # server URL your browser will actually reach.
+    depends_on:
+      server:
+        condition: service_started
+    restart: unless-stopped
+
+  server:
+    image: ghcr.io/ediiiz/sunreye-server:${SUNREYE_TAG:-latest}
+    init: true
+    ports:
+      - "${SERVER_PORT:-3000}:3000"
+    # App configuration (auth secret, inverter host, MQTT, …) is read from .env.
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      NODE_ENV: production
+      # Always point at the bundled Postgres, regardless of what .env contains.
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/SunReye
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: timescale/timescaledb:latest-pg17
+    environment:
+      POSTGRES_DB: SunReye
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+    volumes:
+      - sunreye_pg:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  sunreye_pg:

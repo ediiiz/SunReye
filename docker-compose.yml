@@ -1,4 +1,4 @@
-name: ReyeON
+name: SunReye
 
 services:
   web:
@@ -15,7 +15,7 @@ services:
         required: false
     depends_on:
       server:
-        condition: service_healthy
+        condition: service_started
     restart: unless-stopped
 
   server:
@@ -30,19 +30,10 @@ services:
         required: false
     environment:
       CORS_ORIGIN: http://localhost:3001
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/ReyeON
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "node",
-          "-e",
-          "fetch('http://localhost:3000/').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/SunReye
+    # The server image is distroless (no shell/node/curl), so there is no
+    # in-container binary to run an exec healthcheck with. Dependents use
+    # `service_started`; add an orchestrator-level TCP/HTTP probe in prod.
     depends_on:
       postgres:
         condition: service_healthy
@@ -50,15 +41,15 @@ services:
 
   postgres:
     image: timescale/timescaledb:latest-pg17
-    container_name: ReyeON-postgres
+    container_name: SunReye-postgres
     environment:
-      POSTGRES_DB: ReyeON
+      POSTGRES_DB: SunReye
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
     ports:
       - "5432:5432"
     volumes:
-      - ReyeON_postgres_data:/var/lib/postgresql
+      - SunReye_postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -67,4 +58,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  ReyeON_postgres_data:
+  SunReye_postgres_data:

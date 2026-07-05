@@ -1,19 +1,46 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
+  "globalPassThroughEnv": [
+    "DATABASE_URL"
+  ],
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": ["dist/**", ".svelte-kit/**", "build/**"]
+      "dependsOn": [
+        "^build"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        ".env*"
+      ],
+      "outputs": [
+        "dist/**",
+        ".svelte-kit/**",
+        "build/**"
+      ]
     },
     "lint": {
-      "dependsOn": ["^lint"]
+      "dependsOn": [
+        "^lint"
+      ]
     },
     "check-types": {
-      "dependsOn": ["^check-types"]
+      "dependsOn": [
+        "^check-types"
+      ]
     },
     "dev": {
+      "dependsOn": [
+        "//#db:start"
+      ],
+      "cache": false,
+      "persistent": true
+    },
+    "preview": {
+      "dependsOn": [
+        "build",
+        "//#db:start"
+      ],
       "cache": false,
       "persistent": true
     },
@@ -31,21 +58,26 @@
       "cache": false
     },
     "db:studio": {
+      "dependsOn": [
+        "//#db:start"
+      ],
       "cache": false,
       "persistent": true
     },
-    "db:start": {
-      "cache": false,
-      "persistent": true
-    },
-    "db:stop": {
+    "//#db:start": {
       "cache": false
     },
-    "db:watch": {
+    "//#db:stop": {
+      "cache": false
+    },
+    "//#db:watch": {
+      "dependsOn": [
+        "//#db:start"
+      ],
       "cache": false,
       "persistent": true
     },
-    "db:down": {
+    "//#db:down": {
       "cache": false
     }
   }

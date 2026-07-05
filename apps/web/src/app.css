@@ -5,10 +5,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-body {
-  @apply bg-neutral-950 text-neutral-100;
-}
-
 :root {
   --background: oklch(1 0 0);
 
@@ -55,6 +51,17 @@ body {
   --chart-4: oklch(0.488 0.243 264.376);
 
   --chart-5: oklch(0.424 0.199 265.638);
+
+  /* Semantic energy-flow colors (validated categorical set, dataviz skill).
+     grid = grid dependence, solar = on-site supply, self-used = production kept
+     on-site, export = production sent to the grid. */
+  --energy-grid: #c0473b;
+
+  --energy-solar: #c8871a;
+
+  --energy-selfused: #2f9e63;
+
+  --energy-export: #4478c4;
 
   --radius: 0rem;
 
@@ -122,6 +129,15 @@ body {
 
   --chart-5: oklch(0.424 0.199 265.638);
 
+  /* Lifted energy-flow steps for the dark surface (dataviz-validated). */
+  --energy-grid: #d65a4c;
+
+  --energy-solar: #b07d29;
+
+  --energy-selfused: #33a86e;
+
+  --energy-export: #5586cc;
+
   --sidebar: oklch(0.205 0 0);
 
   --sidebar-foreground: oklch(0.985 0 0);
@@ -169,6 +185,14 @@ body {
   --color-chart-2: var(--chart-2);
 
   --color-chart-1: var(--chart-1);
+
+  --color-energy-grid: var(--energy-grid);
+
+  --color-energy-solar: var(--energy-solar);
+
+  --color-energy-selfused: var(--energy-selfused);
+
+  --color-energy-export: var(--energy-export);
 
   --color-ring: var(--ring);
 

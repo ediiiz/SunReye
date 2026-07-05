@@ -7,6 +7,9 @@ export const env = createEnv({
     PUBLIC_SERVER_URL: z.url(),
   },
   runtimeEnv: (import.meta as any).env,
-  skipValidation: !!process.env.SKIP_ENV_VALIDATION,
+  // `process` is absent in the browser bundle; guard before touching it so the
+  // schema can be imported client-side as well as during SSR.
+  skipValidation:
+    typeof process !== "undefined" && !!process.env.SKIP_ENV_VALIDATION,
   emptyStringAsUndefined: true,
 });

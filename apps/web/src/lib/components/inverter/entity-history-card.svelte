@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { AreaChart, Area, LinearGradient } from 'layerchart';
+	import { fade } from 'svelte/transition';
 	import { curveCatmullRom } from 'd3-shape';
 	import * as Chart from '$lib/components/ui/chart';
 	import { Skeleton } from '$lib/components/ui/skeleton';
@@ -93,75 +94,81 @@
 
 	{#if !visible}
 		<Skeleton class="h-50 w-full" />
-	{:else if range.live}
-		<LiveArea
-			points={inverter.series(metric.key)}
-			label={metric.label}
-			{unit}
-			{accent}
-			{diverging}
-			height="h-50"
-		/>
-	{:else if loading}
-		<Skeleton class="h-50 w-full" />
-	{:else if chartData.length === 0}
-		<div class="flex h-50 items-center justify-center text-sm text-muted-foreground">
-			No data for this range yet
-		</div>
 	{:else}
-		<Chart.Container
-			config={{ avg: { label: metric.label, color: accent } }}
-			class="h-50 w-full"
-			style="--color-primary: {accent}"
-		>
-			<AreaChart
-				data={chartData}
-				x="date"
-				y="avg"
-				axis="y"
-				grid
-				padding={{ top: 8, right: 8, bottom: 20, left: 44 }}
-			>
-				{#snippet marks({ context }: MarksContext)}
-					{#if diverging}
-						{@const zero = context.yScale(0) / (context.height + context.padding.bottom)}
-						<LinearGradient
-							vertical
-							stops={[
-								[0, IMPORT_COLOR],
-								[zero, IMPORT_COLOR],
-								[zero, EXPORT_COLOR],
-								[1, EXPORT_COLOR]
-							]}
-						>
-							{#snippet children({ gradient })}
-								<Area
-									y0={() => 0}
-									curve={curveCatmullRom}
-									line={{ stroke: gradient, 'stroke-width': 1.5 }}
-									fill={gradient}
-									fillOpacity={0.25}
-								/>
-							{/snippet}
-						</LinearGradient>
-					{:else}
-						<LinearGradient vertical stops={[[0, accent], [1, 'transparent']]}>
-							{#snippet children({ gradient })}
-								<Area
-									curve={curveCatmullRom}
-									line={{ stroke: accent, 'stroke-width': 1.5 }}
-									fill={gradient}
-									fillOpacity={0.9}
-								/>
-							{/snippet}
-						</LinearGradient>
-					{/if}
-				{/snippet}
-				{#snippet tooltip()}
-					<Chart.Tooltip labelFormatter={labelFmt} formatter={tooltipValue} />
-				{/snippet}
-			</AreaChart>
-		</Chart.Container>
+		<!-- Fades in once the card scrolls into view; the wrapper persists across the
+		     loading→data swap so the fade only plays on entry, not on every refetch. -->
+		<div class="h-50 w-full" in:fade={{ duration: 300 }}>
+			{#if range.live}
+				<LiveArea
+					points={inverter.series(metric.key)}
+					label={metric.label}
+					{unit}
+					{accent}
+					{diverging}
+					height="h-full"
+				/>
+			{:else if loading}
+				<Skeleton class="h-full w-full" />
+			{:else if chartData.length === 0}
+				<div class="flex h-full items-center justify-center text-sm text-muted-foreground">
+					No data for this range yet
+				</div>
+			{:else}
+				<Chart.Container
+					config={{ avg: { label: metric.label, color: accent } }}
+					class="h-full w-full"
+					style="--color-primary: {accent}"
+				>
+					<AreaChart
+						data={chartData}
+						x="date"
+						y="avg"
+						axis="y"
+						grid
+						padding={{ top: 8, right: 8, bottom: 20, left: 44 }}
+					>
+						{#snippet marks({ context }: MarksContext)}
+							{#if diverging}
+								{@const zero = context.yScale(0) / (context.height + context.padding.bottom)}
+								<LinearGradient
+									vertical
+									stops={[
+										[0, IMPORT_COLOR],
+										[zero, IMPORT_COLOR],
+										[zero, EXPORT_COLOR],
+										[1, EXPORT_COLOR]
+									]}
+								>
+									{#snippet children({ gradient })}
+										<Area
+											y0={() => 0}
+											curve={curveCatmullRom}
+											line={{ stroke: gradient, 'stroke-width': 1.5 }}
+											fill={gradient}
+											fillOpacity={0.25}
+										/>
+									{/snippet}
+								</LinearGradient>
+							{:else}
+								<LinearGradient vertical stops={[[0, accent], [1, 'transparent']]}>
+									{#snippet children({ gradient })}
+										<Area
+											curve={curveCatmullRom}
+											line={{ stroke: accent, 'stroke-width': 1.5 }}
+											fill={gradient}
+											fillOpacity={0.9}
+										/>
+									{/snippet}
+								</LinearGradient>
+							{/if}
+						{/snippet}
+						{#snippet tooltip()}
+							<Chart.Tooltip labelFormatter={labelFmt} formatter={tooltipValue} />
+						{/snippet}
+					</AreaChart>
+				</Chart.Container>
+			{/if}
+		</div>
 	{/if}
 </div>
 

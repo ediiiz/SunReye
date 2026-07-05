@@ -24,12 +24,8 @@ function keyForRole(p: InverterProfile, role: CanonicalRole): string | undefined
   return p.metrics.find((m) => m.role === role)?.key;
 }
 
-/**
- * Read hourly per-metric energy (counter `max - min`, clamped ≥0 to tolerate
- * counter resets) for the energy roles this profile exposes, over [from, to).
- */
 /** The {@link HourEnergy} fields we price, and the role backing each. */
-const ENERGY_FIELDS = {
+export const ENERGY_FIELDS = {
   import: "grid.energy.imported.total",
   export: "grid.energy.exported.total",
   load: "load.energy.total",
@@ -38,8 +34,11 @@ const ENERGY_FIELDS = {
 
 type EnergyField = keyof Omit<HourEnergy, "time">;
 
+/** The continuous-aggregate views we can read counter deltas from. */
+export type RollupView = "hourly_rollups" | "daily_rollups";
+
 /** Metric key → the HourEnergy field it feeds, for the roles this profile has. */
-function resolveEnergyKeys(): Map<string, EnergyField> {
+export function resolveEnergyKeys(): Map<string, EnergyField> {
   const fieldByKey = new Map<string, EnergyField>();
   for (const [field, role] of Object.entries(ENERGY_FIELDS)) {
     const key = keyForRole(profile, role);
@@ -48,10 +47,24 @@ function resolveEnergyKeys(): Map<string, EnergyField> {
   return fieldByKey;
 }
 
-async function fetchHourlyEnergy(inverterId: string, from: Date, to: Date): Promise<HourEnergy[]> {
+/**
+ * Read per-bucket energy (counter `max - min`, clamped ≥0 to tolerate counter
+ * resets) for the energy roles this profile exposes, over [from, to). `view`
+ * selects the rollup granularity (hourly for cost banding, daily for long
+ * windows); both continuous aggregates share the same column shape.
+ */
+async function fetchBucketEnergy(
+  inverterId: string,
+  from: Date,
+  to: Date,
+  view: RollupView,
+): Promise<HourEnergy[]> {
   const fieldByKey = resolveEnergyKeys();
   if (fieldByKey.size === 0) return [];
 
+  // `view` is a fixed internal literal (not user input), so it is safe to
+  // interpolate as a raw identifier; everything else stays parameterized.
+  const viewSql = sql.raw(view);
   const keyList = sql.join(
     [...fieldByKey.keys()].map((k) => sql`${k}`),
     sql`, `,
@@ -63,7 +76,7 @@ async function fetchHourlyEnergy(inverterId: string, from: Date, to: Date): Prom
     min_value: number;
   }>(sql`
     select bucket, metric, max_value, min_value
-    from hourly_rollups
+    from ${viewSql}
     where inverter_id = ${inverterId}
       and metric in (${keyList})
       and bucket >= ${from}
@@ -87,6 +100,16 @@ async function fetchHourlyEnergy(inverterId: string, from: Date, to: Date): Prom
     byBucket.set(time.getTime(), hour);
   }
   return [...byBucket.values()];
+}
+
+/** Read hourly energy for cost banding. Thin wrapper over {@link fetchBucketEnergy}. */
+export function fetchHourlyEnergy(inverterId: string, from: Date, to: Date): Promise<HourEnergy[]> {
+  return fetchBucketEnergy(inverterId, from, to, "hourly_rollups");
+}
+
+/** Read daily energy for long-window (e.g. monthly) aggregation. */
+export function fetchDailyEnergy(inverterId: string, from: Date, to: Date): Promise<HourEnergy[]> {
+  return fetchBucketEnergy(inverterId, from, to, "daily_rollups");
 }
 
 /** Full cost breakdown for an explicit [from, to) window. */

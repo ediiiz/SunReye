@@ -19,6 +19,7 @@ import {
   setMqttConfig,
 } from "./config";
 import { computeCost, resolveRange } from "./cost";
+import { monthlyEnergy } from "./energy";
 import { entitiesApi, validateWrite } from "./entities";
 import { queryRollup } from "./history";
 import { profile } from "./inverter";
@@ -269,6 +270,20 @@ const app = new Elysia()
         range: t.Optional(t.Union([t.Literal("today"), t.Literal("month"), t.Literal("year")])),
         from: t.Optional(t.String()),
         to: t.Optional(t.String()),
+        inverterId: t.Optional(t.String()),
+      }),
+    },
+  )
+  // Per-month energy over a trailing window (default 12 months) for the
+  // self-sufficiency / self-consumption charts. Derived at query time from the
+  // daily rollups — no dedicated monthly aggregate. Always returns `months`
+  // entries, zero-filling months with no data so the chart x-axis is stable.
+  .get(
+    "/api/energy/monthly",
+    ({ query }) => monthlyEnergy({ months: query.months, inverterId: query.inverterId }),
+    {
+      query: t.Object({
+        months: t.Number({ default: 12, minimum: 1, maximum: 24 }),
         inverterId: t.Optional(t.String()),
       }),
     },

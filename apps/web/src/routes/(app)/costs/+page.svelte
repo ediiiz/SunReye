@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { api } from '$lib/api';
 	import RangeSwitcher from '$lib/components/inverter/range-switcher.svelte';
+	import MonthlyEnergy from '$lib/components/inverter/monthly-energy.svelte';
 
 	type Cost = {
 		currency: string;
@@ -113,6 +114,11 @@
 			{@render tile('Self-sufficiency', pct(c.selfSufficiency), 'of load from solar/battery')}
 			{@render tile('Self-consumption', pct(c.selfConsumption), 'of production used on-site')}
 		</div>
+
+		<!-- 12-month energy split. Own fixed window, independent of the range switcher above. -->
+		<section class="border border-border p-4">
+			<MonthlyEnergy />
+		</section>
 
 		<!-- Daily net cost -->
 		<section class="flex flex-col gap-3 border border-border p-4">

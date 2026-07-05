@@ -39,7 +39,9 @@
 	const SECTION: Record<string, string> = {
 		'/': 'Overview',
 		'/history': 'History',
-		'/controls': 'Controls'
+		'/costs': 'Costs',
+		'/controls': 'Controls',
+		'/settings': 'Settings'
 	};
 	const section = $derived(SECTION[page.url.pathname] ?? 'Overview');
 </script>

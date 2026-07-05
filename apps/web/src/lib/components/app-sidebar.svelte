@@ -17,16 +17,21 @@
 
 	const sessionQuery = useAppSession();
 
+	// Controls (live inverter writes) and Settings (config) are admin-only; the
+	// server enforces this on every mutation, and we hide the nav entries for
+	// non-admins so they never see areas they can't use.
+	const isAdmin = $derived($sessionQuery.data?.user?.role === 'admin');
+
 	type NavItem = { href: string; label: string; icon: Component };
 
 	const items = $derived<NavItem[]>([
 		{ href: '/', label: 'Overview', icon: GaugeIcon },
 		{ href: '/history', label: 'History', icon: ChartLineIcon },
 		{ href: '/costs', label: 'Costs', icon: CoinsIcon },
-		...((inverter.capabilities?.controls.length ?? 0) > 0
+		...(isAdmin && (inverter.capabilities?.controls.length ?? 0) > 0
 			? [{ href: '/controls', label: 'Controls', icon: SlidersIcon }]
 			: []),
-		{ href: '/settings', label: 'Settings', icon: GearIcon }
+		...(isAdmin ? [{ href: '/settings', label: 'Settings', icon: GearIcon }] : [])
 	]);
 
 	const userName = $derived(

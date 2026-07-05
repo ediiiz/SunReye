@@ -20,6 +20,17 @@
 		if (!$sessionQuery.isPending && !$sessionQuery.data) goto('/login');
 	});
 
+	// Admin-only areas (Settings + Controls). The server enforces every mutation;
+	// this bounces non-admins who reach the page by direct URL. The nav hides
+	// these entries too (app-sidebar.svelte).
+	const ADMIN_ONLY = ['/settings', '/controls'];
+	$effect(() => {
+		if ($sessionQuery.isPending || !$sessionQuery.data) return;
+		if ($sessionQuery.data.user?.role !== 'admin' && ADMIN_ONLY.includes(page.url.pathname)) {
+			goto('/');
+		}
+	});
+
 	// Open the manifest + live stream once the workspace mounts.
 	$effect(() => {
 		inverter.start();

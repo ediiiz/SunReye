@@ -12,4 +12,8 @@ import type { App } from "server";
  *        const ws = api.ws.metrics.subscribe()
  *        ws.subscribe((msg) => { console.log(msg.data) })
  */
-export const api = treaty<App>(PUBLIC_SERVER_URL);
+export const api = treaty<App>(PUBLIC_SERVER_URL, {
+  // Send the Better Auth session cookie so the server can enforce admin-only
+  // mutations (see the `requireAdmin` macro in apps/server/src/index.ts).
+  fetch: { credentials: "include" },
+});

@@ -87,6 +87,28 @@ const app = new Elysia()
   // history, and one validated write route per writable entity). Writes go
   // through the runtime controller's live source.
   .use(entitiesApi({ write: runtime.write }))
+  // Admin gate for privileged mutations (config + live inverter writes). Opt in
+  // per route with `{ requireAdmin: true }`. Reads stay public. A real session
+  // always decides the outcome; only an *unauthenticated* dev request is waved
+  // through, mirroring the client dev-spoof in apps/web/src/lib/session.ts so
+  // `vite dev` can edit settings without logging in. Production always enforces.
+  .macro({
+    requireAdmin(enabled: boolean) {
+      if (!enabled) return {};
+      return {
+        async beforeHandle({ request, status }) {
+          const session = await auth.api.getSession({ headers: request.headers });
+          if (!session) {
+            if (env.NODE_ENV !== "production") return;
+            return status(401, { error: "Authentication required" });
+          }
+          if (session.user.role !== "admin") {
+            return status(403, { error: "Admin access required" });
+          }
+        },
+      };
+    },
+  })
   // Hand the raw request to Better Auth. `parse: "none"` stops Elysia from
   // consuming the request body — other routes in this app define body schemas,
   // which turns on body parsing app-wide, and a parsed (consumed) stream makes
@@ -214,7 +236,7 @@ const app = new Elysia()
       await runtime.write(body.key, body.value);
       return { ok: true, key: body.key, value: body.value };
     },
-    { body: t.Object({ key: t.String(), value: t.Number() }) },
+    { requireAdmin: true, body: t.Object({ key: t.String(), value: t.Number() }) },
   )
   // Tariff config for the web app: read the active economic model, or replace
   // it. The body is validated by the shared Zod schema (setTariff), so a bad
@@ -229,7 +251,7 @@ const app = new Elysia()
         return status(400, { error: error instanceof Error ? error.message : "Invalid tariff" });
       }
     },
-    { body: t.Unknown() },
+    { requireAdmin: true, body: t.Unknown() },
   )
   // Cost breakdown over a named range (today / month-to-date / year-to-date) or
   // an explicit [from, to) window. Prices stored energy with the active tariff.
@@ -265,7 +287,7 @@ const app = new Elysia()
         return status(400, { error: error instanceof Error ? error.message : "Invalid config" });
       }
     },
-    { body: t.Unknown() },
+    { requireAdmin: true, body: t.Unknown() },
   )
   .post(
     "/api/settings/inverter/test",
@@ -276,7 +298,7 @@ const app = new Elysia()
         return status(400, { error: error instanceof Error ? error.message : "Invalid config" });
       }
     },
-    { body: t.Unknown() },
+    { requireAdmin: true, body: t.Unknown() },
   )
   // MQTT config: the password is masked on read and preserved on write when the
   // client omits it (write-only secret).
@@ -292,7 +314,7 @@ const app = new Elysia()
         return status(400, { error: error instanceof Error ? error.message : "Invalid config" });
       }
     },
-    { body: t.Unknown() },
+    { requireAdmin: true, body: t.Unknown() },
   )
   .post(
     "/api/settings/mqtt/test",
@@ -303,7 +325,7 @@ const app = new Elysia()
         return status(400, { error: error instanceof Error ? error.message : "Invalid config" });
       }
     },
-    { body: t.Unknown() },
+    { requireAdmin: true, body: t.Unknown() },
   )
   // Live connection health (inverter + MQTT) for the settings dashboard.
   .get("/api/status", () => runtime.status())

@@ -6,6 +6,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { admin } from "better-auth/plugins/admin";
+import { apiKey } from "@better-auth/api-key";
 
 export function createAuth() {
   const db = createDb();
@@ -69,7 +70,15 @@ export function createAuth() {
         }
       }),
     },
-    plugins: [admin({ defaultRole: "user", adminRoles: ["admin"] })],
+    plugins: [
+      admin({ defaultRole: "user", adminRoles: ["admin"] }),
+      // API keys for the generated /api/v1 integration surface. Keys reference a
+      // `user` (default) via `referenceId`. Client self-service endpoints are
+      // key-owner-scoped; admins manage keys for any user through the
+      // admin-guarded /api/admin/api-keys routes in apps/server, which call
+      // `auth.api.createApiKey` with an explicit userId.
+      apiKey({ defaultPrefix: "sunreye_" }),
+    ],
   });
 }
 

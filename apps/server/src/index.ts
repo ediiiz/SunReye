@@ -22,6 +22,7 @@ import { computeCost, resolveRange } from "./cost";
 import { monthlyEnergy } from "./energy";
 import { entitiesApi } from "./entities";
 import { queryRollup } from "./history";
+import { createApiKeyForUser, listApiKeys, revokeApiKey } from "./api-keys";
 import { buildProfileContext, getActiveProfile, initProfiles } from "./inverter";
 import { log, setupLogging } from "./logging";
 import {
@@ -432,6 +433,25 @@ const app = new Elysia()
     },
     { requireAdmin: true, body: t.Object({ id: t.String() }) },
   )
+  // API-key administration. Admin-only surface for issuing/listing/revoking
+  // keys on behalf of any user (see ./api-keys). The generated key is returned
+  // exactly once, on create.
+  .get("/api/admin/api-keys", ({ query }) => listApiKeys(query.userId), {
+    requireAdmin: true,
+    query: t.Object({ userId: t.Optional(t.String()) }),
+  })
+  .post("/api/admin/api-keys", ({ body }) => createApiKeyForUser(body), {
+    requireAdmin: true,
+    body: t.Object({
+      userId: t.String(),
+      name: t.String({ minLength: 1 }),
+      expiresIn: t.Optional(t.Nullable(t.Number({ minimum: 1 }))),
+    }),
+  })
+  .post("/api/admin/api-keys/revoke", ({ body }) => revokeApiKey(body.id), {
+    requireAdmin: true,
+    body: t.Object({ id: t.String() }),
+  })
   .listen(env.PORT, () => {
     serverLog.info("server running on http://localhost:{port} — profile {profile}", {
       port: env.PORT,

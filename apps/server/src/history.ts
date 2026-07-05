@@ -22,11 +22,25 @@ interface HistoryQuery {
   limit: number;
 }
 
-/** Downsampled rollup series (ascending), from a continuous aggregate view. */
+/**
+ * Downsampled rollup series (ascending), from a continuous aggregate view.
+ * Pass either `since` (open-ended `[since, now)`) or an explicit `[from, to)`
+ * window — the latter is what the custom date-range picker needs, since a range
+ * ending in the past can't be expressed as an hours-ago offset.
+ */
 export async function queryRollup(
-  q: HistoryQuery & { bucket: RollupBucket },
+  q: Omit<HistoryQuery, "since"> & {
+    bucket: RollupBucket;
+    since?: Date;
+    from?: Date;
+    to?: Date;
+  },
 ): Promise<Array<{ time: string; avg: number; max: number; min: number }>> {
   const view = sql.raw(viewFor(q.bucket));
+  const window =
+    q.from && q.to
+      ? sql`bucket >= ${q.from} and bucket < ${q.to}`
+      : sql`bucket >= ${q.since ?? new Date(0)}`;
   const result = await db.execute<{
     bucket: string | Date;
     avg_value: number;
@@ -37,7 +51,7 @@ export async function queryRollup(
     from ${view}
     where metric = ${q.metric}
       and inverter_id = ${q.inverterId}
-      and bucket >= ${q.since}
+      and ${window}
     order by bucket asc
     limit ${q.limit}
   `);

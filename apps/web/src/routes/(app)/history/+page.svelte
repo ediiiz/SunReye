@@ -1,36 +1,42 @@
 <script lang="ts">
+	import CaretDown from 'phosphor-svelte/lib/CaretDown';
+	import MagnifyingGlass from 'phosphor-svelte/lib/MagnifyingGlass';
 	import { inverter } from '$lib/inverter/store.svelte';
-	import RangeSwitcher from '$lib/components/inverter/range-switcher.svelte';
-	import HistoryChart from '$lib/components/inverter/history-chart.svelte';
-	import type { CanonicalRole, ManifestMetric } from '$lib/inverter/types';
+	import { Input } from '$lib/components/ui/input';
+	import * as Collapsible from '$lib/components/ui/collapsible';
+	import DateRangePicker from '$lib/components/inverter/date-range-picker.svelte';
+	import EntityHistoryCard from '$lib/components/inverter/entity-history-card.svelte';
+	import { categoryOf, isChartable, resolvePreset, type HistoryRange } from '$lib/inverter/ranges';
+	import type { ManifestMetric } from '$lib/inverter/types';
 
-	const RANGES = [
-		{ id: '1h', label: '1 hour', hours: 1, bucket: 'minute' as const },
-		{ id: '6h', label: '6 hours', hours: 6, bucket: 'minute' as const },
-		{ id: '24h', label: '24 hours', hours: 24, bucket: 'hour' as const },
-		{ id: '7d', label: '7 days', hours: 168, bucket: 'hour' as const },
-		{ id: '30d', label: '30 days', hours: 720, bucket: 'day' as const }
-	];
-	let rangeId = $state('6h');
-	const range = $derived(RANGES.find((r) => r.id === rangeId) ?? RANGES[0]);
+	let range = $state<HistoryRange>(resolvePreset('live'));
+	let search = $state('');
+	// Per-category open state; groups default open (undefined → true).
+	let collapsed = $state<Record<string, boolean>>({});
 
-	// Curated chartable metrics (by role), colored from the chart palette.
-	const CHART_ROLES: { role: CanonicalRole; color: string }[] = [
-		{ role: 'pv.total.power', color: 'var(--color-chart-1)' },
-		{ role: 'production.today', color: 'var(--color-chart-2)' },
-		{ role: 'battery.soc', color: 'var(--color-chart-3)' },
-		{ role: 'battery.power', color: 'var(--color-chart-4)' },
-		{ role: 'grid.power', color: 'var(--color-chart-5)' },
-		{ role: 'load.power', color: 'var(--color-chart-1)' },
-		{ role: 'battery.temperature', color: 'var(--color-chart-3)' },
-		{ role: 'inverter.temperature.dc', color: 'var(--color-chart-4)' }
-	];
+	const chartable = $derived(inverter.metrics.filter(isChartable));
 
-	const charts = $derived(
-		CHART_ROLES.map((c) => ({ ...c, metric: inverter.byRole(c.role) })).filter(
-			(c): c is typeof c & { metric: ManifestMetric } => c.metric !== undefined
-		)
-	);
+	const filtered = $derived.by(() => {
+		const q = search.trim().toLowerCase();
+		if (!q) return chartable;
+		return chartable.filter(
+			(m) => m.label.toLowerCase().includes(q) || m.key.toLowerCase().includes(q)
+		);
+	});
+
+	// Group by category, sorted alphabetically; metrics keep manifest order.
+	const groups = $derived.by(() => {
+		const map = new Map<string, ManifestMetric[]>();
+		for (const m of filtered) {
+			const cat = categoryOf(m);
+			const arr = map.get(cat) ?? [];
+			arr.push(m);
+			map.set(cat, arr);
+		}
+		return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+	});
+
+	const accentFor = (i: number) => `var(--color-chart-${(i % 5) + 1})`;
 </script>
 
 <div class="flex w-full flex-col gap-6 p-4 sm:p-6">
@@ -38,21 +44,54 @@
 		<div>
 			<h1 class="text-lg font-semibold">History</h1>
 			<p class="text-sm text-muted-foreground">
-				Downsampled trends from the continuous-aggregate rollups.
+				Live and historical trends for every entity.
 			</p>
 		</div>
-		<RangeSwitcher options={RANGES} bind:value={rangeId} />
+		<DateRangePicker bind:range />
 	</div>
 
-	{#if charts.length === 0}
-		<div class="flex h-40 items-center justify-center border border-border text-sm text-muted-foreground">
+	<div class="relative max-w-sm">
+		<MagnifyingGlass
+			class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+		/>
+		<Input placeholder="Search entities…" bind:value={search} class="pl-9" />
+	</div>
+
+	{#if chartable.length === 0}
+		<div
+			class="flex h-40 items-center justify-center border border-border text-sm text-muted-foreground"
+		>
 			Waiting for the inverter profile…
 		</div>
-	{:else}
-		<div class="grid gap-4 lg:grid-cols-2">
-			{#each charts as c (c.role)}
-				<HistoryChart metric={c.metric} hours={range.hours} bucket={range.bucket} color={c.color} />
-			{/each}
+	{:else if groups.length === 0}
+		<div
+			class="flex h-40 items-center justify-center border border-border text-sm text-muted-foreground"
+		>
+			No entities match “{search}”.
 		</div>
+	{:else}
+		{#each groups as [category, metrics] (category)}
+			<Collapsible.Root
+				open={!collapsed[category]}
+				onOpenChange={(v) => (collapsed[category] = !v)}
+			>
+				<Collapsible.Trigger
+					class="group flex w-full items-center gap-2 border-b border-border py-2 text-left text-sm font-medium"
+				>
+					<CaretDown
+						class="size-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90"
+					/>
+					{category}
+					<span class="text-xs text-muted-foreground">({metrics.length})</span>
+				</Collapsible.Trigger>
+				<Collapsible.Content>
+					<div class="grid gap-4 pt-4 lg:grid-cols-2 xl:grid-cols-3">
+						{#each metrics as metric, i (metric.key)}
+							<EntityHistoryCard {metric} {range} accent={accentFor(i)} />
+						{/each}
+					</div>
+				</Collapsible.Content>
+			</Collapsible.Root>
+		{/each}
 	{/if}
 </div>

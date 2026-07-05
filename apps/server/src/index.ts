@@ -207,13 +207,18 @@ const app = new Elysia()
   .get(
     "/api/history/rollup",
     async ({ query }) => {
-      const since = new Date(Date.now() - query.hours * 60 * 60 * 1000);
+      // Explicit [from, to) window (custom date-range picker) takes precedence;
+      // otherwise fall back to the open-ended hours-ago offset.
+      const window =
+        query.from && query.to
+          ? { from: new Date(query.from), to: new Date(query.to) }
+          : { since: new Date(Date.now() - (query.hours ?? 168) * 60 * 60 * 1000) };
       return queryRollup({
         metric: query.metric,
         inverterId: query.inverterId ?? profile.id,
-        since,
         limit: query.limit,
         bucket: query.bucket ?? "hour",
+        ...window,
       });
     },
     {
@@ -221,7 +226,9 @@ const app = new Elysia()
         metric: t.String(),
         inverterId: t.Optional(t.String()),
         bucket: t.Optional(t.Union([t.Literal("minute"), t.Literal("hour"), t.Literal("day")])),
-        hours: t.Number({ default: 168, minimum: 1 }),
+        hours: t.Optional(t.Number({ minimum: 1 })),
+        from: t.Optional(t.String()),
+        to: t.Optional(t.String()),
         limit: t.Number({ default: 5000, minimum: 1, maximum: 50000 }),
       }),
     },

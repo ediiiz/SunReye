@@ -21,13 +21,13 @@ export const env = createEnv({
     // Inverter (Modbus TCP) connection
     INVERTER_HOST: z.string().min(1).default("192.168.1.100"),
     INVERTER_PORT: z.coerce.number().int().positive().default(502),
-    INVERTER_UNIT_ID: z.coerce.number().int().min(1).default(1),
+    INVERTER_UNIT_ID: z.coerce.number().int().min(0).default(0),
     // Polling cadence for the 1Hz God-loop (milliseconds)
     POLL_INTERVAL_MS: z.coerce.number().int().positive().default(1000),
     // When true, generate synthetic metrics instead of talking to hardware
     INVERTER_SIMULATE: z
       .enum(["true", "false"])
-      .default("true")
+      .default("false")
       .transform((v) => v === "true"),
 
     // Comma-separated API keys authorizing third-party access to the public

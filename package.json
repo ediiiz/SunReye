@@ -22,7 +22,7 @@
     "check-types": "turbo run check-types",
     "dev:web": "turbo run dev -F web",
     "dev:server": "turbo run dev -F server",
-    "preview": "turbo run preview -F web -F server",
+    "preview": "turbo run db:push db:timescale -F @SunReye/db && turbo run preview -F web -F server",
     "db:push": "turbo run db:push -F @SunReye/db",
     "db:studio": "turbo run db:studio -F @SunReye/db",
     "db:generate": "turbo run db:generate -F @SunReye/db",

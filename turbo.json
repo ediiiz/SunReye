@@ -45,6 +45,9 @@
       "persistent": true
     },
     "db:push": {
+      "dependsOn": [
+        "//#db:start"
+      ],
       "cache": false
     },
     "db:generate": {
@@ -55,6 +58,9 @@
       "persistent": true
     },
     "db:timescale": {
+      "dependsOn": [
+        "db:push"
+      ],
       "cache": false
     },
     "db:studio": {

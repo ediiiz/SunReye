@@ -52,7 +52,7 @@ const CONNECTION_CHECKS: ReadonlyArray<{
 }> = [
   { path: "host", message: "Host is required", ok: (c) => c.host.length >= 1 },
   { path: "port", message: "Port must be 1–65535", ok: (c) => c.port >= 1 && c.port <= 65535 },
-  { path: "unitId", message: "Unit id must be 1–255", ok: (c) => c.unitId >= 1 && c.unitId <= 255 },
+  { path: "unitId", message: "Unit id must be 0–255", ok: (c) => c.unitId >= 0 && c.unitId <= 255 },
   {
     path: "timeoutMs",
     message: "Timeout must be 100–60000 ms",

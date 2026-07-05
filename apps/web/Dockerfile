@@ -1,20 +1,31 @@
-FROM node:24-slim AS base
-COPY --from=oven/bun:1 /usr/local/bin/bun /usr/local/bin/bun
+# syntax=docker/dockerfile:1
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Build stage
+# The SvelteKit adapter-node output is plain, architecture-independent JS, so we
+# build once on the build platform even for multi-arch images. adapter-node
+# bundles every dependency into build/, so the runtime needs no node_modules.
+# ─────────────────────────────────────────────────────────────────────────────
+FROM --platform=$BUILDPLATFORM oven/bun:1 AS build
 WORKDIR /app
-ENV SKIP_ENV_VALIDATION=1
+ENV HUSKY=0 SKIP_ENV_VALIDATION=1 NODE_ENV=production
 
 COPY . .
-RUN --mount=type=cache,target=/root/.bun/install/cache bun install
+RUN --mount=type=cache,target=/root/.bun/install/cache bun install --frozen-lockfile
 
-ARG PUBLIC_SERVER_URL
+# PUBLIC_* vars are inlined into the client bundle at build time.
+ARG PUBLIC_SERVER_URL=http://localhost:3000
 ENV PUBLIC_SERVER_URL=${PUBLIC_SERVER_URL}
-ENV NODE_ENV=production
 RUN cd apps/web && bun run build
-ENV SKIP_ENV_VALIDATION=
 
-ENV HOST=0.0.0.0
-ENV PORT=3001
+# ─────────────────────────────────────────────────────────────────────────────
+# Runtime stage
+# distroless/nodejs is just the Node runtime (its ENTRYPOINT is `node`).
+# We copy only the self-contained build/ output. Runs as non-root (uid 65532).
+# ─────────────────────────────────────────────────────────────────────────────
+FROM gcr.io/distroless/nodejs24-debian12:nonroot AS runtime
+WORKDIR /app
+COPY --from=build /app/apps/web/build ./
+ENV NODE_ENV=production HOST=0.0.0.0 PORT=3001
 EXPOSE 3001
-
-WORKDIR /app/apps/web
-CMD ["node", "build/index.js"]
+CMD ["index.js"]

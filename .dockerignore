@@ -1,6 +1,12 @@
 **/node_modules
 .git
 
+# Core dumps and other large local junk that must never enter the build context
+core
+**/core
+*.core
+*.tgz
+
 **/dist
 **/build
 **/.next

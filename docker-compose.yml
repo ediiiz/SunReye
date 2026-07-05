@@ -18,6 +18,21 @@ services:
         condition: service_started
     restart: unless-stopped
 
+  # One-shot schema init: applies the drizzle schema (db:push) + TimescaleDB DDL
+  # (db:timescale) against the Postgres service, then exits. Idempotent. The
+  # server waits for it to complete before starting.
+  migrate:
+    build:
+      context: .
+      dockerfile: docker/migrate.Dockerfile
+    environment:
+      SKIP_ENV_VALIDATION: "1"
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/SunReye
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
   server:
     build:
       context: .
@@ -37,6 +52,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   postgres:

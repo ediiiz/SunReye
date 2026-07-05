@@ -23,6 +23,24 @@ services:
         condition: service_started
     restart: unless-stopped
 
+  # One-shot schema init: creates the drizzle tables + TimescaleDB objects, then
+  # exits. Idempotent, so it also applies any new tables on version upgrades.
+  # The server waits for this to finish successfully before starting.
+  migrate:
+    image: ghcr.io/ediiiz/sunreye-migrate:${SUNREYE_TAG:-latest}
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # drizzle-kit + the timescale script only need DATABASE_URL; skip the full
+      # server env schema (auth secret, CORS, …) that isn't relevant here.
+      SKIP_ENV_VALIDATION: "1"
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/SunReye
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
   server:
     image: ghcr.io/ediiiz/sunreye-server:${SUNREYE_TAG:-latest}
     init: true
@@ -39,6 +57,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   postgres:

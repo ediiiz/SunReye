@@ -4,8 +4,43 @@ import { defineConfig } from "astro/config";
 
 const github = "https://github.com/ediiiz/SunReye";
 
+// GitHub Pages project site: https://ediiiz.github.io/SunReye/
+// If a custom domain is ever configured, set `base: "/"` (or drop it) and point
+// `site` at the domain.
+const site = "https://ediiiz.github.io";
+const base = "/SunReye";
+
+// Starlight's own nav/sidebar links are base-aware, but hand-written
+// root-absolute markdown links (e.g. `[Settings](/use/settings/)`) are not
+// rewritten by Astro. This rehype plugin prepends `base` to them at build time
+// so every internal link works under the `/SunReye/` path prefix without
+// touching the content.
+const prefix = base.replace(/\/$/, "");
+function rehypeBaseAbsoluteLinks() {
+  const rewrite = (href) =>
+    typeof href === "string" &&
+    href.startsWith("/") &&
+    !href.startsWith("//") &&
+    href !== prefix &&
+    !href.startsWith(`${prefix}/`)
+      ? prefix + href
+      : href;
+  const walk = (node) => {
+    if (node.type === "element" && node.tagName === "a" && node.properties) {
+      node.properties.href = rewrite(node.properties.href);
+    }
+    for (const child of node.children ?? []) walk(child);
+  };
+  return (tree) => walk(tree);
+}
+
 // https://astro.build/config
 export default defineConfig({
+  site,
+  base,
+  markdown: {
+    rehypePlugins: [rehypeBaseAbsoluteLinks],
+  },
   integrations: [
     starlight({
       title: "SunReye",

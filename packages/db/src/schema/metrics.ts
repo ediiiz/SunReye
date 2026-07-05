@@ -18,7 +18,14 @@ export const metricsRaw = pgTable(
     metric: text("metric").notNull(),
     value: doublePrecision("value").notNull(),
   },
-  (t) => [index("metrics_raw_metric_time_idx").on(t.inverterId, t.metric, t.time)],
+  (t) => [
+    index("metrics_raw_metric_time_idx").on(t.inverterId, t.metric, t.time),
+    // Time-only index for pure time-range scans (e.g. /api/history). Owned by
+    // drizzle so `push` doesn't try to drop it — TimescaleDB's `create_hypertable`
+    // is configured with `create_default_indexes => FALSE` precisely so this is
+    // the single source of truth for the time index (see src/timescale.sql).
+    index("metrics_raw_time_idx").on(t.time.desc()),
+  ],
 );
 
 export type MetricsRow = typeof metricsRaw.$inferSelect;

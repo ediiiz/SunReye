@@ -9,7 +9,10 @@ CREATE EXTENSION IF NOT EXISTS timescaledb;
 -- Promote metrics_raw to a hypertable partitioned on the time column.
 -- migrate_data handles the case where the poll loop already wrote rows before
 -- the table was promoted to a hypertable.
-SELECT create_hypertable('metrics_raw', 'time', if_not_exists => TRUE, migrate_data => TRUE);
+-- create_default_indexes => FALSE: the time index (`metrics_raw_time_idx`) is
+-- declared in the drizzle schema instead, so `drizzle-kit push` owns it and
+-- won't drop an out-of-band index it doesn't know about.
+SELECT create_hypertable('metrics_raw', 'time', if_not_exists => TRUE, migrate_data => TRUE, create_default_indexes => FALSE);
 --> statement-breakpoint
 
 -- Per-minute rollup, per (inverter, metric). Powers short-horizon history

@@ -26,6 +26,8 @@
 		flow: Flow;
 		state: string;
 		accent: string;
+		/** Tailwind text-* class for the flow hue (defaults to {@link flowColor}). */
+		color: string;
 		at: Pt;
 	};
 
@@ -34,6 +36,7 @@
 		type: 'DC' | 'AC';
 		flow: Flow;
 		value: number | undefined;
+		color: string;
 		/** Right-angle route; dashes travel pts[0]→…→pts[last]. pts[last] is the hub. */
 		pts: Pt[];
 	};
@@ -65,6 +68,42 @@
 
 	const caps = $derived(inverter.capabilities);
 
+	// Battery state-of-charge (0..100) drives the circular gauge on the battery node.
+	const batterySoc = $derived.by(() => {
+		const m = inverter.byRole('battery.soc');
+		const v = m ? inverter.value(m.key) : undefined;
+		return v === undefined ? undefined : Math.min(100, Math.max(0, v));
+	});
+
+	// SOC ring geometry: drawn inside the 56px node circle (viewBox 56×56) so the
+	// battery keeps the same footprint as every other node.
+	const SOC_R = 26;
+	const SOC_C = 2 * Math.PI * SOC_R;
+
+	// SOC → colour: red when low, fading through orange to green when healthy.
+	// Interpolated between stops so the ring literally fades across the 30/60 bands.
+	function socColor(soc: number): string {
+		const stops = [
+			{ p: 0, rgb: [239, 68, 68] }, // red-500
+			{ p: 30, rgb: [249, 115, 22] }, // orange-500
+			{ p: 60, rgb: [34, 197, 94] }, // green-500
+			{ p: 100, rgb: [34, 197, 94] }
+		];
+		const s = Math.min(100, Math.max(0, soc));
+		let lo = stops[0];
+		let hi = stops[stops.length - 1];
+		for (let i = 0; i < stops.length - 1; i++) {
+			if (s >= stops[i].p && s <= stops[i + 1].p) {
+				lo = stops[i];
+				hi = stops[i + 1];
+				break;
+			}
+		}
+		const t = hi.p === lo.p ? 0 : (s - lo.p) / (hi.p - lo.p);
+		const c = lo.rgb.map((v, i) => Math.round(v + (hi.rgb[i] - v) * t));
+		return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+	}
+
 	const graph = $derived.by(() => {
 		const nodes: Node[] = [];
 		const segments: Segment[] = [];
@@ -82,50 +121,59 @@
 				const v = power('pv.string.power', i);
 				const s = sense(v, { flow: 'in', state: 'Producing' }, { flow: 'idle', state: 'Idle' });
 				const at = { x: 0.08, y };
-				nodes.push({ id: `pv${i}`, label: `String ${i}`, icon: Sun, value: v, accent: solarAccent, at, ...s });
+				nodes.push({ id: `pv${i}`, label: `String ${i}`, icon: Sun, value: v, accent: solarAccent, color: flowColor(s.flow), at, ...s });
 				// Shared riser column (aligned elbows); entry height staggered so the
 				// short stubs into the hub stay separate.
 				const bx = HUB.x - 0.05;
 				const entryY = count === 1 ? HUB.y : HUB.y + (i - (count + 1) / 2) * 0.03;
 				const pts =
 					count === 1 ? [at, HUB] : [at, { x: bx, y }, { x: bx, y: entryY }, { x: HUB.x, y: entryY }];
-				segments.push({ id: `pv${i}-hub`, type: 'DC', flow: s.flow, value: v, pts });
+				segments.push({ id: `pv${i}-hub`, type: 'DC', flow: s.flow, value: v, color: flowColor(s.flow), pts });
 			}
 		} else {
 			const v = power('pv.total.power');
 			const s = sense(v, { flow: 'in', state: 'Producing' }, { flow: 'idle', state: 'Idle' });
 			const at = { x: 0.08, y: HUB.y };
-			nodes.push({ id: 'solar', label: 'Solar', icon: Sun, value: v, accent: solarAccent, ...s, at });
-			segments.push({ id: 'solar-hub', type: 'DC', flow: s.flow, value: v, pts: [at, HUB] });
+			nodes.push({ id: 'solar', label: 'Solar', icon: Sun, value: v, accent: solarAccent, color: flowColor(s.flow), ...s, at });
+			segments.push({ id: 'solar-hub', type: 'DC', flow: s.flow, value: v, color: flowColor(s.flow), pts: [at, HUB] });
 		}
 
 		if (caps?.battery) {
 			const v = power('battery.power');
 			// Sign convention: power > 0 charging (out), < 0 discharging (in).
 			const s = sense(v, { flow: 'out', state: 'Charging' }, { flow: 'in', state: 'Discharging' });
-			nodes.push({ id: 'battery', label: 'Battery', icon: BatteryChargingIcon, value: v, accent: 'var(--color-chart-3)', at: BATTERY, ...s });
-			segments.push({ id: 'battery-hub', type: 'DC', flow: s.flow, value: v, pts: [BATTERY, HUB] });
+			nodes.push({ id: 'battery', label: 'Battery', icon: BatteryChargingIcon, value: v, accent: 'var(--color-chart-3)', color: flowColor(s.flow), at: BATTERY, ...s });
+			segments.push({ id: 'battery-hub', type: 'DC', flow: s.flow, value: v, color: flowColor(s.flow), pts: [BATTERY, HUB] });
 		}
 
 		if (caps?.backupLoad) {
 			const v = power('load.power');
 			const s = sense(v, { flow: 'out', state: 'Consuming' }, { flow: 'out', state: 'Consuming' });
-			nodes.push({ id: 'load', label: 'Load', icon: House, value: v, accent: 'var(--color-chart-5)', at: LOAD, ...s });
-			segments.push({ id: 'load-hub', type: 'AC', flow: s.flow, value: v, pts: [LOAD, { x: LOAD.x, y: HUB.y }, HUB] });
+			nodes.push({ id: 'load', label: 'Load', icon: House, value: v, accent: 'var(--color-chart-5)', color: flowColor(s.flow), at: LOAD, ...s });
+			// Backup load is a dedicated AC output — route it into the hub from below
+			// on its own rail rather than merging onto the grid spine (y = HUB.y).
+			segments.push({
+				id: 'load-hub',
+				type: 'AC',
+				flow: s.flow,
+				value: v,
+				color: flowColor(s.flow),
+				pts: [LOAD, { x: LOAD.x, y: 0.5 }, { x: 0.4, y: 0.5 }, HUB]
+			});
 		}
 
 		if (caps?.generator) {
 			const v = power('generator.power');
 			const s = sense(v, { flow: 'in', state: 'Running' }, { flow: 'idle', state: 'Off' });
-			nodes.push({ id: 'generator', label: 'Generator', icon: Engine, value: v, accent: 'var(--color-chart-2)', at: GEN, ...s });
-			segments.push({ id: 'gen-hub', type: 'AC', flow: s.flow, value: v, pts: [GEN, { x: GEN.x, y: HUB.y }, HUB] });
+			nodes.push({ id: 'generator', label: 'Generator', icon: Engine, value: v, accent: 'var(--color-chart-2)', color: flowColor(s.flow), at: GEN, ...s });
+			segments.push({ id: 'gen-hub', type: 'AC', flow: s.flow, value: v, color: flowColor(s.flow), pts: [GEN, { x: GEN.x, y: HUB.y }, HUB] });
 		}
 
 		if (caps?.grid) {
 			const v = power('grid.power');
 			const s = sense(v, { flow: 'in', state: 'Importing' }, { flow: 'out', state: 'Exporting' });
-			nodes.push({ id: 'grid', label: 'Grid', icon: Lightning, value: v, accent: 'var(--color-chart-4)', at: GRID, ...s });
-			segments.push({ id: 'grid-hub', type: 'AC', flow: s.flow, value: v, pts: [GRID, HUB] });
+			nodes.push({ id: 'grid', label: 'Grid', icon: Lightning, value: v, accent: 'var(--color-chart-4)', color: gridColor(v), at: GRID, ...s });
+			segments.push({ id: 'grid-hub', type: 'AC', flow: s.flow, value: v, color: gridColor(v), pts: [GRID, HUB] });
 		}
 
 		return { nodes, segments };
@@ -136,7 +184,7 @@
 	let w = $state(0);
 	let h = $state(0);
 
-	type Line = { id: string; type: 'DC' | 'AC'; flow: Flow; dur: number; points: string; pill: Pt };
+	type Line = { id: string; type: 'DC' | 'AC'; flow: Flow; color: string; dur: number; points: string; pill: Pt };
 
 	const lines = $derived.by<Line[]>(() => {
 		if (w === 0 || h === 0) return [];
@@ -146,6 +194,7 @@
 				id: s.id,
 				type: s.type,
 				flow: s.flow,
+				color: s.color,
 				dur: flowDuration(s.value),
 				points: px.map((p) => `${p.x},${p.y}`).join(' '),
 				// Pill sits on the first leg (near the source node).
@@ -161,8 +210,19 @@
 		return Math.min(2600, Math.max(420, ms)) / 1000;
 	}
 
-	function dirClass(flow: Flow): string {
+	// Default flow hue by direction relative to the inverter: arriving = green,
+	// leaving = amber, idle = the static rail colour.
+	function flowColor(flow: Flow): string {
 		return flow === 'in' ? 'text-emerald-500' : flow === 'out' ? 'text-amber-500' : 'text-border';
+	}
+
+	// Grid uses cost semantics instead of raw direction: exporting (feeding energy
+	// into the grid) is green, importing (pulling from it) is red.
+	function gridColor(watts: number | undefined): string {
+		const v = watts ?? 0;
+		if (v < -0.5) return 'text-emerald-500'; // exporting
+		if (v > 0.5) return 'text-red-500'; // importing
+		return 'text-border';
 	}
 </script>
 
@@ -179,7 +239,7 @@
 				{#each lines as l (`flow-${l.id}`)}
 					{#if l.flow !== 'idle'}
 						<polyline
-							class={`flow-line ${l.flow === 'in' ? 'flow-in' : 'flow-out'} ${dirClass(l.flow)}`}
+							class={`flow-line ${l.flow === 'in' ? 'flow-in' : 'flow-out'} ${l.color}`}
 							points={l.points}
 							fill="none"
 							stroke="currentColor"
@@ -221,16 +281,44 @@
 		{#each graph.nodes as n (n.id)}
 			{@const Icon = n.icon}
 			{@const active = n.flow !== 'idle'}
+			{@const isBattery = n.id === 'battery' && batterySoc !== undefined}
 			<div
 				class="absolute -translate-x-1/2 -translate-y-1/2"
 				style={`left:${n.at.x * 100}%;top:${n.at.y * 100}%`}
 				class:opacity-70={!active}
 			>
-				<div
-					class="flex size-14 items-center justify-center rounded-full border-2 bg-background"
-					style={`border-color:${active ? n.accent : 'var(--border)'}`}
-				>
-					<Icon class="size-7" weight="duotone" style={`color:${active ? n.accent : 'var(--muted-foreground)'}`} />
+				<div class="relative size-14">
+					<div
+						class="flex size-full items-center justify-center rounded-full border-2 bg-background"
+						style={`border-color:${isBattery ? 'transparent' : active ? n.accent : 'var(--border)'}`}
+					>
+						<Icon class="size-7" weight="duotone" style={`color:${active ? n.accent : 'var(--muted-foreground)'}`} />
+					</div>
+					{#if isBattery && batterySoc !== undefined}
+						<!-- Circular SOC gauge inset to the circle edge so the battery keeps the
+						     same footprint as the other nodes. -->
+						<svg class="absolute inset-0 size-full -rotate-90" viewBox="0 0 56 56" aria-hidden="true">
+							<circle class="text-border" cx="28" cy="28" r={SOC_R} fill="none" stroke="currentColor" stroke-width="2.5" />
+							<circle
+								cx="28"
+								cy="28"
+								r={SOC_R}
+								fill="none"
+								stroke={socColor(batterySoc)}
+								stroke-width="2.5"
+								stroke-linecap="round"
+								stroke-dasharray={SOC_C}
+								stroke-dashoffset={SOC_C * (1 - batterySoc / 100)}
+								style="transition:stroke-dashoffset 500ms linear, stroke 500ms linear"
+							/>
+						</svg>
+						<span
+							class="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 rounded-full border border-border bg-background px-1.5 text-[0.62rem] font-semibold tabular-nums leading-tight"
+							style={`color:${socColor(batterySoc)}`}
+						>
+							{Math.round(batterySoc)}%
+						</span>
+					{/if}
 				</div>
 				<div class="absolute left-1/2 top-full mt-2 flex w-24 -translate-x-1/2 flex-col items-center gap-0.5 leading-tight">
 					<span class="text-xs font-semibold">{n.label}</span>
@@ -242,7 +330,7 @@
 						{/if}
 						<span class="text-[0.6rem] text-muted-foreground">W</span>
 					</span>
-					<span class={`flex items-center gap-0.5 text-[0.6rem] uppercase tracking-wide ${dirClass(n.flow)}`}>
+					<span class={`flex items-center gap-0.5 text-[0.6rem] uppercase tracking-wide ${n.color}`}>
 						{#if n.flow === 'in'}
 							<ArrowDown class="size-2.5" />
 						{:else if n.flow === 'out'}

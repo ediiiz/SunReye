@@ -6,6 +6,7 @@
 	import MqttForm from '$lib/components/settings/mqtt-form.svelte';
 	import ProfilesForm from '$lib/components/settings/profiles-form.svelte';
 	import UsersForm from '$lib/components/settings/users-form.svelte';
+	import ApiKeysForm from '$lib/components/settings/api-keys-form.svelte';
 	import { useAppSession } from '$lib/session';
 
 	const session = useAppSession();
@@ -20,11 +21,12 @@
 		...(isAdmin
 			? [
 					{ id: 'profiles', label: 'Profiles' },
-					{ id: 'users', label: 'Users' }
+					{ id: 'users', label: 'Users' },
+					{ id: 'apikeys', label: 'API Keys' }
 				]
 			: [])
 	] as const);
-	let tab = $state<'inverter' | 'mqtt' | 'tariff' | 'profiles' | 'users'>('inverter');
+	let tab = $state<'inverter' | 'mqtt' | 'tariff' | 'profiles' | 'users' | 'apikeys'>('inverter');
 
 	type Status = {
 		inverter: {
@@ -82,6 +84,10 @@
 		{:else if tab === 'users' && isAdmin}
 			<div class="flex flex-col gap-6">
 				<UsersForm />
+			</div>
+		{:else if tab === 'apikeys' && isAdmin}
+			<div class="flex flex-col gap-6">
+				<ApiKeysForm />
 			</div>
 		{/if}
 	</div>

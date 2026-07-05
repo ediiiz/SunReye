@@ -11,6 +11,7 @@
  * surface; the web app's own session-authed endpoints live in `index.ts`.
  */
 
+import { auth } from "@SunReye/auth";
 import { env } from "@SunReye/env/server";
 import type { EntityConstraint } from "@SunReye/inverter-core";
 import { entityConstraint, writableMetrics } from "@SunReye/inverter-core";
@@ -33,26 +34,45 @@ function valueSchema(c: EntityConstraint) {
   return t.Number(bounds);
 }
 
-/**
- * Reject requests without a valid API key. Empty `API_KEYS` is open in
- * development (local convenience) but fails closed in production so the public
- * surface is never accidentally unauthenticated.
- */
-function checkApiKey(request: Request): { status: number; error: string } | null {
-  const keys = env.API_KEYS;
-  if (keys.length === 0) {
-    if (env.NODE_ENV === "production") {
-      return { status: 401, error: "API access is not configured" };
-    }
-    return null;
-  }
+/** Extract the presented key from either `Authorization: Bearer` or `x-api-key`. */
+function extractApiKey(request: Request): string | undefined {
   const header = request.headers.get("authorization");
   const bearer = header?.toLowerCase().startsWith("bearer ") ? header.slice(7).trim() : undefined;
-  const provided = bearer ?? request.headers.get("x-api-key") ?? undefined;
-  if (!provided || !keys.includes(provided)) {
-    return { status: 401, error: "Invalid or missing API key" };
+  return bearer ?? request.headers.get("x-api-key") ?? undefined;
+}
+
+/**
+ * Reject requests without a valid API key. Two credential sources are accepted:
+ * the static `API_KEYS` env allow-list, and admin-issued keys managed by the
+ * Better Auth API Key plugin (validated via `auth.api.verifyApiKey`, which also
+ * enforces expiry/enabled and bumps the key's usage counters). Empty `API_KEYS`
+ * stays open in development (local convenience) but fails closed in production
+ * so the public surface is never accidentally unauthenticated.
+ */
+async function checkApiKey(request: Request): Promise<{ status: number; error: string } | null> {
+  const keys = env.API_KEYS;
+
+  // Dev convenience: with no static keys configured, the surface is open.
+  if (keys.length === 0 && env.NODE_ENV !== "production") {
+    return null;
   }
-  return null;
+
+  const provided = extractApiKey(request);
+  if (provided) {
+    if (keys.includes(provided)) return null;
+    // Fall back to a managed (DB-backed) key. verifyApiKey never throws for an
+    // unknown key, but guard against adapter/DB errors so a transient failure
+    // can't accidentally authorize a request.
+    const res = await auth.api.verifyApiKey({ body: { key: provided } }).catch(() => null);
+    if (res?.valid) return null;
+  }
+
+  // Production with no static keys and no presented credential: the operator
+  // hasn't configured static access (managed keys are still accepted above).
+  if (keys.length === 0 && !provided) {
+    return { status: 401, error: "API access is not configured" };
+  }
+  return { status: 401, error: "Invalid or missing API key" };
 }
 
 /** Injected transport dependencies (keeps this module free of the singleton). */
@@ -84,8 +104,8 @@ export function entitiesApi(deps: EntitiesApiDeps) {
       set.status = 500;
       return { error: "Internal server error" };
     })
-    .onBeforeHandle(({ request, set }) => {
-      const denied = checkApiKey(request);
+    .onBeforeHandle(async ({ request, set }) => {
+      const denied = await checkApiKey(request);
       if (denied) {
         set.status = denied.status;
         return { error: denied.error };

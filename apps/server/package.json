@@ -8,6 +8,7 @@
     "compile": "bun build --compile --minify --sourcemap --bytecode ./src/index.ts --outfile server",
     "dev": "bun run --watch src/index.ts",
     "start": "bun run dist/index.mjs",
+    "preview": "bun run dist/index.mjs",
     "test": "bun test src"
   },
   "dependencies": {

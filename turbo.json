@@ -36,6 +36,14 @@
       "cache": false,
       "persistent": true
     },
+    "preview": {
+      "dependsOn": [
+        "build",
+        "//#db:start"
+      ],
+      "cache": false,
+      "persistent": true
+    },
     "db:push": {
       "cache": false
     },

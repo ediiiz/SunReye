@@ -61,7 +61,7 @@ Two connection fields are DB-only (no env seed): **transport** (`tcp` / `rtu-ove
 
 | Variable | Type | Default | Status | Purpose |
 | --- | --- | --- | --- | --- |
-| `API_KEYS` | comma-separated string | `""` (none) | env-only | Keys accepted by the public [`/api/v1`](/integrations/rest-api/) surface. Empty = open in dev, **fails closed in production**. |
+| `API_KEYS` | comma-separated string | `""` (none) | env-only | Static keys accepted by the public [`/api/v1`](/integrations/rest-api/) surface, **in addition to** admin-managed keys (Settings → API Keys). Empty = open in dev, **fails closed in production**. |
 
 ## MQTT bridge
 

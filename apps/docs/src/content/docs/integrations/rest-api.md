@@ -16,12 +16,22 @@ there with its exact request/response schema.
 
 ## Authentication
 
-The `/api/v1` surface is guarded by API keys, set via the `API_KEYS`
-[environment variable](/reference/environment/) (comma-separated).
+The `/api/v1` surface is guarded by API keys. Two credential sources are accepted, and a
+request is authorized if it matches **either**:
 
-- **No keys + development** → open (fail-open, for convenience).
-- **No keys + production** → **all requests rejected** with `401` (fail-closed).
-- **Keys configured** → every request must present a valid key.
+1. **Admin-managed keys** — issued per user from **Settings → API Keys** (admin only). These
+   are stored hashed in the database, can be given an expiry, and can be revoked at any time.
+   This is the recommended way to hand out access. See [Users & Roles](/use/users/) for who
+   can manage them.
+2. **Static keys** — the `API_KEYS` [environment variable](/reference/environment/)
+   (comma-separated). Useful for a fixed, deploy-time key with no database.
+
+Fail-open / fail-closed behavior governs the **static** list when no managed key is present:
+
+- **No static keys + development** → open (fail-open, for convenience).
+- **No static keys + production** → requests without a valid key are rejected with `401`
+  (fail-closed). Managed keys are still accepted.
+- **Static keys configured** → every request must present a valid static **or** managed key.
 
 Pass the key as either header:
 
@@ -32,7 +42,17 @@ Authorization: Bearer <your-key>
 X-API-Key: <your-key>
 ```
 
-An invalid or missing key returns `401`.
+An invalid, expired, disabled, or missing key returns `401`.
+
+### Issuing a managed key
+
+1. Sign in as an admin and open **Settings → API Keys**.
+2. Pick the owning user, give the key a name, optionally choose an expiry, and **Create**.
+3. Copy the key from the dialog — the full value is shown **only once**. Afterwards only a
+   short prefix is stored for identification.
+
+Revoking a key (from the same screen) takes effect immediately: the next request using it
+returns `401`.
 
 ## Endpoints
 

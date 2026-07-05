@@ -7,8 +7,8 @@ The **Settings** screen (`/settings`) is where the deployment is configured at r
 most of it without touching `.env` or restarting. The whole screen is **admin-only**. A
 live status poll keeps the connection badges fresh.
 
-Tabs: **Inverter**, **MQTT & Home Assistant**, **Tariff** (any admin), plus **Profiles** and
-**Users** (admin).
+Tabs: **Inverter**, **MQTT & Home Assistant**, **Tariff** (any admin), plus **Profiles**,
+**Users**, and **API Keys** (admin).
 
 ![Settings → Inverter: Modbus connection fields with a live status badge and Test connection.](../../../assets/screenshots/settings.png)
 
@@ -54,6 +54,21 @@ See [Distributing Profiles](/profiles/distribution/) for the full flow.
 
 Manage accounts (admin only): add a user (name, email, password, role) and edit or delete
 users in a table, including changing roles inline. See [Users & Roles](/use/users/).
+
+## API Keys
+
+Issue and revoke API keys for the [REST API](/integrations/rest-api/) (admin only):
+
+- **Issue key** — pick the owning user, name the key, and optionally set an expiry
+  (30 days / 90 days / 1 year / never). On create, the full key is shown **once** in a
+  dialog with a copy button — store it then, as only a short prefix is kept afterwards.
+- **Keys table** — filter by user; each row shows name, owner, prefix, created/expiry dates.
+  **Revoke** deletes a key immediately; requests using it then return `401`.
+
+Keys are stored hashed and work alongside the static `API_KEYS`
+[environment variable](/reference/environment/). See
+[REST API → Authentication](/integrations/rest-api/#authentication) for how they're presented
+on requests.
 
 :::note
 Client-side admin gating is UX only — every mutation is enforced on the server.

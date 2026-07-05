@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import { fade } from 'svelte/transition';
+	import { MediaQuery } from 'svelte/reactivity';
 	import { toggleMode } from 'mode-watcher';
 	import * as Sidebar from '$lib/components/ui/sidebar';
 	import { Button } from '$lib/components/ui/button';
@@ -44,6 +46,12 @@
 		'/settings': 'Settings'
 	};
 	const section = $derived(SECTION[page.url.pathname] ?? 'Overview');
+
+	// Subtle route-to-route motion: the shell (sidebar + header) stays put while
+	// the inner content cross-fades up on each navigation. Honour reduced-motion.
+	const reduceMotion = new MediaQuery('prefers-reduced-motion: reduce');
+	const contentIn = $derived(reduceMotion.current ? { duration: 0 } : { duration: 200 });
+	const titleIn = $derived(reduceMotion.current ? { duration: 0 } : { duration: 200 });
 </script>
 
 {#if $sessionQuery.isPending}
@@ -61,7 +69,9 @@
 				<div class="flex items-center gap-2 text-sm">
 					<span class="text-muted-foreground">Monitoring</span>
 					<span class="text-muted-foreground">/</span>
-					<span class="font-medium">{section}</span>
+					{#key section}
+						<span class="font-medium" in:fade={titleIn}>{section}</span>
+					{/key}
 				</div>
 				<div class="ml-auto flex items-center gap-2">
 					<Badge variant={inverter.status === 'live' ? 'default' : 'secondary'}>
@@ -74,7 +84,11 @@
 				</div>
 			</header>
 			<main class="min-h-0 flex-1 overflow-y-auto">
-				{@render children()}
+				{#key page.url.pathname}
+					<div in:fade={contentIn}>
+						{@render children()}
+					</div>
+				{/key}
 			</main>
 		</Sidebar.Inset>
 	</Sidebar.Provider>

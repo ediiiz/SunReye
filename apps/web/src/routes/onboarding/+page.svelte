@@ -21,7 +21,9 @@
 		aria-hidden="true"
 	></div>
 
-	<div class="relative flex w-full max-w-sm flex-col gap-6">
+	<div
+		class="relative flex w-full max-w-sm flex-col gap-6 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-500"
+	>
 		<div class="flex flex-col items-center gap-3 text-center">
 			<div class="flex size-11 items-center justify-center bg-primary text-primary-foreground">
 				<LightningIcon class="size-6" weight="fill" />

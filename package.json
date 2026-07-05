@@ -27,7 +27,7 @@
     "db:migrate": "turbo run db:migrate -F @ReyeON/db",
     "db:timescale": "turbo run db:timescale -F @ReyeON/db",
     "db:start": "docker compose -f docker-compose.db.yml up -d --wait",
-    "db:watch": "docker compose -f docker-compose.db.yml up",
+    "db:watch": "docker compose -f docker-compose.db.yml logs -f",
     "db:stop": "docker compose -f docker-compose.db.yml stop",
     "db:down": "docker compose -f docker-compose.db.yml down",
     "docker:build": "docker compose build",

@@ -1,20 +1,38 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
-  "globalPassThroughEnv": ["DATABASE_URL"],
+  "globalPassThroughEnv": [
+    "DATABASE_URL"
+  ],
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": ["dist/**", ".svelte-kit/**", "build/**"]
+      "dependsOn": [
+        "^build"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        ".env*"
+      ],
+      "outputs": [
+        "dist/**",
+        ".svelte-kit/**",
+        "build/**"
+      ]
     },
     "lint": {
-      "dependsOn": ["^lint"]
+      "dependsOn": [
+        "^lint"
+      ]
     },
     "check-types": {
-      "dependsOn": ["^check-types"]
+      "dependsOn": [
+        "^check-types"
+      ]
     },
     "dev": {
+      "dependsOn": [
+        "//#db:start"
+      ],
       "cache": false,
       "persistent": true
     },
@@ -32,6 +50,9 @@
       "cache": false
     },
     "db:studio": {
+      "dependsOn": [
+        "//#db:start"
+      ],
       "cache": false,
       "persistent": true
     },
@@ -42,6 +63,9 @@
       "cache": false
     },
     "//#db:watch": {
+      "dependsOn": [
+        "//#db:start"
+      ],
       "cache": false,
       "persistent": true
     },

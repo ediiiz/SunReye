@@ -1,6 +1,9 @@
 <script lang="ts">
-	import { AreaChart, Area, LinearGradient } from 'layerchart';
+	import { AreaChart, Area, LinearGradient, ChartClipPath } from 'layerchart';
 	import { curveCatmullRom } from 'd3-shape';
+	import { untrack } from 'svelte';
+	import { Tween } from 'svelte/motion';
+	import { linear } from 'svelte/easing';
 	import * as Chart from '$lib/components/ui/chart';
 	import { fractionDigits } from '$lib/inverter/format';
 	import type { LivePoint } from '$lib/inverter/types';
@@ -47,41 +50,92 @@
 		};
 	};
 
-	// Fixed-width scrolling window pinned to the newest sample (see kpi rationale).
 	const lastT = $derived(points.at(-1)?.t);
+
+	// Spacing between samples, clamped, used to size the off-screen buffer below.
+	const interval = $derived.by(() => {
+		const a = points.at(-1)?.t;
+		const b = points.at(-2)?.t;
+		return a !== undefined && b !== undefined ? Math.min(Math.max(a - b, 250), 5000) : 1000;
+	});
+
+	// A real-time cursor that drifts continuously toward the newest sample instead of
+	// snapping to it once a second. Mirrors AnimatedNumber: stretch every transition
+	// across the real gap since the previous sample and ease it linearly, so the axis
+	// glides rather than updating on a visible once-a-second cadence.
+	const cursor = new Tween(untrack(() => lastT) ?? 0);
+	let lastAt = performance.now();
+	$effect(() => {
+		const t = lastT; // track live updates
+		if (t === undefined) return;
+		const now = performance.now();
+		const gap = now - lastAt;
+		lastAt = now;
+		void cursor.set(t, { duration: Math.min(2000, Math.max(300, gap)), easing: linear });
+	});
+
+	// The visible window trails the cursor by one interval, so the newest sample lives
+	// in the clipped (off-screen, invisible) buffer to the right and glides smoothly
+	// into view as the cursor advances — never popping in at the edge. `data` also keeps
+	// a few samples of buffer *past both* the left and right window edges so points are
+	// only added/removed while off-screen: the spline stays continuous and neither end
+	// twitches. ChartClipPath around the marks hides everything outside the window.
+	const right = $derived(lastT === undefined ? undefined : cursor.current - interval);
 	const data = $derived(
-		lastT === undefined ? points : points.filter((p) => p.t >= lastT - windowMs)
+		right === undefined
+			? points
+			: points.filter((p) => p.t >= right - windowMs - 4 * interval)
 	);
-	const xDomain = $derived(lastT === undefined ? undefined : [lastT - windowMs, lastT]);
+	const xDomain = $derived(right === undefined ? undefined : [right - windowMs, right]);
 </script>
 
-{#snippet divergingMarks({ context }: MarksContext)}
-	{@const zero = context.yScale(0) / (context.height + context.padding.bottom)}
-	<LinearGradient
-		vertical
-		stops={[
-			[0, IMPORT_COLOR],
-			[zero, IMPORT_COLOR],
-			[zero, EXPORT_COLOR],
-			[1, EXPORT_COLOR]
-		]}
-	>
-		{#snippet children({ gradient })}
+{#snippet clippedMarks({ context }: MarksContext)}
+	<ChartClipPath>
+		{#if diverging}
+			{@const zero = context.yScale(0) / (context.height + context.padding.bottom)}
+			<LinearGradient
+				vertical
+				stops={[
+					[0, IMPORT_COLOR],
+					[zero, IMPORT_COLOR],
+					[zero, EXPORT_COLOR],
+					[1, EXPORT_COLOR]
+				]}
+			>
+				{#snippet children({ gradient })}
+					<Area
+						y0={() => 0}
+						curve={curveCatmullRom}
+						line={{ stroke: gradient, 'stroke-width': 1.5 }}
+						fill={gradient}
+						fillOpacity={0.25}
+					/>
+				{/snippet}
+			</LinearGradient>
+		{:else}
 			<Area
-				y0={() => 0}
 				curve={curveCatmullRom}
-				line={{ stroke: gradient, 'stroke-width': 1.5 }}
-				fill={gradient}
-				fillOpacity={0.25}
+				line={{ stroke: accent, 'stroke-width': 1.5 }}
+				fill={accent}
+				fillOpacity={0.3}
 			/>
-		{/snippet}
-	</LinearGradient>
+		{/if}
+	</ChartClipPath>
 {/snippet}
 
 <Chart.Container
 	config={{ v: { label, color: accent } }}
-	class={['aspect-auto w-full', height]}
-	style="--color-primary: {accent}"
+	class={[
+		'aspect-auto w-full',
+		height,
+		// Feather the plot's horizontal edges so data glides in/out instead of ending on
+		// a hard cut. The mask is pinned to layerchart's fixed-size container (not the
+		// moving data path) so the fade stays put while the series scrolls under it. The
+		// gradient keeps the left ~44px axis-label gutter opaque and feathers only inside
+		// the plot area.
+		'[&_.lc-root-container]:mask-(--edge-fade)'
+	]}
+	style="--color-primary: {accent}; --edge-fade: linear-gradient(to right, #000 0, #000 42px, transparent 44px, #000 96px, #000 calc(100% - 58px), transparent calc(100% - 6px))"
 >
 	<AreaChart
 		{data}
@@ -93,8 +147,7 @@
 		rule={false}
 		legend={false}
 		padding={{ top: 6, bottom: 6, left: 44, right: 6 }}
-		props={{ area: { curve: curveCatmullRom } }}
-		marks={diverging ? divergingMarks : undefined}
+		marks={clippedMarks}
 	>
 		{#snippet tooltip()}
 			<Chart.Tooltip

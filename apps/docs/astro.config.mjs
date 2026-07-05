@@ -1,4 +1,7 @@
 import starlight from "@astrojs/starlight";
+import { readFile, readdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 // @ts-check
 import { defineConfig } from "astro/config";
 
@@ -9,39 +12,53 @@ const github = "https://github.com/ediiiz/SunReye";
 // `site` at the domain.
 const site = "https://ediiiz.github.io";
 const base = "/SunReye";
-
-// Starlight's own nav/sidebar links are base-aware, but hand-written
-// root-absolute markdown links (e.g. `[Settings](/use/settings/)`) are not
-// rewritten by Astro. This rehype plugin prepends `base` to them at build time
-// so every internal link works under the `/SunReye/` path prefix without
-// touching the content.
 const prefix = base.replace(/\/$/, "");
-function rehypeBaseAbsoluteLinks() {
-  const rewrite = (href) =>
-    typeof href === "string" &&
-    href.startsWith("/") &&
-    !href.startsWith("//") &&
-    href !== prefix &&
-    !href.startsWith(`${prefix}/`)
-      ? prefix + href
-      : href;
-  const walk = (node) => {
-    if (node.type === "element" && node.tagName === "a" && node.properties) {
-      node.properties.href = rewrite(node.properties.href);
-    }
-    for (const child of node.children ?? []) walk(child);
+
+// Astro base-prefixes the links Starlight generates (nav, sidebar, assets), but
+// NOT root-absolute links authored by hand — markdown links like
+// `[Settings](/use/settings/)` and component/frontmatter links like a splash
+// `hero.actions[].link` or `<LinkCard href="/start/quick-start/">`. Left alone
+// they resolve to the domain root and 404 under the `/SunReye/` path prefix.
+//
+// Rewrite them in one content-agnostic pass over the emitted HTML: every
+// `href`/`src` that is root-absolute but not protocol-relative (`//`) and not
+// already based gets the prefix. Catches all sources — markdown, components,
+// frontmatter — so new pages can't reintroduce the bug.
+function baseAbsoluteLinks() {
+  const re = new RegExp(`(\\s(?:href|src)=")(/(?!/|${prefix.slice(1)}/)[^"]*)"`, "g");
+  return {
+    name: "base-absolute-links",
+    hooks: {
+      "astro:build:done": async ({ dir, logger }) => {
+        let count = 0;
+        const walk = async (d) => {
+          for (const entry of await readdir(d, { withFileTypes: true })) {
+            const p = join(d, entry.name);
+            if (entry.isDirectory()) {
+              await walk(p);
+            } else if (entry.name.endsWith(".html")) {
+              const html = await readFile(p, "utf8");
+              const next = html.replace(re, (_m, attr, path) => {
+                count++;
+                return `${attr}${prefix}${path}"`;
+              });
+              if (next !== html) await writeFile(p, next);
+            }
+          }
+        };
+        await walk(fileURLToPath(dir));
+        logger.info(`rewrote ${count} root-absolute link(s) under ${base}`);
+      },
+    },
   };
-  return (tree) => walk(tree);
 }
 
 // https://astro.build/config
 export default defineConfig({
   site,
   base,
-  markdown: {
-    rehypePlugins: [rehypeBaseAbsoluteLinks],
-  },
   integrations: [
+    baseAbsoluteLinks(),
     starlight({
       title: "SunReye",
       description:

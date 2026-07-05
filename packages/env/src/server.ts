@@ -16,7 +16,7 @@ export const env = createEnv({
     // "debug" in development and "info" otherwise (resolved in the logging setup).
     LOG_LEVEL: z.enum(["trace", "debug", "info", "warning", "error", "fatal"]).optional(),
 
-    // Active inverter profile id (from an installed `@ReyeON/inverter-*` package)
+    // Active inverter profile id (from an installed `@SunReye/inverter-*` package)
     INVERTER_PROFILE: z.string().min(1).default("deye-sunsynk"),
     // Inverter (Modbus TCP) connection
     INVERTER_HOST: z.string().min(1).default("192.168.1.100"),
@@ -52,12 +52,12 @@ export const env = createEnv({
       .default("false")
       .transform((v) => v === "true"),
     MQTT_BROKER_URL: z.string().default("mqtt://localhost:1883"),
-    MQTT_TOPIC_PREFIX: z.string().min(1).default("reyeon"),
+    MQTT_TOPIC_PREFIX: z.string().min(1).default("sunreye"),
     MQTT_USERNAME: z.string().optional(),
     MQTT_PASSWORD: z.string().optional(),
 
     // Home Assistant MQTT Discovery: publishes retained entity configs under
-    // `<HA_DISCOVERY_PREFIX>/...` so ReyeON auto-populates in Home Assistant.
+    // `<HA_DISCOVERY_PREFIX>/...` so SunReye auto-populates in Home Assistant.
     // Requires MQTT_ENABLED.
     HA_DISCOVERY_ENABLED: z
       .enum(["true", "false"])

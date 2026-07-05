@@ -9,7 +9,7 @@ import {
   type TariffConfig,
   defaultTariff,
   tariffConfigSchema,
-} from "@ReyeON/db/tariff";
+} from "@SunReye/db/tariff";
 import { readSetting, writeSetting } from "./app-settings";
 
 let tariffCache: TariffConfig | null = null;

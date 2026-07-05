@@ -9,8 +9,8 @@
  * gets cost tracking for free.
  */
 
-import { db } from "@ReyeON/db";
-import type { CanonicalRole, InverterProfile } from "@ReyeON/inverter-core";
+import { db } from "@SunReye/db";
+import type { CanonicalRole, InverterProfile } from "@SunReye/inverter-core";
 import { sql } from "drizzle-orm";
 import { type CostBreakdown, type HourEnergy, allocateCost } from "./cost-calc";
 import { profile } from "./inverter";

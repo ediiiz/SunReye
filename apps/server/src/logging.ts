@@ -8,7 +8,7 @@
  *   ["elysia"]       — HTTP request logs from `@logtape/elysia`
  */
 
-import { env } from "@ReyeON/env/server";
+import { env } from "@SunReye/env/server";
 import {
   ansiColorFormatter,
   configure,

@@ -4,8 +4,8 @@
  * (`entities.ts`) so the SQL + row shaping live in one place.
  */
 
-import { db } from "@ReyeON/db";
-import { metricsRaw } from "@ReyeON/db/schema/metrics";
+import { db } from "@SunReye/db";
+import { metricsRaw } from "@SunReye/db/schema/metrics";
 import { and, desc, eq, gte } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 

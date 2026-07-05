@@ -11,14 +11,14 @@
  * surface; the web app's own session-authed endpoints live in `index.ts`.
  */
 
-import { env } from "@ReyeON/env/server";
-import type { EntityConstraint } from "@ReyeON/inverter-core";
+import { env } from "@SunReye/env/server";
+import type { EntityConstraint } from "@SunReye/inverter-core";
 import {
   buildManifest,
   entityConstraint,
   metricByKey,
   writableMetrics,
-} from "@ReyeON/inverter-core";
+} from "@SunReye/inverter-core";
 import { Elysia, t } from "elysia";
 import { queryRawHistory, queryRollup } from "./history";
 import { profile } from "./inverter";

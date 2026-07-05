@@ -3,14 +3,14 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "ReyeON",
+      "name": "SunReye",
       "dependencies": {
-        "@ReyeON/env": "workspace:*",
+        "@SunReye/env": "workspace:*",
         "dotenv": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
-        "@ReyeON/config": "workspace:*",
+        "@SunReye/config": "workspace:*",
         "@types/bun": "catalog:",
         "fallow": "^2.104.0",
         "husky": "^9.1.7",
@@ -33,11 +33,11 @@
     "apps/server": {
       "name": "server",
       "dependencies": {
-        "@ReyeON/auth": "workspace:*",
-        "@ReyeON/db": "workspace:*",
-        "@ReyeON/env": "workspace:*",
-        "@ReyeON/inverter-core": "workspace:*",
-        "@ReyeON/inverter-deye-sunsynk": "workspace:*",
+        "@SunReye/auth": "workspace:*",
+        "@SunReye/db": "workspace:*",
+        "@SunReye/env": "workspace:*",
+        "@SunReye/inverter-core": "workspace:*",
+        "@SunReye/inverter-deye-sunsynk": "workspace:*",
         "@elysiajs/cors": "^1.4.1",
         "@elysiajs/openapi": "^1.4.0",
         "@logtape/elysia": "^2.2.3",
@@ -51,7 +51,7 @@
         "zod": "catalog:",
       },
       "devDependencies": {
-        "@ReyeON/config": "workspace:*",
+        "@SunReye/config": "workspace:*",
         "@types/bun": "catalog:",
         "tsdown": "^0.21.9",
         "typescript": "catalog:",
@@ -61,8 +61,8 @@
       "name": "web",
       "version": "0.0.1",
       "dependencies": {
-        "@ReyeON/env": "workspace:*",
-        "@ReyeON/inverter-core": "workspace:*",
+        "@SunReye/env": "workspace:*",
+        "@SunReye/inverter-core": "workspace:*",
         "@elysiajs/eden": "^1.4.1",
         "better-auth": "catalog:",
         "d3-shape": "^3.2.0",
@@ -70,7 +70,7 @@
         "zod": "catalog:",
       },
       "devDependencies": {
-        "@ReyeON/config": "workspace:*",
+        "@SunReye/config": "workspace:*",
         "@fontsource-variable/geist-mono": "^5.2.8",
         "@internationalized/date": "^3.12.0",
         "@sveltejs/adapter-auto": "^7.0.1",
@@ -98,42 +98,42 @@
       },
     },
     "packages/auth": {
-      "name": "@ReyeON/auth",
+      "name": "@SunReye/auth",
       "dependencies": {
-        "@ReyeON/db": "workspace:*",
-        "@ReyeON/env": "workspace:*",
+        "@SunReye/db": "workspace:*",
+        "@SunReye/env": "workspace:*",
         "better-auth": "catalog:",
         "dotenv": "catalog:",
         "drizzle-orm": "^0.45.1",
         "zod": "catalog:",
       },
       "devDependencies": {
-        "@ReyeON/config": "workspace:*",
+        "@SunReye/config": "workspace:*",
         "typescript": "catalog:",
       },
     },
     "packages/config": {
-      "name": "@ReyeON/config",
+      "name": "@SunReye/config",
       "version": "0.0.0",
     },
     "packages/db": {
-      "name": "@ReyeON/db",
+      "name": "@SunReye/db",
       "dependencies": {
-        "@ReyeON/env": "workspace:*",
+        "@SunReye/env": "workspace:*",
         "dotenv": "catalog:",
         "drizzle-orm": "^0.45.1",
         "pg": "^8.17.1",
         "zod": "catalog:",
       },
       "devDependencies": {
-        "@ReyeON/config": "workspace:*",
+        "@SunReye/config": "workspace:*",
         "@types/pg": "^8.16.0",
         "drizzle-kit": "^0.31.8",
         "typescript": "catalog:",
       },
     },
     "packages/env": {
-      "name": "@ReyeON/env",
+      "name": "@SunReye/env",
       "version": "0.0.0",
       "dependencies": {
         "@t3-oss/env-core": "^0.13.1",
@@ -141,31 +141,31 @@
         "zod": "catalog:",
       },
       "devDependencies": {
-        "@ReyeON/config": "workspace:*",
+        "@SunReye/config": "workspace:*",
         "@types/bun": "catalog:",
         "typescript": "catalog:",
       },
     },
     "packages/inverter-core": {
-      "name": "@ReyeON/inverter-core",
+      "name": "@SunReye/inverter-core",
       "version": "0.0.0",
       "dependencies": {
         "modbus-serial": "^8.0.21",
       },
       "devDependencies": {
-        "@ReyeON/config": "workspace:*",
+        "@SunReye/config": "workspace:*",
         "@types/bun": "catalog:",
         "typescript": "catalog:",
       },
     },
     "packages/inverter-deye-sunsynk": {
-      "name": "@ReyeON/inverter-deye-sunsynk",
+      "name": "@SunReye/inverter-deye-sunsynk",
       "version": "0.0.0",
       "dependencies": {
-        "@ReyeON/inverter-core": "workspace:*",
+        "@SunReye/inverter-core": "workspace:*",
       },
       "devDependencies": {
-        "@ReyeON/config": "workspace:*",
+        "@SunReye/config": "workspace:*",
         "@types/bun": "catalog:",
         "typescript": "catalog:",
       },
@@ -182,17 +182,17 @@
     "zod": "^4.1.13",
   },
   "packages": {
-    "@ReyeON/auth": ["@ReyeON/auth@workspace:packages/auth"],
+    "@SunReye/auth": ["@SunReye/auth@workspace:packages/auth"],
 
-    "@ReyeON/config": ["@ReyeON/config@workspace:packages/config"],
+    "@SunReye/config": ["@SunReye/config@workspace:packages/config"],
 
-    "@ReyeON/db": ["@ReyeON/db@workspace:packages/db"],
+    "@SunReye/db": ["@SunReye/db@workspace:packages/db"],
 
-    "@ReyeON/env": ["@ReyeON/env@workspace:packages/env"],
+    "@SunReye/env": ["@SunReye/env@workspace:packages/env"],
 
-    "@ReyeON/inverter-core": ["@ReyeON/inverter-core@workspace:packages/inverter-core"],
+    "@SunReye/inverter-core": ["@SunReye/inverter-core@workspace:packages/inverter-core"],
 
-    "@ReyeON/inverter-deye-sunsynk": ["@ReyeON/inverter-deye-sunsynk@workspace:packages/inverter-deye-sunsynk"],
+    "@SunReye/inverter-deye-sunsynk": ["@SunReye/inverter-deye-sunsynk@workspace:packages/inverter-deye-sunsynk"],
 
     "@astrojs/compiler-binding": ["@astrojs/compiler-binding@0.3.0", "", { "optionalDependencies": { "@astrojs/compiler-binding-darwin-arm64": "0.3.0", "@astrojs/compiler-binding-darwin-x64": "0.3.0", "@astrojs/compiler-binding-linux-arm64-gnu": "0.3.0", "@astrojs/compiler-binding-linux-arm64-musl": "0.3.0", "@astrojs/compiler-binding-linux-x64-gnu": "0.3.0", "@astrojs/compiler-binding-linux-x64-musl": "0.3.0", "@astrojs/compiler-binding-wasm32-wasi": "0.3.0", "@astrojs/compiler-binding-win32-arm64-msvc": "0.3.0", "@astrojs/compiler-binding-win32-x64-msvc": "0.3.0" } }, "sha512-zlsOT5COD9hRwplJCgQhS21unxON5AKirf0vgt1ijXwuseYIaZdm2ZOpF8fsz+DY9EyXx+I/ukxtg7uoBep68A=="],
 

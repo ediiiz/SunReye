@@ -1,4 +1,4 @@
-import { type TariffConfig, tariffConfigSchema } from "@ReyeON/db/tariff";
+import { type TariffConfig, tariffConfigSchema } from "@SunReye/db/tariff";
 import { describe, expect, test } from "bun:test";
 import { type HourEnergy, allocateCost, resolveRange } from "./cost-calc";
 

@@ -7,7 +7,7 @@ import { Client } from "pg";
 // Load the server env file before importing the env schema, so this works when
 // run via turbo (CWD = packages/db) the same way `drizzle.config.ts` does.
 dotenv.config({ path: fileURLToPath(new URL("../../../apps/server/.env", import.meta.url)) });
-const { env } = await import("@ReyeON/env/server");
+const { env } = await import("@SunReye/env/server");
 
 /**
  * Applies the TimescaleDB DDL (hypertable + continuous aggregates + policies)

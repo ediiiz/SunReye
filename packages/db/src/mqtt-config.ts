@@ -19,7 +19,7 @@ export const mqttConfigSchema = z.object({
   username: z.string().optional(),
   password: z.string().optional(),
   /** Root topic segment: `<prefix>/<inverterId>/<topic>`. */
-  topicPrefix: z.string().min(1).default("reyeon"),
+  topicPrefix: z.string().min(1).default("sunreye"),
   /** Publish Home Assistant MQTT Discovery configs (requires `enabled`). */
   haDiscoveryEnabled: z.boolean().default(false),
   haDiscoveryPrefix: z.string().min(1).default("homeassistant"),

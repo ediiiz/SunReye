@@ -4,7 +4,7 @@
  * Publishes every entity's latest value (retained) to
  * `<prefix>/<inverterId>/<topic>` and accepts writes on `.../set` for writable
  * entities — the same topics the vendor docs describe. Optionally publishes
- * Home Assistant MQTT Discovery configs so ReyeON auto-populates in HA with no
+ * Home Assistant MQTT Discovery configs so SunReye auto-populates in HA with no
  * manual entity setup.
  *
  * Like every other transport in this app, the surface is generated from the
@@ -17,9 +17,9 @@
  * the inverter `write`, so this module has no singleton/env coupling.
  */
 
-import type { MqttConfig } from "@ReyeON/db/mqtt-config";
-import type { EntityConstraint, InverterSample, ManifestMetric } from "@ReyeON/inverter-core";
-import { buildManifest, entityConstraint, metricByKey } from "@ReyeON/inverter-core";
+import type { MqttConfig } from "@SunReye/db/mqtt-config";
+import type { EntityConstraint, InverterSample, ManifestMetric } from "@SunReye/inverter-core";
+import { buildManifest, entityConstraint, metricByKey } from "@SunReye/inverter-core";
 import mqtt from "mqtt";
 import type { MqttClient } from "mqtt";
 import { validateWrite } from "./entities";
@@ -35,7 +35,7 @@ const slug = (s: string): string => s.replace(/[^a-zA-Z0-9_-]/g, "_");
 
 /** Stable HA device the entities attach to. */
 const haDevice = {
-  identifiers: [`reyeon_${profile.id}`],
+  identifiers: [`sunreye_${profile.id}`],
   name: manifest.name,
   manufacturer: manifest.manufacturer,
   model: profile.id,
@@ -100,8 +100,8 @@ type Discovery = { component: string; config: Record<string, unknown> };
 function discoveryConfig(m: ManifestMetric, c: EntityConstraint, topics: Topics): Discovery {
   const shared = clean({
     name: m.label,
-    unique_id: `reyeon_${profile.id}_${slug(m.key)}`,
-    object_id: `reyeon_${slug(m.key)}`,
+    unique_id: `sunreye_${profile.id}_${slug(m.key)}`,
+    object_id: `sunreye_${slug(m.key)}`,
     state_topic: topics.state(m),
     availability_topic: topics.availability,
     unit_of_measurement: m.unit ?? undefined,
@@ -211,7 +211,7 @@ export function startMqttBridge(config: MqttConfig, deps: MqttBridgeDeps): MqttB
         const def = defByKey.get(m.key);
         if (!def) continue;
         const { component, config: cfg } = discoveryConfig(m, entityConstraint(def), topics);
-        const topic = `${config.haDiscoveryPrefix}/${component}/reyeon_${profile.id}/${slug(m.key)}/config`;
+        const topic = `${config.haDiscoveryPrefix}/${component}/sunreye_${profile.id}/${slug(m.key)}/config`;
         client.publish(topic, JSON.stringify(cfg), { retain: true });
       }
       logger.info("published HA discovery for {count} entities", {

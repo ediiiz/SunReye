@@ -8,7 +8,7 @@ import type {
   InverterManifest,
   ManifestMetric,
   MetricKind,
-} from "@ReyeON/inverter-core";
+} from "@SunReye/inverter-core";
 
 export type { CanonicalRole, InverterCapabilities, InverterManifest, ManifestMetric, MetricKind };
 

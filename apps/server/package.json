@@ -12,11 +12,11 @@
     "test": "bun test src"
   },
   "dependencies": {
-    "@ReyeON/auth": "workspace:*",
-    "@ReyeON/db": "workspace:*",
-    "@ReyeON/env": "workspace:*",
-    "@ReyeON/inverter-core": "workspace:*",
-    "@ReyeON/inverter-deye-sunsynk": "workspace:*",
+    "@SunReye/auth": "workspace:*",
+    "@SunReye/db": "workspace:*",
+    "@SunReye/env": "workspace:*",
+    "@SunReye/inverter-core": "workspace:*",
+    "@SunReye/inverter-deye-sunsynk": "workspace:*",
     "@elysiajs/cors": "^1.4.1",
     "@elysiajs/openapi": "^1.4.0",
     "@logtape/elysia": "^2.2.3",
@@ -30,7 +30,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@ReyeON/config": "workspace:*",
+    "@SunReye/config": "workspace:*",
     "@types/bun": "catalog:",
     "tsdown": "^0.21.9",
     "typescript": "catalog:"

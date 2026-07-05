@@ -1,5 +1,5 @@
 {
-  "name": "@ReyeON/inverter-core",
+  "name": "@SunReye/inverter-core",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "modbus-serial": "^8.0.21"
   },
   "devDependencies": {
-    "@ReyeON/config": "workspace:*",
+    "@SunReye/config": "workspace:*",
     "@types/bun": "catalog:",
     "typescript": "catalog:"
   }

@@ -1,4 +1,4 @@
-name: reyeon-db
+name: sunreye-db
 
 # Standalone TimescaleDB for local development (separate from the full-stack
 # docker-compose.yml). Host networking is used so it also works with Docker
@@ -9,16 +9,16 @@ name: reyeon-db
 services:
   timescaledb:
     image: timescale/timescaledb:latest-pg17
-    container_name: ReyeON-timescaledb
+    container_name: SunReye-timescaledb
     network_mode: host
     expose:
       - 5432
     environment:
-      POSTGRES_DB: ReyeON
+      POSTGRES_DB: SunReye
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
     volumes:
-      - ReyeON_timescale_data:/var/lib/postgresql/data
+      - SunReye_timescale_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -27,4 +27,4 @@ services:
     restart: "no"
 
 volumes:
-  ReyeON_timescale_data:
+  SunReye_timescale_data:

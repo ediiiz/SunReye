@@ -57,7 +57,7 @@
 				<LightningIcon class="size-5" weight="fill" />
 			</div>
 			<div class="flex min-w-0 flex-col group-data-[collapsible=icon]:hidden">
-				<span class="text-sm font-semibold leading-tight">ReyeON</span>
+				<span class="text-sm font-semibold leading-tight">SunReye</span>
 				<span class="truncate text-xs text-muted-foreground">
 					{inverter.manifest
 						? `${inverter.manifest.manufacturer} · ${inverter.manifest.name}`

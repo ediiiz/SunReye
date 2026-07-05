@@ -1,4 +1,4 @@
-import type { MetricValues, SimContext } from "@ReyeON/inverter-core";
+import type { MetricValues, SimContext } from "@SunReye/inverter-core";
 
 /**
  * Coherent solar-plant model. Rather than jittering each register

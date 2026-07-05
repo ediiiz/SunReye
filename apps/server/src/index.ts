@@ -1,14 +1,14 @@
 import { cors } from "@elysiajs/cors";
 import { openapi } from "@elysiajs/openapi";
 import { elysiaLogger } from "@logtape/elysia";
-import { auth } from "@ReyeON/auth";
-import { db } from "@ReyeON/db";
-import { inverterConfigSchema } from "@ReyeON/db/inverter-config";
-import { maskMqttConfig } from "@ReyeON/db/mqtt-config";
-import { metricsRaw } from "@ReyeON/db/schema/metrics";
-import { user } from "@ReyeON/db/schema/auth";
-import { env } from "@ReyeON/env/server";
-import { buildManifest, listProfiles } from "@ReyeON/inverter-core";
+import { auth } from "@SunReye/auth";
+import { db } from "@SunReye/db";
+import { inverterConfigSchema } from "@SunReye/db/inverter-config";
+import { maskMqttConfig } from "@SunReye/db/mqtt-config";
+import { metricsRaw } from "@SunReye/db/schema/metrics";
+import { user } from "@SunReye/db/schema/auth";
+import { env } from "@SunReye/env/server";
+import { buildManifest, listProfiles } from "@SunReye/inverter-core";
 import { and, count, desc, eq, gte } from "drizzle-orm";
 import { Elysia, t } from "elysia";
 import {
@@ -72,7 +72,7 @@ const app = new Elysia()
       exclude: { staticFile: false },
       documentation: {
         info: {
-          title: "ReyeON Inverter API",
+          title: "SunReye Inverter API",
           version: "1.0.0",
           description:
             "Third-party integration API. Every entity and command is generated from the active inverter profile.",

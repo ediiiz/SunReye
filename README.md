@@ -1,8 +1,8 @@
-# ReyeON
+# SunReye
 
 **A self-hosted monitoring, control, and integration platform for solar / hybrid inverters.**
 
-ReyeON polls your inverter over Modbus, stores every reading as time-series data, and gives you a live dashboard, a typed REST API, and an MQTT bridge with Home Assistant auto-discovery — all generated from a single description of the inverter.
+SunReye polls your inverter over Modbus, stores every reading as time-series data, and gives you a live dashboard, a typed REST API, and an MQTT bridge with Home Assistant auto-discovery — all generated from a single description of the inverter.
 
 The core idea: **an inverter is data, not code.** Each supported inverter ships as a *profile* — a plain description of its Modbus register map plus semantic metadata (what each value *means*: PV string power, battery SoC, a writable charge-current setting, an enum status…). The dashboard, the REST routes, the MQTT topics, and Home Assistant discovery all build themselves from that profile. Adding a metric, or supporting a whole new inverter, means adding data — not touching the engine.
 
@@ -14,7 +14,7 @@ The core idea: **an inverter is data, not code.** Each supported inverter ships 
 - **History & analytics** — every sample persisted to **TimescaleDB**; per-minute / hourly / daily continuous-aggregate rollups make multi-week charts cheap. Automatic retention cleanup of raw metrics and rollups.
 - **Control** — writable settings (charge/discharge currents, work mode, grid charge, solar-sell…) exposed as validated controls in the UI, guarded by the same validation everywhere.
 - **Third-party REST API (`/api/v1`)** — an auto-generated integration surface: entity catalog, current state, per-entity history, and one *validated* write route per writable entity, with OpenAPI docs. API-key authenticated (fails closed in production).
-- **MQTT bridge** — publishes every entity to retained `<prefix>/<inverterId>/<topic>` topics, accepts writes on `.../set`, and optionally publishes **Home Assistant MQTT Discovery** configs so ReyeON auto-populates in Home Assistant (select / number / sensor entities, availability via LWT).
+- **MQTT bridge** — publishes every entity to retained `<prefix>/<inverterId>/<topic>` topics, accepts writes on `.../set`, and optionally publishes **Home Assistant MQTT Discovery** configs so SunReye auto-populates in Home Assistant (select / number / sensor entities, availability via LWT).
 - **Built-in simulator** — run the whole stack with a coherent fake inverter (no hardware needed) for development and demos.
 - **Auth** — email/password sessions via Better-Auth.
 
@@ -47,7 +47,7 @@ Inverter (Modbus TCP)  ──►  Core engine (Elysia)  ──►  TimescaleDB (
 
 ## Vision & roadmap
 
-The mission stays fixed: **a self-hosted, profile-driven platform for monitoring, controlling, and integrating hybrid inverters — where new hardware and new capabilities are added as data and configuration, not forks of the engine.** Every item below expands capability or UX along that line; anything that would turn ReyeON into a general-purpose home-automation hub or diverge from inverters is explicitly out of scope.
+The mission stays fixed: **a self-hosted, profile-driven platform for monitoring, controlling, and integrating hybrid inverters — where new hardware and new capabilities are added as data and configuration, not forks of the engine.** Every item below expands capability or UX along that line; anything that would turn SunReye into a general-purpose home-automation hub or diverge from inverters is explicitly out of scope.
 
 ### Phase 1 — Economics: cost tracking & tariffs
 Turn energy flows into money — the feature most owners actually care about.
@@ -67,7 +67,7 @@ Everything that's env-only today becomes a first-class, DB-backed settings scree
 ### Phase 3 — Downloadable inverter packages
 The profile registry already makes inverters pluggable in code; this exposes it to users.
 - **Profile catalog in the UI:** browse, install, and enable inverter profiles without redeploying.
-- **Distribute profiles as standalone packages** (`@ReyeON/inverter-*`), versioned independently, so support for new inverters grows over time — including community-contributed profiles.
+- **Distribute profiles as standalone packages** (`@SunReye/inverter-*`), versioned independently, so support for new inverters grows over time — including community-contributed profiles.
 - **Multi-inverter support:** run and aggregate several inverters / profiles at once; the narrow metrics schema and `inverterId` dimension already accommodate this.
 - Goal: **monitor any Modbus inverter by installing a profile — never by patching the engine.**
 
@@ -163,7 +163,7 @@ Environment variables are read from each app's `.env` (public web vars are baked
 ## Project structure
 
 ```
-ReyeON/
+SunReye/
 ├── apps/
 │   ├── web/         # SvelteKit dashboard (manifest-driven UI)
 │   ├── server/      # Elysia core engine: poll loop, WS, REST /api/v1, MQTT bridge

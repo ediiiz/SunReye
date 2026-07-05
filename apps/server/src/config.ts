@@ -7,18 +7,18 @@
  * read and {@link mergeMqttWrite} preserves the stored one when a write omits it.
  */
 
-import { env } from "@ReyeON/env/server";
+import { env } from "@SunReye/env/server";
 import {
   INVERTER_KEY,
   type InverterConfig,
   inverterConfigSchema,
-} from "@ReyeON/db/inverter-config";
+} from "@SunReye/db/inverter-config";
 import {
   MQTT_KEY,
   type MqttConfig,
   mergeMqttWrite,
   mqttConfigSchema,
-} from "@ReyeON/db/mqtt-config";
+} from "@SunReye/db/mqtt-config";
 import { readSetting, writeSetting } from "./app-settings";
 
 /** Defaults seeded from env the first time a config is read (pre-save). */

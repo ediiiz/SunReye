@@ -8,11 +8,11 @@
  * the MQTT bridge. Connection health is tracked for the `/api/status` endpoint.
  */
 
-import { db } from "@ReyeON/db";
-import type { InverterConfig } from "@ReyeON/db/inverter-config";
-import type { MqttConfig } from "@ReyeON/db/mqtt-config";
-import { metricsRaw } from "@ReyeON/db/schema/metrics";
-import type { InverterSample, InverterSource } from "@ReyeON/inverter-core";
+import { db } from "@SunReye/db";
+import type { InverterConfig } from "@SunReye/db/inverter-config";
+import type { MqttConfig } from "@SunReye/db/mqtt-config";
+import { metricsRaw } from "@SunReye/db/schema/metrics";
+import type { InverterSample, InverterSource } from "@SunReye/inverter-core";
 import mqtt from "mqtt";
 import { getInverterConfig, getMqttConfig } from "./config";
 import { buildSource, profile } from "./inverter";

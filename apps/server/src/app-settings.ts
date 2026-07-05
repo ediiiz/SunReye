@@ -5,8 +5,8 @@
  * in-memory cache on top (see settings.ts / config.ts).
  */
 
-import { db } from "@ReyeON/db";
-import { appSettings } from "@ReyeON/db/schema/settings";
+import { db } from "@SunReye/db";
+import { appSettings } from "@SunReye/db/schema/settings";
 import { eq } from "drizzle-orm";
 import type { ZodType } from "zod";
 

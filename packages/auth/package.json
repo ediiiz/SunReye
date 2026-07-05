@@ -1,5 +1,5 @@
 {
-  "name": "@ReyeON/auth",
+  "name": "@SunReye/auth",
   "type": "module",
   "exports": {
     ".": {
@@ -11,15 +11,15 @@
   },
   "scripts": {},
   "dependencies": {
-    "@ReyeON/db": "workspace:*",
-    "@ReyeON/env": "workspace:*",
+    "@SunReye/db": "workspace:*",
+    "@SunReye/env": "workspace:*",
     "better-auth": "catalog:",
     "dotenv": "catalog:",
     "drizzle-orm": "^0.45.1",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@ReyeON/config": "workspace:*",
+    "@SunReye/config": "workspace:*",
     "typescript": "catalog:"
   }
 }

@@ -27,7 +27,7 @@
 				<LightningIcon class="size-6" weight="fill" />
 			</div>
 			<div>
-				<h1 class="text-xl font-semibold tracking-tight">Welcome to ReyeON</h1>
+				<h1 class="text-xl font-semibold tracking-tight">Welcome to SunReye</h1>
 				<p class="text-sm text-muted-foreground">Set up your instance</p>
 			</div>
 		</div>

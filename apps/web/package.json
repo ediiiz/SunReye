@@ -12,8 +12,8 @@
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
   },
   "dependencies": {
-    "@ReyeON/env": "workspace:*",
-    "@ReyeON/inverter-core": "workspace:*",
+    "@SunReye/env": "workspace:*",
+    "@SunReye/inverter-core": "workspace:*",
     "@elysiajs/eden": "^1.4.1",
     "better-auth": "catalog:",
     "d3-shape": "^3.2.0",
@@ -21,7 +21,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@ReyeON/config": "workspace:*",
+    "@SunReye/config": "workspace:*",
     "@fontsource-variable/geist-mono": "^5.2.8",
     "@internationalized/date": "^3.12.0",
     "@sveltejs/adapter-auto": "^7.0.1",

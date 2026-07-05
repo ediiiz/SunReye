@@ -1,4 +1,4 @@
-name: ReyeON
+name: SunReye
 
 services:
   web:
@@ -30,7 +30,7 @@ services:
         required: false
     environment:
       CORS_ORIGIN: http://localhost:3001
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/ReyeON
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/SunReye
     healthcheck:
       test:
         [
@@ -50,15 +50,15 @@ services:
 
   postgres:
     image: timescale/timescaledb:latest-pg17
-    container_name: ReyeON-postgres
+    container_name: SunReye-postgres
     environment:
-      POSTGRES_DB: ReyeON
+      POSTGRES_DB: SunReye
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
     ports:
       - "5432:5432"
     volumes:
-      - ReyeON_postgres_data:/var/lib/postgresql
+      - SunReye_postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -67,4 +67,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  ReyeON_postgres_data:
+  SunReye_postgres_data:

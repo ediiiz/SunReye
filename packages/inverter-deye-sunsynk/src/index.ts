@@ -1,5 +1,5 @@
-import { registerProfile } from "@ReyeON/inverter-core";
-import type { InverterProfile } from "@ReyeON/inverter-core";
+import { registerProfile } from "@SunReye/inverter-core";
+import type { InverterProfile } from "@SunReye/inverter-core";
 
 import { metrics } from "./metrics";
 import { simulate } from "./simulate";
@@ -8,7 +8,7 @@ import { simulate } from "./simulate";
  * Deye / Sunsynk hybrid inverter profile.
  *
  * Importing this package self-registers the profile into the inverter-core
- * registry, so the server only needs to `import "@ReyeON/inverter-deye-sunsynk"`
+ * registry, so the server only needs to `import "@SunReye/inverter-deye-sunsynk"`
  * to make it selectable via `INVERTER_PROFILE=deye-sunsynk`.
  */
 export const deyeSunsynk: InverterProfile = registerProfile({

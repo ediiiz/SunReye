@@ -30,7 +30,7 @@
 				<LightningIcon class="size-6" weight="fill" />
 			</div>
 			<div>
-				<h1 class="text-xl font-semibold tracking-tight">ReyeON</h1>
+				<h1 class="text-xl font-semibold tracking-tight">SunReye</h1>
 				<p class="text-sm text-muted-foreground">Modbus inverter monitoring</p>
 			</div>
 		</div>

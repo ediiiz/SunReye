@@ -1,5 +1,5 @@
 {
-  "name": "@ReyeON/inverter-deye-sunsynk",
+  "name": "@SunReye/inverter-deye-sunsynk",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -7,10 +7,10 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@ReyeON/inverter-core": "workspace:*"
+    "@SunReye/inverter-core": "workspace:*"
   },
   "devDependencies": {
-    "@ReyeON/config": "workspace:*",
+    "@SunReye/config": "workspace:*",
     "@types/bun": "catalog:",
     "typescript": "catalog:"
   }

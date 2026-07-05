@@ -4,7 +4,7 @@
  * The DB-bound orchestration lives in cost.ts.
  */
 
-import { type TariffConfig, importBandForHour } from "@ReyeON/db/tariff";
+import { type TariffConfig, importBandForHour } from "@SunReye/db/tariff";
 
 /** Energy (kWh) that flowed in one hour, plus the hour's local wall time. */
 export interface HourEnergy {

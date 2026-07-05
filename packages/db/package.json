@@ -1,5 +1,5 @@
 {
-  "name": "@ReyeON/db",
+  "name": "@SunReye/db",
   "type": "module",
   "exports": {
     ".": {
@@ -17,14 +17,14 @@
     "db:timescale": "bun run src/setup-timescale.ts"
   },
   "dependencies": {
-    "@ReyeON/env": "workspace:*",
+    "@SunReye/env": "workspace:*",
     "dotenv": "catalog:",
     "drizzle-orm": "^0.45.1",
     "pg": "^8.17.1",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@ReyeON/config": "workspace:*",
+    "@SunReye/config": "workspace:*",
     "@types/pg": "^8.16.0",
     "drizzle-kit": "^0.31.8",
     "typescript": "catalog:"

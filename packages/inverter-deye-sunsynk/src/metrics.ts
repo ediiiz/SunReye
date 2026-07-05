@@ -1,4 +1,4 @@
-import type { MetricAccess, MetricDef, MetricValues, RegisterType } from "@ReyeON/inverter-core";
+import type { MetricAccess, MetricDef, MetricValues, RegisterType } from "@SunReye/inverter-core";
 
 /**
  * Deye / Sunsynk hybrid holding-register map, transcribed from the vendor

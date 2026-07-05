@@ -1,6 +1,6 @@
-import { createDb } from "@ReyeON/db";
-import * as schema from "@ReyeON/db/schema/auth";
-import { env } from "@ReyeON/env/server";
+import { createDb } from "@SunReye/db";
+import * as schema from "@SunReye/db/schema/auth";
+import { env } from "@SunReye/env/server";
 import { count } from "drizzle-orm";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";

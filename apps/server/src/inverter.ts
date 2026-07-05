@@ -1,11 +1,11 @@
-import type { InverterConfig } from "@ReyeON/db/inverter-config";
-import { env } from "@ReyeON/env/server";
-import { createInverter, getProfile } from "@ReyeON/inverter-core";
-import type { InverterProfile, InverterSample, InverterSource } from "@ReyeON/inverter-core";
+import type { InverterConfig } from "@SunReye/db/inverter-config";
+import { env } from "@SunReye/env/server";
+import { createInverter, getProfile } from "@SunReye/inverter-core";
+import type { InverterProfile, InverterSample, InverterSource } from "@SunReye/inverter-core";
 // Side-effect import: installing the package self-registers its profile into
-// the inverter-core registry. Add more `@ReyeON/inverter-*` imports here to
+// the inverter-core registry. Add more `@SunReye/inverter-*` imports here to
 // "download" additional inverter support.
-import "@ReyeON/inverter-deye-sunsynk";
+import "@SunReye/inverter-deye-sunsynk";
 
 /**
  * Active profile, selected by env and fixed for the process: it shapes the REST

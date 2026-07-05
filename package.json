@@ -1,5 +1,5 @@
 {
-  "name": "ReyeON",
+  "name": "SunReye",
   "private": true,
   "workspaces": {
     "packages": [
@@ -22,11 +22,11 @@
     "dev:web": "turbo run dev -F web",
     "dev:server": "turbo run dev -F server",
     "preview": "turbo run preview -F web -F server",
-    "db:push": "turbo run db:push -F @ReyeON/db",
-    "db:studio": "turbo run db:studio -F @ReyeON/db",
-    "db:generate": "turbo run db:generate -F @ReyeON/db",
-    "db:migrate": "turbo run db:migrate -F @ReyeON/db",
-    "db:timescale": "turbo run db:timescale -F @ReyeON/db",
+    "db:push": "turbo run db:push -F @SunReye/db",
+    "db:studio": "turbo run db:studio -F @SunReye/db",
+    "db:generate": "turbo run db:generate -F @SunReye/db",
+    "db:migrate": "turbo run db:migrate -F @SunReye/db",
+    "db:timescale": "turbo run db:timescale -F @SunReye/db",
     "db:start": "docker compose -f docker-compose.db.yml up -d --wait",
     "db:watch": "docker compose -f docker-compose.db.yml logs -f",
     "db:stop": "docker compose -f docker-compose.db.yml stop",
@@ -39,12 +39,12 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@ReyeON/env": "workspace:*",
+    "@SunReye/env": "workspace:*",
     "dotenv": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@ReyeON/config": "workspace:*",
+    "@SunReye/config": "workspace:*",
     "@types/bun": "catalog:",
     "fallow": "^2.104.0",
     "husky": "^9.1.7",

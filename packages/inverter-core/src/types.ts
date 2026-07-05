@@ -3,7 +3,7 @@
  *
  * A profile is a data-only description of an inverter's Modbus map plus an
  * optional simulation hook. Profiles ship as their own packages
- * (e.g. `@ReyeON/inverter-deye-sunsynk`) and register themselves into the
+ * (e.g. `@SunReye/inverter-deye-sunsynk`) and register themselves into the
  * runtime registry, so new inverters can be "downloaded" without touching
  * the core engine.
  */

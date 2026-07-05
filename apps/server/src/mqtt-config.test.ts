@@ -1,4 +1,4 @@
-import { maskMqttConfig, mergeMqttWrite, mqttConfigSchema } from "@ReyeON/db/mqtt-config";
+import { maskMqttConfig, mergeMqttWrite, mqttConfigSchema } from "@SunReye/db/mqtt-config";
 import { describe, expect, test } from "bun:test";
 
 const base = mqttConfigSchema.parse({
@@ -6,7 +6,7 @@ const base = mqttConfigSchema.parse({
   brokerUrl: "mqtt://broker:1883",
   username: "user",
   password: "secret",
-  topicPrefix: "reyeon",
+  topicPrefix: "sunreye",
 });
 
 describe("maskMqttConfig", () => {

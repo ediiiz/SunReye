@@ -1,4 +1,4 @@
-import type { InverterSample } from "@ReyeON/inverter-core";
+import type { InverterSample } from "@SunReye/inverter-core";
 
 /**
  * Last sample read by the God-loop, shared with the HTTP layer so

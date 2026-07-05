@@ -44,6 +44,7 @@
 	// fields we read so it isn't implicitly `any`.
 	type MarksContext = {
 		context: {
+			xScale: (value: number) => number;
 			yScale: (value: number) => number;
 			height: number;
 			padding: { bottom: number };
@@ -61,8 +62,10 @@
 
 	// A real-time cursor that drifts continuously toward the newest sample instead of
 	// snapping to it once a second. Mirrors AnimatedNumber: stretch every transition
-	// across the real gap since the previous sample and ease it linearly, so the axis
-	// glides rather than updating on a visible once-a-second cadence.
+	// across the real gap since the previous sample and ease it linearly, so the plot
+	// glides rather than updating on a visible once-a-second cadence. Only the marks'
+	// translate (below) reads `cursor` — never `data`/`xDomain` — so the chart itself
+	// does NOT re-render per animation frame.
 	const cursor = new Tween(untrack(() => lastT) ?? 0);
 	let lastAt = performance.now();
 	$effect(() => {
@@ -74,52 +77,61 @@
 		void cursor.set(t, { duration: Math.min(2000, Math.max(300, gap)), easing: linear });
 	});
 
-	// The visible window trails the cursor by one interval, so the newest sample lives
-	// in the clipped (off-screen, invisible) buffer to the right and glides smoothly
-	// into view as the cursor advances — never popping in at the edge. `data` also keeps
-	// a few samples of buffer *past both* the left and right window edges so points are
-	// only added/removed while off-screen: the spline stays continuous and neither end
-	// twitches. ChartClipPath around the marks hides everything outside the window.
-	const right = $derived(lastT === undefined ? undefined : cursor.current - interval);
+	// The chart renders with a FIXED window anchored to the newest sample, so `data`
+	// and `xDomain` change only when a sample lands (~1 Hz). That bounds LayerChart's
+	// work — scale recompute, spline path, and the tooltip quadtree rebuild — to sample
+	// cadence instead of every animation frame. `data` keeps a few intervals of buffer
+	// past the left edge so the continuous glide never reveals empty space, and
+	// ChartClipPath around the marks hides everything outside the window.
+	const xDomain = $derived(lastT === undefined ? undefined : [lastT - windowMs, lastT]);
 	const data = $derived(
-		right === undefined
-			? points
-			: points.filter((p) => p.t >= right - windowMs - 4 * interval)
+		lastT === undefined ? points : points.filter((p) => p.t >= lastT - windowMs - 6 * interval)
 	);
-	const xDomain = $derived(right === undefined ? undefined : [right - windowMs, right]);
+
+	// Per-frame smooth scroll WITHOUT re-rendering the chart: translate the marks group
+	// so the visible right edge tracks the interpolated cursor. `xScale` maps time→pixel
+	// for the fixed domain, so this resolves to a compositor-friendly transform on a
+	// single <g> — no path/scale/quadtree recompute. The newest sample trails one
+	// interval off-screen to the right and glides in under the feathered edge.
+	function glideX(xScale: (t: number) => number): number {
+		if (lastT === undefined) return 0;
+		return xScale(lastT) - xScale(cursor.current - interval);
+	}
 </script>
 
 {#snippet clippedMarks({ context }: MarksContext)}
 	<ChartClipPath>
-		{#if diverging}
-			{@const zero = context.yScale(0) / (context.height + context.padding.bottom)}
-			<LinearGradient
-				vertical
-				stops={[
-					[0, IMPORT_COLOR],
-					[zero, IMPORT_COLOR],
-					[zero, EXPORT_COLOR],
-					[1, EXPORT_COLOR]
-				]}
-			>
-				{#snippet children({ gradient })}
-					<Area
-						y0={() => 0}
-						curve={curveCatmullRom}
-						line={{ stroke: gradient, 'stroke-width': 1.5 }}
-						fill={gradient}
-						fillOpacity={0.25}
-					/>
-				{/snippet}
-			</LinearGradient>
-		{:else}
-			<Area
-				curve={curveCatmullRom}
-				line={{ stroke: accent, 'stroke-width': 1.5 }}
-				fill={accent}
-				fillOpacity={0.3}
-			/>
-		{/if}
+		<g transform={`translate(${glideX(context.xScale)}, 0)`}>
+			{#if diverging}
+				{@const zero = context.yScale(0) / (context.height + context.padding.bottom)}
+				<LinearGradient
+					vertical
+					stops={[
+						[0, IMPORT_COLOR],
+						[zero, IMPORT_COLOR],
+						[zero, EXPORT_COLOR],
+						[1, EXPORT_COLOR]
+					]}
+				>
+					{#snippet children({ gradient })}
+						<Area
+							y0={() => 0}
+							curve={curveCatmullRom}
+							line={{ stroke: gradient, 'stroke-width': 1.5 }}
+							fill={gradient}
+							fillOpacity={0.25}
+						/>
+					{/snippet}
+				</LinearGradient>
+			{:else}
+				<Area
+					curve={curveCatmullRom}
+					line={{ stroke: accent, 'stroke-width': 1.5 }}
+					fill={accent}
+					fillOpacity={0.3}
+				/>
+			{/if}
+		</g>
 	</ChartClipPath>
 {/snippet}
 
@@ -137,6 +149,13 @@
 	]}
 	style="--color-primary: {accent}; --edge-fade: linear-gradient(to right, #000 0, #000 42px, transparent 44px, #000 96px, #000 calc(100% - 58px), transparent calc(100% - 6px))"
 >
+	<!--
+		`tooltipContext` mode: the default `quadtree-x` rebuilds a d3-quadtree (async
+		import + full re-index) on every sample — with a 1 Hz feed and 4 always-on
+		sparklines that allocation dominated the heap. `bisect-x` allocates nothing per
+		sample (it binary-searches the sorted series at pointer-move) and gives the same
+		nearest-x hover.
+	-->
 	<AreaChart
 		{data}
 		x="t"
@@ -148,6 +167,7 @@
 		legend={false}
 		padding={{ top: 6, bottom: 6, left: 44, right: 6 }}
 		marks={clippedMarks}
+		tooltipContext={{ mode: 'bisect-x' }}
 	>
 		{#snippet tooltip()}
 			<Chart.Tooltip

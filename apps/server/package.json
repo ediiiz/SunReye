@@ -18,6 +18,8 @@
     "@ReyeON/inverter-deye-sunsynk": "workspace:*",
     "@elysiajs/cors": "^1.4.1",
     "@elysiajs/openapi": "^1.4.0",
+    "@logtape/elysia": "^2.2.3",
+    "@logtape/logtape": "^2.2.3",
     "@sinclair/typebox": "^0.34.49",
     "better-auth": "catalog:",
     "dotenv": "catalog:",

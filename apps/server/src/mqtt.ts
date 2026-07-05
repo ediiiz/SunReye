@@ -24,7 +24,9 @@ import mqtt from "mqtt";
 import type { MqttClient } from "mqtt";
 import { validateWrite } from "./entities";
 import { profile } from "./inverter";
+import { log } from "./logging";
 
+const logger = log("mqtt");
 const manifest = buildManifest(profile);
 const defByKey = metricByKey(profile);
 
@@ -200,7 +202,7 @@ export function startMqttBridge(config: MqttConfig, deps: MqttBridgeDeps): MqttB
     const commandTopics = [...keyByCommandTopic.keys()];
     if (commandTopics.length > 0) {
       client.subscribe(commandTopics, (err) => {
-        if (err) console.error("[mqtt] subscribe failed:", err);
+        if (err) logger.error("subscribe failed: {error}", { error: err });
       });
     }
 
@@ -212,10 +214,15 @@ export function startMqttBridge(config: MqttConfig, deps: MqttBridgeDeps): MqttB
         const topic = `${config.haDiscoveryPrefix}/${component}/reyeon_${profile.id}/${slug(m.key)}/config`;
         client.publish(topic, JSON.stringify(cfg), { retain: true });
       }
-      console.log(`[mqtt] published HA discovery for ${manifest.metrics.length} entities`);
+      logger.info("published HA discovery for {count} entities", {
+        count: manifest.metrics.length,
+      });
     }
 
-    console.log(`[mqtt] connected to ${config.brokerUrl} (prefix "${topics.base}")`);
+    logger.info('connected to {brokerUrl} (prefix "{prefix}")', {
+      brokerUrl: config.brokerUrl,
+      prefix: topics.base,
+    });
   });
 
   client.on("close", () => {
@@ -227,24 +234,27 @@ export function startMqttBridge(config: MqttConfig, deps: MqttBridgeDeps): MqttB
     if (!key) return; // Not a command topic we own.
     const value = Number(payload.toString().trim());
     if (Number.isNaN(value)) {
-      console.warn(`[mqtt] ${topic}: non-numeric payload "${payload.toString()}"`);
+      logger.warn('{topic}: non-numeric payload "{payload}"', {
+        topic,
+        payload: payload.toString(),
+      });
       return;
     }
     const error = validateWrite(key, value);
     if (error) {
-      console.warn(`[mqtt] ${topic}: rejected ${value}: ${error}`);
+      logger.warn("{topic}: rejected {value}: {error}", { topic, value, error });
       return;
     }
     try {
       await deps.write(key, value);
     } catch (err) {
-      console.error(`[mqtt] write ${key}=${value} failed:`, err);
+      logger.error("write {key}={value} failed: {error}", { key, value, error: err });
     }
   });
 
   client.on("error", (err) => {
     lastError = err instanceof Error ? err.message : String(err);
-    console.error("[mqtt] client error:", err);
+    logger.error("client error: {error}", { error: err });
   });
 
   return {

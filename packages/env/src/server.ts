@@ -12,6 +12,10 @@ export const env = createEnv({
     // HTTP port the core engine listens on.
     PORT: z.coerce.number().int().positive().default(3000),
 
+    // Lowest LogTape severity that reaches the console sink. Unset defaults to
+    // "debug" in development and "info" otherwise (resolved in the logging setup).
+    LOG_LEVEL: z.enum(["trace", "debug", "info", "warning", "error", "fatal"]).optional(),
+
     // Active inverter profile id (from an installed `@ReyeON/inverter-*` package)
     INVERTER_PROFILE: z.string().min(1).default("deye-sunsynk"),
     // Inverter (Modbus TCP) connection

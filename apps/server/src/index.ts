@@ -1,5 +1,6 @@
 import { cors } from "@elysiajs/cors";
 import { openapi } from "@elysiajs/openapi";
+import { elysiaLogger } from "@logtape/elysia";
 import { auth } from "@ReyeON/auth";
 import { db } from "@ReyeON/db";
 import { inverterConfigSchema } from "@ReyeON/db/inverter-config";
@@ -20,8 +21,14 @@ import { computeCost, resolveRange } from "./cost";
 import { entitiesApi, validateWrite } from "./entities";
 import { queryRollup } from "./history";
 import { profile } from "./inverter";
+import { log, setupLogging } from "./logging";
 import * as runtime from "./runtime";
 import { getTariff, setTariff } from "./settings";
+
+// Wire LogTape before anything logs (Elysia's request logger and the app
+// loggers below both flow through the sinks configured here).
+await setupLogging();
+const serverLog = log();
 
 // Capability + render metadata contract; built once (profile is static).
 const manifest = buildManifest(profile);
@@ -36,6 +43,9 @@ const SampleSchema = t.Object({
 const METRICS_TOPIC = "metrics";
 
 const app = new Elysia()
+  // Structured HTTP request logging (category ["elysia"]). Health/liveness
+  // probes are noisy and uninteresting, so skip them.
+  .use(elysiaLogger({ skip: (ctx) => ctx.path === "/" }))
   .use(
     cors({
       // In dev the web app may be served on any localhost port (Vite fallback,
@@ -286,7 +296,10 @@ const app = new Elysia()
     listProfiles().map((p) => ({ id: p.id, name: p.name, manufacturer: p.manufacturer })),
   )
   .listen(env.PORT, () => {
-    console.log(`Server running on http://localhost:${env.PORT} — profile "${profile.id}"`);
+    serverLog.info("server running on http://localhost:{port} — profile {profile}", {
+      port: env.PORT,
+      profile: profile.id,
+    });
   });
 
 // Start the runtime controller: it owns the poll loop, the live source, and the

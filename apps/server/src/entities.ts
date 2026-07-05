@@ -22,8 +22,10 @@ import {
 import { Elysia, t } from "elysia";
 import { queryRawHistory, queryRollup } from "./history";
 import { profile } from "./inverter";
+import { log } from "./logging";
 import { liveState } from "./state";
 
+const logger = log("api");
 const manifest = buildManifest(profile);
 const metaByKey = new Map(manifest.metrics.map((m) => [m.key, m]));
 const defByKey = metricByKey(profile);
@@ -101,7 +103,10 @@ export function entitiesApi(deps: EntitiesApiDeps) {
         set.status = 400;
         return { error: "Malformed request body" };
       }
-      console.error(`[api/v1] ${code}:`, error instanceof Error ? error.stack : error);
+      logger.error("{code}: {error}", {
+        code,
+        error: error instanceof Error ? error.stack : error,
+      });
       set.status = 500;
       return { error: "Internal server error" };
     })

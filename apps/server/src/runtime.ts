@@ -16,8 +16,11 @@ import type { InverterSample, InverterSource } from "@ReyeON/inverter-core";
 import mqtt from "mqtt";
 import { getInverterConfig, getMqttConfig } from "./config";
 import { buildSource, profile } from "./inverter";
+import { log } from "./logging";
 import { type MqttBridge, startMqttBridge } from "./mqtt";
 import { liveState } from "./state";
+
+const logger = log("runtime");
 
 type SampleListener = (sample: InverterSample) => void;
 
@@ -59,7 +62,7 @@ async function pollOnce(): Promise<void> {
   } catch (error) {
     inverterStatus.connected = false;
     inverterStatus.lastError = error instanceof Error ? error.message : String(error);
-    console.error("poll loop error:", error);
+    logger.error("poll loop error: {error}", { error });
   } finally {
     polling = false;
   }

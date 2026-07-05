@@ -6,9 +6,10 @@ import { db } from "@ReyeON/db";
 import { inverterConfigSchema } from "@ReyeON/db/inverter-config";
 import { maskMqttConfig } from "@ReyeON/db/mqtt-config";
 import { metricsRaw } from "@ReyeON/db/schema/metrics";
+import { user } from "@ReyeON/db/schema/auth";
 import { env } from "@ReyeON/env/server";
 import { buildManifest, listProfiles } from "@ReyeON/inverter-core";
-import { and, desc, eq, gte } from "drizzle-orm";
+import { and, count, desc, eq, gte } from "drizzle-orm";
 import { Elysia, t } from "elysia";
 import {
   getInverterConfig,
@@ -86,14 +87,29 @@ const app = new Elysia()
   // history, and one validated write route per writable entity). Writes go
   // through the runtime controller's live source.
   .use(entitiesApi({ write: runtime.write }))
-  .all("/api/auth/*", async (context) => {
-    const { request, status } = context;
-    if (["POST", "GET"].includes(request.method)) {
-      return auth.handler(request);
-    }
-    return status(405);
-  })
+  // Hand the raw request to Better Auth. `parse: "none"` stops Elysia from
+  // consuming the request body — other routes in this app define body schemas,
+  // which turns on body parsing app-wide, and a parsed (consumed) stream makes
+  // Better Auth's own body read throw `ERR_BODY_ALREADY_USED`. This is the same
+  // technique Elysia's own `.mount()` uses to forward to a sub-handler.
+  .all(
+    "/api/auth/*",
+    async (context) => {
+      const { request, status } = context;
+      if (["POST", "GET"].includes(request.method)) {
+        return auth.handler(request);
+      }
+      return status(405);
+    },
+    { parse: "none" },
+  )
   .get("/", () => "OK")
+  // First-run gate for the web app: true until the instance has its first
+  // (admin) account. Public — the onboarding flow can't be authenticated yet.
+  .get("/api/setup-status", async () => {
+    const [row] = await db.select({ n: count() }).from(user);
+    return { needsSetup: (row?.n ?? 0) === 0 };
+  })
   // Capability manifest for the active inverter profile: capabilities + a
   // render-ready metric catalog (role, kind, range, enum labels, flow). The UI
   // builds itself from this — no per-inverter code.

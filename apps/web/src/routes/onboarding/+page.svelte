@@ -1,18 +1,15 @@
 <script lang="ts">
-	import { dev } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import * as Card from '$lib/components/ui/card';
-	import { Button } from '$lib/components/ui/button';
 	import { needsSetup } from '$lib/setup';
 	import LightningIcon from 'phosphor-svelte/lib/Lightning';
-	import ArrowRightIcon from 'phosphor-svelte/lib/ArrowRight';
+	import ShieldIcon from 'phosphor-svelte/lib/ShieldCheck';
 	import AuthForm from '../../components/AuthForm.svelte';
 
-	// First-run: no account yet → send visitors to admin onboarding. Registration
-	// is otherwise closed (invite-only), so this page is sign-in only.
+	// First-run only: once an account exists, registration is closed.
 	$effect(() => {
 		needsSetup().then((setup) => {
-			if (setup) goto('/onboarding');
+			if (!setup) goto('/login');
 		});
 	});
 </script>
@@ -30,26 +27,25 @@
 				<LightningIcon class="size-6" weight="fill" />
 			</div>
 			<div>
-				<h1 class="text-xl font-semibold tracking-tight">ReyeON</h1>
-				<p class="text-sm text-muted-foreground">Modbus inverter monitoring</p>
+				<h1 class="text-xl font-semibold tracking-tight">Welcome to ReyeON</h1>
+				<p class="text-sm text-muted-foreground">Set up your instance</p>
 			</div>
 		</div>
 
 		<Card.Root>
 			<Card.Header>
-				<Card.Title>Sign in</Card.Title>
-				<Card.Description>Enter your credentials to access the console.</Card.Description>
+				<Card.Title class="flex items-center gap-2">
+					<ShieldIcon class="size-5 text-primary" weight="fill" />
+					Create the administrator
+				</Card.Title>
+				<Card.Description>
+					This is the first account, so it becomes the administrator. Registration closes once
+					it's created — add further users from Settings.
+				</Card.Description>
 			</Card.Header>
 			<Card.Content>
-				<AuthForm mode="signin" />
+				<AuthForm mode="signup" />
 			</Card.Content>
 		</Card.Root>
-
-		{#if dev}
-			<Button variant="outline" class="w-full" onclick={() => goto('/')}>
-				Continue as developer
-				<ArrowRightIcon class="size-4" />
-			</Button>
-		{/if}
 	</div>
 </div>

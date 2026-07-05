@@ -4,13 +4,20 @@
 	import TariffForm from '$lib/components/settings/tariff-form.svelte';
 	import InverterForm from '$lib/components/settings/inverter-form.svelte';
 	import MqttForm from '$lib/components/settings/mqtt-form.svelte';
+	import UsersForm from '$lib/components/settings/users-form.svelte';
+	import { useAppSession } from '$lib/session';
 
-	const TABS = [
+	const session = useAppSession();
+	const isAdmin = $derived($session.data?.user.role === 'admin');
+
+	// The Users tab is admin-only; append it once we know the viewer is an admin.
+	const TABS = $derived([
 		{ id: 'inverter', label: 'Inverter' },
 		{ id: 'mqtt', label: 'MQTT & Home Assistant' },
-		{ id: 'tariff', label: 'Tariff' }
-	] as const;
-	let tab = $state<(typeof TABS)[number]['id']>('inverter');
+		{ id: 'tariff', label: 'Tariff' },
+		...(isAdmin ? [{ id: 'users', label: 'Users' }] : [])
+	] as const);
+	let tab = $state<'inverter' | 'mqtt' | 'tariff' | 'users'>('inverter');
 
 	type Status = {
 		inverter: {
@@ -60,6 +67,10 @@
 		{:else if tab === 'tariff'}
 			<div class="flex flex-col gap-6">
 				<TariffForm />
+			</div>
+		{:else if tab === 'users' && isAdmin}
+			<div class="flex flex-col gap-6">
+				<UsersForm />
 			</div>
 		{/if}
 	</div>

@@ -74,7 +74,9 @@
 
 	onMount(async () => {
 		const { data } = await api.api.settings.inverter.get();
-		if (data) cfg = data;
+		// host may be empty when the inverter isn't configured yet; keep it a
+		// string so the bound Input stays controlled.
+		if (data) cfg = { ...data, host: data.host ?? "" };
 	});
 
 	async function test() {

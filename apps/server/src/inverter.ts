@@ -106,7 +106,9 @@ export function buildSource(profile: InverterProfile, config: InverterConfig): I
   return createInverter(profile, {
     simulate: env.INVERTER_SIMULATE,
     connection: {
-      host: config.host,
+      // Empty when the inverter hasn't been configured yet; a real connect then
+      // fails (handled by the God-loop), while simulate mode ignores it entirely.
+      host: config.host ?? "",
       port: config.port,
       unitId: config.unitId,
       timeoutMs: config.timeoutMs,

@@ -547,6 +547,20 @@
         "role": "battery.temperature"
       },
       {
+        "key": "battery.mode",
+        "topic": "battery/mode",
+        "label": "Battery Mode",
+        "unit": null,
+        "group": "battery",
+        "kind": "status",
+        "writable": false,
+        "role": "battery.mode",
+        "enumLabels": {
+          "0": "Lead-acid (voltage)",
+          "1": "Lithium (SOC)"
+        }
+      },
+      {
         "key": "ac.generator.a.voltage",
         "topic": "ac/generator/a/voltage",
         "label": "Gen port A Voltage",
@@ -1679,8 +1693,8 @@
       "addresses": [],
       "scale": 1,
       "access": "r",
-      "compute": "fn",
-      "role": "pv.total.power"
+      "role": "pv.total.power",
+      "compute": "fn"
     },
     {
       "key": "battery.daily_charge",
@@ -1821,6 +1835,25 @@
       "scale": 0.1,
       "access": "r",
       "role": "battery.temperature"
+    },
+    {
+      "key": "battery.mode",
+      "topic": "battery/mode",
+      "label": "Battery Mode",
+      "unit": null,
+      "group": "battery",
+      "type": "U_WORD",
+      "addresses": [
+        98
+      ],
+      "scale": 1,
+      "access": "r",
+      "role": "battery.mode",
+      "kind": "status",
+      "enumLabels": {
+        "0": "Lead-acid (voltage)",
+        "1": "Lithium (SOC)"
+      }
     },
     {
       "key": "ac.generator.a.voltage",

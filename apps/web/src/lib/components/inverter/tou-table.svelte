@@ -8,6 +8,8 @@
 	let { controller }: { controller: TouController } = $props();
 
 	const slots = $derived(controller.slots);
+	// Battery mode decides which target column applies — show only that one.
+	const mode = $derived(controller.targetMode);
 
 	function commitNumber(m: ManifestMetric, raw: string) {
 		const v = Number(raw);
@@ -27,8 +29,12 @@
 				<Table.Head>Enabled</Table.Head>
 				<Table.Head>Start</Table.Head>
 				<Table.Head>Power (W)</Table.Head>
-				<Table.Head>Voltage (V)</Table.Head>
-				<Table.Head>SOC (%)</Table.Head>
+				{#if mode !== 'soc'}
+					<Table.Head>Voltage (V)</Table.Head>
+				{/if}
+				{#if mode !== 'voltage'}
+					<Table.Head>SOC (%)</Table.Head>
+				{/if}
 			</Table.Row>
 		</Table.Header>
 		<Table.Body>
@@ -71,31 +77,35 @@
 							/>
 						{/if}
 					</Table.Cell>
-					<Table.Cell>
-						{#if voltage}
-							<Input
-								type="number"
-								step="0.01"
-								class="w-24 tabular-nums"
-								value={controller.value(voltage.key) ?? ''}
-								disabled={controller.busy(voltage.key)}
-								onchange={(e) => commitNumber(voltage, e.currentTarget.value)}
-							/>
-						{/if}
-					</Table.Cell>
-					<Table.Cell>
-						{#if soc}
-							<Input
-								type="number"
-								min="0"
-								max="100"
-								class="w-24 tabular-nums"
-								value={controller.value(soc.key) ?? ''}
-								disabled={controller.busy(soc.key)}
-								onchange={(e) => commitNumber(soc, e.currentTarget.value)}
-							/>
-						{/if}
-					</Table.Cell>
+					{#if mode !== 'soc'}
+						<Table.Cell>
+							{#if voltage}
+								<Input
+									type="number"
+									step="0.01"
+									class="w-24 tabular-nums"
+									value={controller.value(voltage.key) ?? ''}
+									disabled={controller.busy(voltage.key)}
+									onchange={(e) => commitNumber(voltage, e.currentTarget.value)}
+								/>
+							{/if}
+						</Table.Cell>
+					{/if}
+					{#if mode !== 'voltage'}
+						<Table.Cell>
+							{#if soc}
+								<Input
+									type="number"
+									min="0"
+									max="100"
+									class="w-24 tabular-nums"
+									value={controller.value(soc.key) ?? ''}
+									disabled={controller.busy(soc.key)}
+									onchange={(e) => commitNumber(soc, e.currentTarget.value)}
+								/>
+							{/if}
+						</Table.Cell>
+					{/if}
 				</Table.Row>
 			{/each}
 		</Table.Body>

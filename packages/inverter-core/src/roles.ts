@@ -41,6 +41,9 @@ export const ROLE_CATALOG = {
   "battery.voltage": { kind: "measurement", unitHint: "V" },
   "battery.current": { kind: "measurement", signed: true, unitHint: "A" },
   "battery.temperature": { kind: "measurement", unitHint: "°C" },
+  // Charging-type control (read-only): lead-acid batteries are driven by target
+  // voltage, lithium (BMS) by target SOC — this decides which TOU target applies.
+  "battery.mode": { kind: "status", needsEnumLabels: true },
   "battery.energy.charged.today": { kind: "cumulative", unitHint: "kWh" },
   "battery.energy.charged.total": { kind: "cumulative", unitHint: "kWh" },
   "battery.energy.discharged.today": { kind: "cumulative", unitHint: "kWh" },

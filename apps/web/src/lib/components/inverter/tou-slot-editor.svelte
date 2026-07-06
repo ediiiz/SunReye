@@ -13,6 +13,9 @@
 		slotCount
 	}: { controller: TouController; slot: TouSlot; range: string | null; slotCount: number } = $props();
 
+	// Battery mode decides which target the inverter honors — show only that one.
+	const mode = $derived(controller.targetMode);
+
 	// SOC streams in as the thumb drags; commit the write only on release.
 	let socDraft = $state<number | null>(null);
 	const socValue = $derived(
@@ -72,7 +75,7 @@
 			</div>
 		{/if}
 
-		{#if slot.metrics.soc}
+		{#if slot.metrics.soc && mode !== 'voltage'}
 			{@const m = slot.metrics.soc}
 			<div class="flex flex-col gap-1.5 sm:col-span-2">
 				<div class="flex items-center justify-between">
@@ -106,7 +109,7 @@
 			</div>
 		{/if}
 
-		{#if slot.metrics.voltage}
+		{#if slot.metrics.voltage && mode !== 'soc'}
 			{@const m = slot.metrics.voltage}
 			<div class="flex flex-col gap-1.5">
 				<Label for="tou-voltage-{slot.index}">Target voltage (V)</Label>

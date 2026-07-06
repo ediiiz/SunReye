@@ -3,40 +3,22 @@ import { openapi } from "@elysiajs/openapi";
 import { elysiaLogger } from "@logtape/elysia";
 import { auth } from "@SunReye/auth";
 import { db } from "@SunReye/db";
-import { inverterConfigSchema } from "@SunReye/db/inverter-config";
-import { maskMqttConfig } from "@SunReye/db/mqtt-config";
 import { metricsRaw } from "@SunReye/db/schema/metrics";
 import { user } from "@SunReye/db/schema/auth";
 import { env } from "@SunReye/env/server";
-import { listProfiles } from "@SunReye/inverter-core";
 import { and, count, desc, eq, gte } from "drizzle-orm";
 import { Elysia, t } from "elysia";
-import {
-  getInverterConfig,
-  getMqttConfig,
-  mergeMqttConfig,
-  setInverterConfig,
-  setMqttConfig,
-} from "./config";
 import { type CostBucket, computeCost, computeCostSeries, resolveRange } from "./cost";
 import { energySeries } from "./energy";
 import { entitiesApi } from "./entities";
 import { queryRollup } from "./history";
-import { createApiKeyForUser, listApiKeys, revokeApiKey } from "./api-keys";
-import { buildProfileContext, getActiveProfile, initProfiles } from "./inverter";
+import { buildProfileContext, initProfiles } from "./inverter";
 import { log, setupLogging } from "./logging";
-import { RESET_DATA_CONFIRM, resetTimeseries } from "./maintenance";
-import {
-  browseAvailable,
-  getProfileSources,
-  installProfile,
-  listInstalled,
-  setActiveProfile,
-  setProfileSources,
-  uninstallProfile,
-} from "./profiles";
+import { adminRoutes } from "./routes/admin";
+import { adminGuard } from "./routes/admin-guard";
+import { profileRoutes } from "./routes/profiles";
+import { settingsRoutes } from "./routes/settings";
 import * as runtime from "./runtime";
-import { getTariff, setTariff } from "./settings";
 
 // Shared query for the per-period series endpoints (cost + energy): an explicit
 // [from, to) window at a chosen bucket, plus an optional inverter override.
@@ -133,28 +115,8 @@ const app = new Elysia()
   // history, and one validated write route per writable entity). Writes go
   // through the runtime controller's live source.
   .use(entitiesApi({ ctx, write: runtime.write }))
-  // Admin gate for privileged mutations (config + live inverter writes). Opt in
-  // per route with `{ requireAdmin: true }`. Reads stay public. A real session
-  // always decides the outcome; only an *unauthenticated* dev request is waved
-  // through, mirroring the client dev-spoof in apps/web/src/lib/session.ts so
-  // `vite dev` can edit settings without logging in. Production always enforces.
-  .macro({
-    requireAdmin(enabled: boolean) {
-      if (!enabled) return {};
-      return {
-        async beforeHandle({ request, status }) {
-          const session = await auth.api.getSession({ headers: request.headers });
-          if (!session) {
-            if (env.NODE_ENV !== "production") return;
-            return status(401, { error: "Authentication required" });
-          }
-          if (session.user.role !== "admin") {
-            return status(403, { error: "Admin access required" });
-          }
-        },
-      };
-    },
-  })
+  // Admin gate for privileged mutations — see ./routes/admin-guard.
+  .use(adminGuard)
   // Hand the raw request to Better Auth. `parse: "none"` stops Elysia from
   // consuming the request body — other routes in this app define body schemas,
   // which turns on body parsing app-wide, and a parsed (consumed) stream makes
@@ -304,21 +266,8 @@ const app = new Elysia()
     },
     { requireAdmin: true, body: t.Object({ key: t.String(), value: t.Number() }) },
   )
-  // Tariff config for the web app: read the active economic model, or replace
-  // it. The body is validated by the shared Zod schema (setTariff), so a bad
-  // payload becomes a 400 rather than a 500.
-  .get("/api/settings/tariff", () => getTariff())
-  .put(
-    "/api/settings/tariff",
-    async ({ body, status }) => {
-      try {
-        return await setTariff(body);
-      } catch (error) {
-        return status(400, { error: error instanceof Error ? error.message : "Invalid tariff" });
-      }
-    },
-    { requireAdmin: true, body: t.Unknown() },
-  )
+  // Runtime configuration (tariff, inverter, MQTT) + connection status.
+  .use(settingsRoutes)
   // Cost breakdown over a named range (today / month-to-date / year-to-date) or
   // an explicit [from, to) window. Prices stored energy with the active tariff.
   .get(
@@ -351,167 +300,10 @@ const app = new Elysia()
   .get("/api/energy/series", ({ query }) => energySeries(profile, seriesArgs(query)), {
     query: seriesQuery,
   })
-  // --- Runtime configuration (inverter + MQTT), editable from the UI. Saving
-  // persists and hot-applies via the runtime controller; no restart needed. ---
-  .get("/api/settings/inverter", () => getInverterConfig())
-  .put(
-    "/api/settings/inverter",
-    async ({ body, status }) => {
-      try {
-        const config = await setInverterConfig(body);
-        await runtime.applyInverterConfig(config);
-        return config;
-      } catch (error) {
-        return status(400, { error: error instanceof Error ? error.message : "Invalid config" });
-      }
-    },
-    { requireAdmin: true, body: t.Unknown() },
-  )
-  .post(
-    "/api/settings/inverter/test",
-    async ({ body, status }) => {
-      try {
-        return await runtime.testInverter(inverterConfigSchema.parse(body));
-      } catch (error) {
-        return status(400, { error: error instanceof Error ? error.message : "Invalid config" });
-      }
-    },
-    { requireAdmin: true, body: t.Unknown() },
-  )
-  // MQTT config: the password is masked on read and preserved on write when the
-  // client omits it (write-only secret).
-  .get("/api/settings/mqtt", async () => maskMqttConfig(await getMqttConfig()))
-  .put(
-    "/api/settings/mqtt",
-    async ({ body, status }) => {
-      try {
-        const config = await setMqttConfig(body);
-        await runtime.applyMqttConfig(config);
-        return maskMqttConfig(config);
-      } catch (error) {
-        return status(400, { error: error instanceof Error ? error.message : "Invalid config" });
-      }
-    },
-    { requireAdmin: true, body: t.Unknown() },
-  )
-  .post(
-    "/api/settings/mqtt/test",
-    async ({ body, status }) => {
-      try {
-        return await runtime.testMqtt(await mergeMqttConfig(body));
-      } catch (error) {
-        return status(400, { error: error instanceof Error ? error.message : "Invalid config" });
-      }
-    },
-    { requireAdmin: true, body: t.Unknown() },
-  )
-  // Live connection health (inverter + MQTT) for the settings dashboard.
-  .get("/api/status", () => runtime.status())
-  // Registered profiles (built-in + DB-installed) with active/installed/version.
-  .get("/api/profiles", async () => {
-    const activeId = getActiveProfile().id;
-    const installed = new Map((await listInstalled()).map((p) => [p.id, p]));
-    return listProfiles().map((p) => ({
-      id: p.id,
-      name: p.name,
-      manufacturer: p.manufacturer,
-      active: p.id === activeId,
-      installed: installed.has(p.id),
-      version: installed.get(p.id)?.version,
-    }));
-  })
-  // --- Downloadable profiles: git repo sources + install/activate flow. ---
-  // Repo sources: public read (just URLs), admin write.
-  .get("/api/settings/profile-sources", () => getProfileSources())
-  .put(
-    "/api/settings/profile-sources",
-    async ({ body, status }) => {
-      try {
-        return await setProfileSources(body);
-      } catch (error) {
-        return status(400, { error: error instanceof Error ? error.message : "Invalid sources" });
-      }
-    },
-    { requireAdmin: true, body: t.Unknown() },
-  )
-  // Browse profiles across enabled repos (clones/pulls each — admin only).
-  .get("/api/profiles/available", () => browseAvailable(), { requireAdmin: true })
-  // Download + validate + persist a profile. Selectable after a restart.
-  .post(
-    "/api/profiles/install",
-    async ({ body, status }) => {
-      try {
-        return await installProfile(body.source, body.id);
-      } catch (error) {
-        return status(400, { error: error instanceof Error ? error.message : "Install failed" });
-      }
-    },
-    { requireAdmin: true, body: t.Object({ source: t.String(), id: t.String() }) },
-  )
-  // Uninstall a profile (cannot remove the currently active one).
-  .delete(
-    "/api/profiles/:id",
-    async ({ params, status }) => {
-      if (params.id === getActiveProfile().id) {
-        return status(409, { error: "Cannot uninstall the active profile" });
-      }
-      await uninstallProfile(params.id);
-      return { ok: true, id: params.id };
-    },
-    { requireAdmin: true, params: t.Object({ id: t.String() }) },
-  )
-  // Set the active profile. Applies on the next restart (it shapes boot-time
-  // routes/manifest/topics), so signal that to the UI.
-  .put(
-    "/api/settings/active-profile",
-    async ({ body, status }) => {
-      try {
-        const { id } = await setActiveProfile(body);
-        return { id, restartRequired: id !== getActiveProfile().id };
-      } catch (error) {
-        return status(400, { error: error instanceof Error ? error.message : "Invalid profile" });
-      }
-    },
-    { requireAdmin: true, body: t.Object({ id: t.String() }) },
-  )
-  // DANGER: wipe every recorded measurement (raw hypertable + rollups) so the
-  // instance starts fresh. Accounts, settings, tariff, and profiles survive —
-  // only time-series data is dropped, and there is no undo. The caller must echo
-  // back the exact confirmation phrase so an accidental/replayed request can't
-  // nuke the history.
-  .post(
-    "/api/admin/reset-data",
-    async ({ body, status }) => {
-      if (body.confirm !== RESET_DATA_CONFIRM) {
-        return status(400, { error: "Confirmation phrase does not match" });
-      }
-      const result = await resetTimeseries();
-      serverLog.warn("time-series data wiped via admin reset: {cleared}", {
-        cleared: result.cleared.join(", "),
-      });
-      return { ok: true, ...result };
-    },
-    { requireAdmin: true, body: t.Object({ confirm: t.String() }) },
-  )
-  // API-key administration. Admin-only surface for issuing/listing/revoking
-  // keys on behalf of any user (see ./api-keys). The generated key is returned
-  // exactly once, on create.
-  .get("/api/admin/api-keys", ({ query }) => listApiKeys(query.userId), {
-    requireAdmin: true,
-    query: t.Object({ userId: t.Optional(t.String()) }),
-  })
-  .post("/api/admin/api-keys", ({ body }) => createApiKeyForUser(body), {
-    requireAdmin: true,
-    body: t.Object({
-      userId: t.String(),
-      name: t.String({ minLength: 1 }),
-      expiresIn: t.Optional(t.Nullable(t.Number({ minimum: 1 }))),
-    }),
-  })
-  .post("/api/admin/api-keys/revoke", ({ body }) => revokeApiKey(body.id), {
-    requireAdmin: true,
-    body: t.Object({ id: t.String() }),
-  })
+  // Profile management: registered list, repo sources, browse/install/activate.
+  .use(profileRoutes)
+  // Admin-only maintenance: data reset + API-key administration.
+  .use(adminRoutes)
   .listen(env.PORT, () => {
     serverLog.info("server running on http://localhost:{port} — profile {profile}", {
       port: env.PORT,

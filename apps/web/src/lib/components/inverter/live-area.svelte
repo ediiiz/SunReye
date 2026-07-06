@@ -1,6 +1,7 @@
 <script lang="ts">
-	import { AreaChart, Area, LinearGradient, ChartClipPath } from 'layerchart';
+	import { AreaChart, Area, ChartClipPath } from 'layerchart';
 	import { curveCatmullRom } from 'd3-shape';
+	import DivergingArea from '$lib/components/inverter/diverging-area.svelte';
 	import { untrack } from 'svelte';
 	import { Tween } from 'svelte/motion';
 	import { linear } from 'svelte/easing';
@@ -35,10 +36,6 @@
 		minute: '2-digit',
 		second: '2-digit'
 	});
-
-	// Diverging semantics: above 0 = consumption (red), below 0 = export (green).
-	const IMPORT_COLOR = 'oklch(0.63 0.21 25)';
-	const EXPORT_COLOR = 'oklch(0.7 0.16 152)';
 
 	// AreaChart's `marks` context isn't exposed in the public types; type just the
 	// fields we read so it isn't implicitly `any`.
@@ -103,26 +100,7 @@
 	<ChartClipPath>
 		<g transform={`translate(${glideX(context.xScale)}, 0)`}>
 			{#if diverging}
-				{@const zero = context.yScale(0) / (context.height + context.padding.bottom)}
-				<LinearGradient
-					vertical
-					stops={[
-						[0, IMPORT_COLOR],
-						[zero, IMPORT_COLOR],
-						[zero, EXPORT_COLOR],
-						[1, EXPORT_COLOR]
-					]}
-				>
-					{#snippet children({ gradient })}
-						<Area
-							y0={() => 0}
-							curve={curveCatmullRom}
-							line={{ stroke: gradient, 'stroke-width': 1.5 }}
-							fill={gradient}
-							fillOpacity={0.25}
-						/>
-					{/snippet}
-				</LinearGradient>
+				<DivergingArea {context} />
 			{:else}
 				<Area
 					curve={curveCatmullRom}

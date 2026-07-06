@@ -1,0 +1,84 @@
+import { listProfiles } from "@SunReye/inverter-core";
+import { Elysia, t } from "elysia";
+import { getActiveProfile } from "../inverter";
+import {
+  browseAvailable,
+  getProfileSources,
+  installProfile,
+  listInstalled,
+  setActiveProfile,
+  setProfileSources,
+  uninstallProfile,
+} from "../profiles";
+import { adminGuard } from "./admin-guard";
+
+// Profile management: registered profiles, git repo sources, and the
+// browse/install/activate flow for downloadable profiles.
+export const profileRoutes = new Elysia({ name: "profile-routes" })
+  .use(adminGuard)
+  // Registered profiles (built-in + DB-installed) with active/installed/version.
+  .get("/api/profiles", async () => {
+    const activeId = getActiveProfile().id;
+    const installed = new Map((await listInstalled()).map((p) => [p.id, p]));
+    return listProfiles().map((p) => ({
+      id: p.id,
+      name: p.name,
+      manufacturer: p.manufacturer,
+      active: p.id === activeId,
+      installed: installed.has(p.id),
+      version: installed.get(p.id)?.version,
+    }));
+  })
+  // Repo sources: public read (just URLs), admin write.
+  .get("/api/settings/profile-sources", () => getProfileSources())
+  .put(
+    "/api/settings/profile-sources",
+    async ({ body, status }) => {
+      try {
+        return await setProfileSources(body);
+      } catch (error) {
+        return status(400, { error: error instanceof Error ? error.message : "Invalid sources" });
+      }
+    },
+    { requireAdmin: true, body: t.Unknown() },
+  )
+  // Browse profiles across enabled repos (clones/pulls each — admin only).
+  .get("/api/profiles/available", () => browseAvailable(), { requireAdmin: true })
+  // Download + validate + persist a profile. Selectable after a restart.
+  .post(
+    "/api/profiles/install",
+    async ({ body, status }) => {
+      try {
+        return await installProfile(body.source, body.id);
+      } catch (error) {
+        return status(400, { error: error instanceof Error ? error.message : "Install failed" });
+      }
+    },
+    { requireAdmin: true, body: t.Object({ source: t.String(), id: t.String() }) },
+  )
+  // Uninstall a profile (cannot remove the currently active one).
+  .delete(
+    "/api/profiles/:id",
+    async ({ params, status }) => {
+      if (params.id === getActiveProfile().id) {
+        return status(409, { error: "Cannot uninstall the active profile" });
+      }
+      await uninstallProfile(params.id);
+      return { ok: true, id: params.id };
+    },
+    { requireAdmin: true, params: t.Object({ id: t.String() }) },
+  )
+  // Set the active profile. Applies on the next restart (it shapes boot-time
+  // routes/manifest/topics), so signal that to the UI.
+  .put(
+    "/api/settings/active-profile",
+    async ({ body, status }) => {
+      try {
+        const { id } = await setActiveProfile(body);
+        return { id, restartRequired: id !== getActiveProfile().id };
+      } catch (error) {
+        return status(400, { error: error instanceof Error ? error.message : "Invalid profile" });
+      }
+    },
+    { requireAdmin: true, body: t.Object({ id: t.String() }) },
+  );

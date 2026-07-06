@@ -5,6 +5,7 @@
 	import * as Chart from '$lib/components/ui/chart';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import LiveArea from '$lib/components/inverter/live-area.svelte';
+	import DivergingArea from '$lib/components/inverter/diverging-area.svelte';
 	import AnimatedNumber from '$lib/components/inverter/animated-number.svelte';
 	import { api } from '$lib/api';
 	import { inverter } from '$lib/inverter/store.svelte';
@@ -61,9 +62,6 @@
 	});
 
 	const chartData = $derived(rows.map((r) => ({ ...r, date: new Date(r.time) })));
-
-	const IMPORT_COLOR = 'oklch(0.63 0.21 25)';
-	const EXPORT_COLOR = 'oklch(0.7 0.16 152)';
 
 	const timeFmt = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
 	const dayFmt = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' });
@@ -129,26 +127,7 @@
 					>
 						{#snippet marks({ context }: MarksContext)}
 							{#if diverging}
-								{@const zero = context.yScale(0) / (context.height + context.padding.bottom)}
-								<LinearGradient
-									vertical
-									stops={[
-										[0, IMPORT_COLOR],
-										[zero, IMPORT_COLOR],
-										[zero, EXPORT_COLOR],
-										[1, EXPORT_COLOR]
-									]}
-								>
-									{#snippet children({ gradient })}
-										<Area
-											y0={() => 0}
-											curve={curveCatmullRom}
-											line={{ stroke: gradient, 'stroke-width': 1.5 }}
-											fill={gradient}
-											fillOpacity={0.25}
-										/>
-									{/snippet}
-								</LinearGradient>
+								<DivergingArea {context} />
 							{:else}
 								<LinearGradient vertical stops={[[0, accent], [1, 'transparent']]}>
 									{#snippet children({ gradient })}

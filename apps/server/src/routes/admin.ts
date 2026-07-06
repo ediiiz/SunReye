@@ -1,0 +1,49 @@
+import { Elysia, t } from "elysia";
+import { createApiKeyForUser, listApiKeys, revokeApiKey } from "../api-keys";
+import { log } from "../logging";
+import { RESET_DATA_CONFIRM, resetTimeseries } from "../maintenance";
+import { adminGuard } from "./admin-guard";
+
+const adminLog = log();
+
+// Admin-only maintenance surface: destructive data reset + API-key management.
+export const adminRoutes = new Elysia({ name: "admin-routes" })
+  .use(adminGuard)
+  // DANGER: wipe every recorded measurement (raw hypertable + rollups) so the
+  // instance starts fresh. Accounts, settings, tariff, and profiles survive —
+  // only time-series data is dropped, and there is no undo. The caller must echo
+  // back the exact confirmation phrase so an accidental/replayed request can't
+  // nuke the history.
+  .post(
+    "/api/admin/reset-data",
+    async ({ body, status }) => {
+      if (body.confirm !== RESET_DATA_CONFIRM) {
+        return status(400, { error: "Confirmation phrase does not match" });
+      }
+      const result = await resetTimeseries();
+      adminLog.warn("time-series data wiped via admin reset: {cleared}", {
+        cleared: result.cleared.join(", "),
+      });
+      return { ok: true, ...result };
+    },
+    { requireAdmin: true, body: t.Object({ confirm: t.String() }) },
+  )
+  // API-key administration. Admin-only surface for issuing/listing/revoking
+  // keys on behalf of any user (see ../api-keys). The generated key is returned
+  // exactly once, on create.
+  .get("/api/admin/api-keys", ({ query }) => listApiKeys(query.userId), {
+    requireAdmin: true,
+    query: t.Object({ userId: t.Optional(t.String()) }),
+  })
+  .post("/api/admin/api-keys", ({ body }) => createApiKeyForUser(body), {
+    requireAdmin: true,
+    body: t.Object({
+      userId: t.String(),
+      name: t.String({ minLength: 1 }),
+      expiresIn: t.Optional(t.Nullable(t.Number({ minimum: 1 }))),
+    }),
+  })
+  .post("/api/admin/api-keys/revoke", ({ body }) => revokeApiKey(body.id), {
+    requireAdmin: true,
+    body: t.Object({ id: t.String() }),
+  });

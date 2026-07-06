@@ -5,6 +5,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
+	import SettingsSection from './settings-section.svelte';
 	import PlusIcon from 'phosphor-svelte/lib/Plus';
 	import TrashIcon from 'phosphor-svelte/lib/Trash';
 
@@ -104,8 +105,7 @@
 		Loading tariff…
 	</div>
 {:else}
-	<section class="flex flex-col gap-4 border border-border p-4">
-		<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">General</h2>
+	<SettingsSection title="General">
 		<div class="grid gap-4 sm:grid-cols-3">
 			<div class="flex flex-col gap-1.5">
 				<Label for="currency">Currency (ISO)</Label>
@@ -120,15 +120,14 @@
 				<Input id="feedin" type="number" step="0.001" bind:value={tariff.export.feedInPerKwh} />
 			</div>
 		</div>
-	</section>
+	</SettingsSection>
 
-	<section class="flex flex-col gap-4 border border-border p-4">
-		<div class="flex items-center justify-between">
-			<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">Import price</h2>
+	<SettingsSection title="Import price">
+		{#snippet actions()}
 			<Button variant="ghost" size="sm" onclick={addBand}>
 				<PlusIcon class="size-4" /> Add band
 			</Button>
-		</div>
+		{/snippet}
 
 		<div class="flex flex-col gap-1.5">
 			<Label for="default-price">Default price / kWh</Label>
@@ -186,7 +185,7 @@
 				</div>
 			</div>
 		{/each}
-	</section>
+	</SettingsSection>
 
 	<div class="flex justify-end">
 		<Button onclick={save} disabled={saving}>{saving ? 'Saving…' : 'Save tariff'}</Button>

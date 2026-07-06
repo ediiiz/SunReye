@@ -2,40 +2,16 @@
 	import { onMount } from "svelte";
 	import { toast } from "svelte-sonner";
 	import { api } from "$lib/api";
-	import { Button } from "$lib/components/ui/button";
-	import { Input } from "$lib/components/ui/input";
-	import { Label } from "$lib/components/ui/label";
-	import { Switch } from "$lib/components/ui/switch";
-	import StatusBadge from "./status-badge.svelte";
-
-	type RegisteredProfile = {
-		id: string;
-		name: string;
-		manufacturer: string;
-		active: boolean;
-		installed: boolean;
-		version?: string;
-	};
-	type Source = { url: string; label?: string; enabled: boolean };
-	type AvailableProfile = {
-		id: string;
-		name: string;
-		manufacturer: string;
-		version: string;
-		path: string;
-		description?: string;
-		source: string;
-		installed: boolean;
-		installedVersion?: string;
-		updateAvailable: boolean;
-	};
+	import AvailableProfilesBrowser from "./available-profiles-browser.svelte";
+	import InstalledProfilesList from "./installed-profiles-list.svelte";
+	import ProfileSourcesEditor from "./profile-sources-editor.svelte";
+	import type { AvailableProfile, RegisteredProfile, Source } from "./profile-types";
 
 	let registered = $state<RegisteredProfile[]>([]);
 	let sources = $state<Source[]>([]);
 	let available = $state<AvailableProfile[] | null>(null);
 	let browseErrors = $state<{ source: string; error: string }[]>([]);
 
-	let newUrl = $state("");
 	let savingSources = $state(false);
 	let browsing = $state(false);
 	let restartRequired = $state(false);
@@ -54,15 +30,8 @@
 		await Promise.all([loadRegistered(), loadSources()]);
 	});
 
-	function addSource() {
-		const url = newUrl.trim();
-		if (!url) return;
-		if (sources.some((s) => s.url === url)) {
-			toast.error("That source is already added");
-			return;
-		}
+	function addSource(url: string) {
 		sources = [...sources, { url, enabled: true }];
-		newUrl = "";
 	}
 
 	function removeSource(url: string) {
@@ -140,142 +109,27 @@
 		</div>
 	{/if}
 
-	<!-- Active profile picker -->
-	<section class="flex flex-col gap-4 border border-border p-4">
-		<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-			Installed profiles
-		</h2>
-		<div class="flex flex-col divide-y divide-border">
-			{#each registered as p (p.id)}
-				<div class="flex items-center justify-between gap-4 py-2.5">
-					<div class="flex flex-col">
-						<span class="flex items-center gap-2 text-sm font-medium">
-							{p.name}
-							{#if p.active}
-								<StatusBadge ok label="Active" />
-							{/if}
-						</span>
-						<span class="text-xs text-muted-foreground">
-							{p.manufacturer}{p.version ? ` · v${p.version}` : ""}
-							{p.installed ? " · downloaded" : " · built-in"}
-						</span>
-					</div>
-					<div class="flex items-center gap-2">
-						{#if !p.active}
-							<Button
-								variant="outline"
-								size="sm"
-								disabled={busyId === p.id}
-								onclick={() => setActive(p)}
-							>
-								Set active
-							</Button>
-						{/if}
-						{#if p.installed && !p.active}
-							<Button
-								variant="ghost"
-								size="sm"
-								disabled={busyId === p.id}
-								onclick={() => uninstall(p)}
-							>
-								Remove
-							</Button>
-						{/if}
-					</div>
-				</div>
-			{/each}
-		</div>
-	</section>
+	<InstalledProfilesList
+		profiles={registered}
+		{busyId}
+		onSetActive={setActive}
+		onUninstall={uninstall}
+	/>
 
-	<!-- Repo sources -->
-	<section class="flex flex-col gap-4 border border-border p-4">
-		<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-			Profile repositories
-		</h2>
-		<div class="flex flex-col divide-y divide-border">
-			{#each sources as s (s.url)}
-				<div class="flex items-center justify-between gap-4 py-2.5">
-					<div class="flex min-w-0 flex-col">
-						<span class="truncate text-sm">{s.label ?? s.url}</span>
-						{#if s.label}
-							<span class="truncate text-xs text-muted-foreground">{s.url}</span>
-						{/if}
-					</div>
-					<div class="flex shrink-0 items-center gap-3">
-						<Switch bind:checked={s.enabled} aria-label="Enabled" />
-						<Button variant="ghost" size="sm" onclick={() => removeSource(s.url)}>Remove</Button>
-					</div>
-				</div>
-			{/each}
-			{#if sources.length === 0}
-				<p class="py-2.5 text-sm text-muted-foreground">No repositories configured.</p>
-			{/if}
-		</div>
-		<div class="flex items-end gap-2">
-			<div class="flex flex-1 flex-col gap-1.5">
-				<Label for="new-source">Add repository (https git URL)</Label>
-				<Input
-					id="new-source"
-					bind:value={newUrl}
-					placeholder="https://github.com/org/inverter-profiles.git"
-				/>
-			</div>
-			<Button variant="outline" onclick={addSource}>Add</Button>
-		</div>
-		<div>
-			<Button disabled={savingSources} onclick={saveSources}>
-				{savingSources ? "Saving…" : "Save repositories"}
-			</Button>
-		</div>
-	</section>
+	<ProfileSourcesEditor
+		{sources}
+		saving={savingSources}
+		onAdd={addSource}
+		onRemove={removeSource}
+		onSave={saveSources}
+	/>
 
-	<!-- Browse & download -->
-	<section class="flex flex-col gap-4 border border-border p-4">
-		<div class="flex items-center justify-between">
-			<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-				Available profiles
-			</h2>
-			<Button variant="outline" size="sm" disabled={browsing} onclick={browse}>
-				{browsing ? "Browsing…" : "Browse repositories"}
-			</Button>
-		</div>
-
-		{#each browseErrors as e (e.source)}
-			<p class="text-xs text-destructive">Could not read {e.source}: {e.error}</p>
-		{/each}
-
-		{#if available === null}
-			<p class="text-sm text-muted-foreground">
-				Browse your repositories to see profiles you can download.
-			</p>
-		{:else if available.length === 0}
-			<p class="text-sm text-muted-foreground">No profiles found in the enabled repositories.</p>
-		{:else}
-			<div class="flex flex-col divide-y divide-border">
-				{#each available as p (p.source + p.id)}
-					<div class="flex items-center justify-between gap-4 py-2.5">
-						<div class="flex min-w-0 flex-col">
-							<span class="text-sm font-medium">{p.name}</span>
-							<span class="truncate text-xs text-muted-foreground">
-								{p.manufacturer} · v{p.version}{p.description ? ` · ${p.description}` : ""}
-							</span>
-						</div>
-						<div class="shrink-0">
-							{#if p.updateAvailable}
-								<Button size="sm" disabled={busyId === p.id} onclick={() => install(p)}>
-									Update to v{p.version}
-								</Button>
-							{:else if p.installed}
-								<StatusBadge ok label={`Installed v${p.installedVersion}`} />
-							{:else}
-								<Button size="sm" disabled={busyId === p.id} onclick={() => install(p)}>
-									Download
-								</Button>
-							{/if}
-						</div>
-					</div>
-				{/each}
-			</div>
-		{/if}
-	</section>
+	<AvailableProfilesBrowser
+		{available}
+		errors={browseErrors}
+		{browsing}
+		{busyId}
+		onBrowse={browse}
+		onInstall={install}
+	/>
 </div>

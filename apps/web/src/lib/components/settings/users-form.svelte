@@ -5,8 +5,9 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
-	import * as Select from '$lib/components/ui/select';
 	import * as Table from '$lib/components/ui/table';
+	import OptionSelect from './option-select.svelte';
+	import SettingsSection from './settings-section.svelte';
 	import PlusIcon from 'phosphor-svelte/lib/Plus';
 	import TrashIcon from 'phosphor-svelte/lib/Trash';
 
@@ -17,8 +18,6 @@
 		{ value: 'user', label: 'User' },
 		{ value: 'admin', label: 'Admin' }
 	];
-	const roleLabel = (r?: string | null) => ROLES.find((x) => x.value === r)?.label ?? 'User';
-
 	let users = $state<Row[]>([]);
 	let loading = $state(true);
 
@@ -74,8 +73,7 @@
 	}
 </script>
 
-<section class="flex flex-col gap-4 border border-border p-4">
-	<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">Add user</h2>
+<SettingsSection title="Add user">
 	<form class="grid items-end gap-3 sm:grid-cols-[1fr_1fr_1fr_auto_auto]" onsubmit={create}>
 		<div class="flex flex-col gap-1.5">
 			<Label for="u-name">Name</Label>
@@ -98,24 +96,22 @@
 		</div>
 		<div class="flex flex-col gap-1.5">
 			<Label>Role</Label>
-			<Select.Root type="single" value={role} onValueChange={(v) => (role = v as Role)}>
-				<Select.Trigger class="w-28">{roleLabel(role)}</Select.Trigger>
-				<Select.Content>
-					{#each ROLES as r (r.value)}
-						<Select.Item value={r.value}>{r.label}</Select.Item>
-					{/each}
-				</Select.Content>
-			</Select.Root>
+			<OptionSelect
+				value={role}
+				items={ROLES}
+				onchange={(v) => (role = v as Role)}
+				placeholder="User"
+				triggerClass="w-28"
+			/>
 		</div>
 		<Button type="submit" disabled={creating}>
 			<PlusIcon class="size-4" />
 			{creating ? 'Adding…' : 'Add'}
 		</Button>
 	</form>
-</section>
+</SettingsSection>
 
-<section class="flex flex-col gap-4 border border-border p-4">
-	<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">Users</h2>
+<SettingsSection title="Users">
 	{#if loading}
 		<p class="text-sm text-muted-foreground">Loading users…</p>
 	{:else}
@@ -134,18 +130,13 @@
 						<Table.Cell class="font-medium">{u.name}</Table.Cell>
 						<Table.Cell class="text-muted-foreground">{u.email}</Table.Cell>
 						<Table.Cell>
-							<Select.Root
-								type="single"
+							<OptionSelect
 								value={u.role ?? 'user'}
-								onValueChange={(v) => setRole(u.id, v as Role)}
-							>
-								<Select.Trigger class="w-28">{roleLabel(u.role)}</Select.Trigger>
-								<Select.Content>
-									{#each ROLES as r (r.value)}
-										<Select.Item value={r.value}>{r.label}</Select.Item>
-									{/each}
-								</Select.Content>
-							</Select.Root>
+								items={ROLES}
+								onchange={(v) => setRole(u.id, v as Role)}
+								placeholder="User"
+								triggerClass="w-28"
+							/>
 						</Table.Cell>
 						<Table.Cell>
 							<Button
@@ -162,4 +153,4 @@
 			</Table.Body>
 		</Table.Root>
 	{/if}
-</section>
+</SettingsSection>

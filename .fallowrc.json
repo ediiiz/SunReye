@@ -12,8 +12,13 @@
     "svelte-sonner",
     "mode-watcher",
     "@internationalized/date",
-    "phosphor-svelte"
+    "phosphor-svelte",
+    "sharp",
+    "clsx",
+    "tailwind-merge"
   ],
+  "dynamicallyLoaded": ["apps/docs/src/styles/theme.css"],
+  "usedClassMembers": [{ "implements": "InverterSource", "members": ["read"] }],
   "rules": {
     "unused-dependencies": "warn",
     "unused-dev-dependencies": "warn"

@@ -1,4 +1,5 @@
-// fallow-ignore-file unused-file — type-only assertions, imported by nothing on purpose (checked by tsc)
+// fallow-ignore-file unused-file
+// Type-only assertions, imported by nothing on purpose (checked by tsc).
 /**
  * Compile-time assertions for the `metric()` builder's role-shape enforcement.
  * This file has no runtime tests — it exists so `tsc --noEmit` fails if the

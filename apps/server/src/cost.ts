@@ -384,7 +384,10 @@ export async function computeCostSeries(
   const byKey = new Map<string, CostSeriesPoint>(
     periods.map((b) => {
       const standingCharge = standing.get(b) ?? 0;
-      return [b, { bucket: b, importCost: 0, exportEarnings: 0, standingCharge, net: standingCharge }];
+      return [
+        b,
+        { bucket: b, importCost: 0, exportEarnings: 0, standingCharge, net: standingCharge },
+      ];
     }),
   );
 

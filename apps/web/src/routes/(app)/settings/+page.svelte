@@ -7,6 +7,7 @@
 	import ProfilesForm from '$lib/components/settings/profiles-form.svelte';
 	import UsersForm from '$lib/components/settings/users-form.svelte';
 	import ApiKeysForm from '$lib/components/settings/api-keys-form.svelte';
+	import DangerZoneForm from '$lib/components/settings/danger-zone-form.svelte';
 	import { useAppSession } from '$lib/session';
 
 	const session = useAppSession();
@@ -22,11 +23,14 @@
 			? [
 					{ id: 'profiles', label: 'Profiles' },
 					{ id: 'users', label: 'Users' },
-					{ id: 'apikeys', label: 'API Keys' }
+					{ id: 'apikeys', label: 'API Keys' },
+					{ id: 'danger', label: 'Danger Zone' }
 				]
 			: [])
 	] as const);
-	let tab = $state<'inverter' | 'mqtt' | 'tariff' | 'profiles' | 'users' | 'apikeys'>('inverter');
+	let tab = $state<
+		'inverter' | 'mqtt' | 'tariff' | 'profiles' | 'users' | 'apikeys' | 'danger'
+	>('inverter');
 
 	type Status = {
 		inverter: {
@@ -88,6 +92,10 @@
 		{:else if tab === 'apikeys' && isAdmin}
 			<div class="flex flex-col gap-6">
 				<ApiKeysForm />
+			</div>
+		{:else if tab === 'danger' && isAdmin}
+			<div class="flex flex-col gap-6">
+				<DangerZoneForm />
 			</div>
 		{/if}
 	</div>

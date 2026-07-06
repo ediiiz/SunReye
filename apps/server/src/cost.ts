@@ -50,6 +50,24 @@ function resolveEnergyKeys(profile: InverterProfile): Map<string, EnergyField> {
 }
 
 /**
+ * Shared scaffolding for queries against the rollup views: the profile's
+ * energy-key map plus the SQL fragments both readers interpolate. `view` is a
+ * fixed internal literal (not user input), so it is safe to interpolate as a
+ * raw identifier; the metric keys stay parameterized.
+ */
+function rollupQueryParts(profile: InverterProfile, view: RollupView) {
+  const fieldByKey = resolveEnergyKeys(profile);
+  return {
+    fieldByKey,
+    viewSql: sql.raw(view),
+    keyList: sql.join(
+      [...fieldByKey.keys()].map((k) => sql`${k}`),
+      sql`, `,
+    ),
+  };
+}
+
+/**
  * Read per-bucket energy for the energy roles this profile exposes, over
  * [from, to). Energy in a bucket is the monotonic counter's rise since the
  * previous bucket — `max_value − prior max_value`, clamped ≥0. `max_value` is
@@ -71,16 +89,8 @@ async function fetchBucketEnergy(
   to: Date,
   view: RollupView,
 ): Promise<HourEnergy[]> {
-  const fieldByKey = resolveEnergyKeys(profile);
+  const { fieldByKey, viewSql, keyList } = rollupQueryParts(profile, view);
   if (fieldByKey.size === 0) return [];
-
-  // `view` is a fixed internal literal (not user input), so it is safe to
-  // interpolate as a raw identifier; everything else stays parameterized.
-  const viewSql = sql.raw(view);
-  const keyList = sql.join(
-    [...fieldByKey.keys()].map((k) => sql`${k}`),
-    sql`, `,
-  );
 
   // Cumulative counter level entering the window, per metric (last bucket before
   // `from`). Seeds the delta chain so the first in-range bucket is priced as a
@@ -265,19 +275,13 @@ export async function fetchCounterDeltaMatrix(
   const { from, to, bucket } = opts;
   const inverterId = opts.inverterId ?? profile.id;
   const view = opts.view ?? "hourly_rollups";
-  const fieldByKey = resolveEnergyKeys(profile);
+  const { fieldByKey, viewSql, keyList } = rollupQueryParts(profile, view);
   const periods = periodKeysInRange(from, to, bucket);
   if (fieldByKey.size === 0) return { rows: [], fieldByKey, periods };
 
-  // `view` is a fixed internal literal (not user input) → safe raw identifier.
-  const viewSql = sql.raw(view);
   const { unit, mask } = PERIOD_FORMAT[bucket];
   // Server-local IANA zone so SQL wall-clock matches the per-hour path's getHours().
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const keyList = sql.join(
-    [...fieldByKey.keys()].map((k) => sql`${k}`),
-    sql`, `,
-  );
 
   const rows = await db.execute<{
     period: string;

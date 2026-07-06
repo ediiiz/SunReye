@@ -56,11 +56,27 @@ export class ModbusInverter implements InverterSource {
   private readonly blocks: ReadBlock[];
   private client: ModbusRTU | null = null;
   private connecting: Promise<ModbusRTU> | null = null;
+  /** Serializes transactions on the shared client — modbus-serial allows only
+   * one in-flight request per connection, so a write must never overlap a
+   * concurrent poll read (the interleaved responses would mismatch and time
+   * out). */
+  private lock: Promise<unknown> = Promise.resolve();
 
   constructor(profile: InverterProfile, conn: InverterConnection) {
     this.profile = profile;
     this.conn = conn;
     this.blocks = planReads(profile.metrics);
+  }
+
+  /** Run a Modbus transaction with exclusive access to the client. */
+  private locked<T>(op: () => Promise<T>): Promise<T> {
+    const result = this.lock.then(op, op);
+    // Keep the chain alive on failure without leaking the rejection.
+    this.lock = result.then(
+      () => {},
+      () => {},
+    );
+    return result;
   }
 
   private async getClient(): Promise<ModbusRTU> {
@@ -105,11 +121,14 @@ export class ModbusInverter implements InverterSource {
 
   async read(): Promise<InverterSample> {
     const client = await this.getClient();
-    const regs = new Map<number, number>();
-    for (const block of this.blocks) {
-      const { data } = await client.readHoldingRegisters(block.start, block.count);
-      data.forEach((word, i) => regs.set(block.start + i, word));
-    }
+    const regs = await this.locked(async () => {
+      const acc = new Map<number, number>();
+      for (const block of this.blocks) {
+        const { data } = await client.readHoldingRegisters(block.start, block.count);
+        data.forEach((word, i) => acc.set(block.start + i, word));
+      }
+      return acc;
+    });
 
     const metrics: MetricValues = {};
     for (const def of this.profile.metrics) {
@@ -130,7 +149,10 @@ export class ModbusInverter implements InverterSource {
       throw new Error(`metric is not a single-word writable register: ${key}`);
     }
     const client = await this.getClient();
-    await client.writeRegister(def.addresses[0]!, encodeWord(def, value));
+    // Use FC16 (Write Multiple Registers) even for this single word: Deye/Sunsynk
+    // inverters silently ignore FC6 (Write Single Register) on their settings
+    // registers — the request gets no reply and the transaction times out.
+    await this.locked(() => client.writeRegisters(def.addresses[0]!, [encodeWord(def, value)]));
   }
 
   async close(): Promise<void> {

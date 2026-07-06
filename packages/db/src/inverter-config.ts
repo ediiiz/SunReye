@@ -16,7 +16,7 @@ export const INVERTER_KEY = "inverter";
 export const inverterConfigSchema = z
   .object({
     /** Modbus host. */
-    host: z.string().default("192.168.1.100"),
+    host: z.string(),
     port: z.number().int().default(502),
     /**
      * Framing over the socket: standard Modbus `tcp`, or `rtu-over-tcp` (RTU

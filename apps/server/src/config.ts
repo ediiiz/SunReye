@@ -27,6 +27,7 @@ const envInverterConfig = (): InverterConfig =>
     host: env.INVERTER_HOST,
     port: env.INVERTER_PORT,
     unitId: env.INVERTER_UNIT_ID,
+    transport: env.INVERTER_TRANSPORT,
     pollIntervalMs: env.POLL_INTERVAL_MS,
   });
 

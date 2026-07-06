@@ -16,12 +16,20 @@ export const env = createEnv({
     // "debug" in development and "info" otherwise (resolved in the logging setup).
     LOG_LEVEL: z.enum(["trace", "debug", "info", "warning", "error", "fatal"]).optional(),
 
-    // Active inverter profile id (from an installed `@SunReye/inverter-*` package)
-    INVERTER_PROFILE: z.string().min(1).default("deye-sunsynk"),
+    // Inverter connection settings are optional at boot: they only *seed* the
+    // DB-backed, UI-editable config on first run (see apps/server/src/config.ts
+    // and inverter.ts). Leave them unset to configure everything from the UI.
+    //
+    // Active inverter profile id (from an installed `@SunReye/inverter-*` package).
+    // Unset falls back to the first registered (built-in) profile at boot.
+    INVERTER_PROFILE: z.string().min(1).optional(),
     // Inverter (Modbus TCP) connection
-    INVERTER_HOST: z.string().min(1).default("192.168.1.100"),
-    INVERTER_PORT: z.coerce.number().int().positive().default(502),
-    INVERTER_UNIT_ID: z.coerce.number().int().min(0).default(0),
+    INVERTER_HOST: z.ipv4().or(z.ipv6()).optional(),
+    INVERTER_PORT: z.coerce.number().int().positive().optional(),
+    INVERTER_UNIT_ID: z.coerce.number().int().min(0).optional(),
+    // Framing over the socket: standard Modbus `tcp`, or `rtu-over-tcp`
+    // (RTU frames tunneled over TCP — common with RS485→Ethernet gateways).
+    INVERTER_TRANSPORT: z.enum(["tcp", "rtu-over-tcp"]).optional(),
     // Polling cadence for the 1Hz God-loop (milliseconds)
     POLL_INTERVAL_MS: z.coerce.number().int().positive().default(1000),
     // When true, generate synthetic metrics instead of talking to hardware

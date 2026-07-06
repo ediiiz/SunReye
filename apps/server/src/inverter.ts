@@ -9,6 +9,7 @@ import {
   entityConstraint,
   getProfile,
   hydrateProfile,
+  listProfiles,
   metricByKey,
   parseProfileData,
   registerProfile,
@@ -53,12 +54,13 @@ async function loadInstalledProfiles(): Promise<void> {
   if (loaded > 0) logger.info("loaded {count} installed profile(s)", { count: loaded });
 }
 
-/** Active profile id from settings, seeded from env on first boot. */
-async function activeProfileId(): Promise<string> {
-  const setting = await readSetting(ACTIVE_PROFILE_KEY, activeProfileSchema, {
-    id: env.INVERTER_PROFILE,
-  });
-  return setting.id;
+/**
+ * Active profile id: the saved setting wins, else the `INVERTER_PROFILE` env
+ * seed, else `null` when neither is set (a fresh install with no config yet).
+ */
+async function activeProfileId(): Promise<string | null> {
+  const stored = await readSetting(ACTIVE_PROFILE_KEY, activeProfileSchema, { id: "" });
+  return stored.id || env.INVERTER_PROFILE || null;
 }
 
 let activeProfile: InverterProfile | null = null;
@@ -71,7 +73,21 @@ let activeProfile: InverterProfile | null = null;
  */
 export async function initProfiles(): Promise<InverterProfile> {
   await loadInstalledProfiles();
-  activeProfile = getProfile(await activeProfileId());
+  const id = await activeProfileId();
+  if (id) {
+    activeProfile = getProfile(id);
+  } else {
+    // No profile configured (via env or UI) yet — boot with the first
+    // registered one (always at least the built-in) so the server comes up and
+    // the profile can be chosen from the UI.
+    const [fallback] = listProfiles();
+    if (!fallback) throw new Error("no inverter profile installed");
+    logger.warn(
+      'no active inverter profile configured — defaulting to "{id}" (set INVERTER_PROFILE or choose one in the UI)',
+      { id: fallback.id },
+    );
+    activeProfile = fallback;
+  }
   return activeProfile;
 }
 

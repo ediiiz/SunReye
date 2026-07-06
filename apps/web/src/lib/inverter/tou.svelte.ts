@@ -63,6 +63,21 @@ export class TouController {
     return this.metrics.find((m) => m.key === "timeofuse.selling");
   }
 
+  /**
+   * Which per-slot target the inverter actually honors, from the read-only
+   * battery-mode register: lead-acid batteries are driven by target voltage,
+   * lithium (BMS) by target SOC. Editing both never makes sense, so views show
+   * only the active one. Profiles without the register — or before its first
+   * sample lands — fall back to `"both"` (the prior always-show behavior).
+   */
+  get targetMode(): "voltage" | "soc" | "both" {
+    const m = inverter.byRole("battery.mode");
+    if (!m) return "both";
+    const v = inverter.value(m.key);
+    if (v === undefined) return "both";
+    return v === 1 ? "soc" : "voltage";
+  }
+
   /** The six schedule slots, grouped by index and ordered 1→6. */
   get slots(): TouSlot[] {
     const byIndex = new Map<number, TouSlot>();

@@ -390,6 +390,17 @@ const battery: MetricDataDef[] = [
     scale: 0.1,
     role: "battery.temperature",
   }),
+  // Battery Charging Type Control Mode (read-only for now). Decides whether the
+  // time-of-use schedule is honored via target voltage (lead-acid, four-stage)
+  // or target SOC (lithium BMS), so the TOU editor shows only the matching field.
+  metric("battery/mode", {
+    label: "Battery Mode",
+    group: "battery",
+    addr: 98,
+    role: "battery.mode",
+    kind: "status",
+    enumLabels: { 0: "Lead-acid (voltage)", 1: "Lithium (SOC)" },
+  }),
 ];
 
 /** Table 3 — generator input ports. */

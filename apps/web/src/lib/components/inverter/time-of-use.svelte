@@ -8,6 +8,8 @@
 	// One controller owns the optimistic write state so both views stay in sync.
 	const controller = new TouController();
 	const selling = $derived(controller.selling);
+	// Lead-acid batteries are driven by target voltage, lithium by target SOC.
+	const target = $derived(controller.targetMode === 'voltage' ? 'voltage' : 'SOC');
 </script>
 
 <section class="flex flex-col gap-4 border border-border p-4">
@@ -24,7 +26,7 @@
 			</div>
 			<p class="text-xs text-muted-foreground">
 				Six periods repeat every day; each runs until the next one starts. Each drives the battery
-				toward a target SOC — with grid charge on it charges up to the target, otherwise it
+				toward a target {target} — with grid charge on it charges up to the target, otherwise it
 				discharges down to it.
 			</p>
 		</div>

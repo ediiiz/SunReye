@@ -14,6 +14,8 @@
 	const HOUR_TICKS = [0, 6, 12, 18, 24];
 
 	const slots = $derived(controller.slots);
+	// Battery mode decides the per-slot target: voltage (lead-acid) or SOC (lithium).
+	const mode = $derived(controller.targetMode);
 
 	// Live "now" marker so the user can see which period is active right now.
 	let nowMin = $state(currentMinutes());
@@ -113,29 +115,43 @@
 
 	// Precompute everything the timeline blocks and picker chips render, so the
 	// markup below stays branch-free (keeps the template's complexity in budget).
-	const renderPieces = $derived(
-		layout.pieces.map((p) => {
-			const soc = fieldVal(p.slot, 'soc') ?? 0;
+	const renderPieces = $derived.by(() => {
+		// Voltage targets have no natural 0–100 range, so normalize the bar height
+		// across the slots' min–max span; SOC maps directly to a percentage.
+		const useVoltage = mode === 'voltage';
+		const targetOf = (p: (typeof layout.pieces)[number]) =>
+			(useVoltage ? fieldVal(p.slot, 'voltage') : fieldVal(p.slot, 'soc')) ?? 0;
+		const vals = layout.pieces.map(targetOf);
+		const min = Math.min(...vals);
+		const span = Math.max(...vals) - min;
+		const unit = useVoltage ? 'V' : '%';
+		return layout.pieces.map((p) => {
+			const target = targetOf(p);
 			const grid = fieldVal(p.slot, 'enabled') === 1;
 			const range = layout.realAxis
 				? ` · ${minutesToLabel(p.startMin)}–${minutesToLabel(p.startMin + p.lenMin)}`
 				: '';
 			return {
 				...p,
-				soc,
+				target,
+				unit,
 				grid,
-				fillHeight: Math.max(0, Math.min(100, soc)),
+				fillHeight: useVoltage
+					? span > 0
+						? ((target - min) / span) * 100
+						: 50
+					: Math.max(0, Math.min(100, target)),
 				blockClass: grid
 					? 'border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20'
 					: 'border-sky-500/40 bg-sky-500/10 hover:bg-sky-500/20',
 				fillClass: grid ? 'bg-amber-500/25' : 'bg-sky-500/25',
 				label: layout.realAxis ? minutesToLabel(p.startMin) : `Slot ${p.slot.index}`,
 				showLabel: p.widthPct > 10,
-				showSoc: p.widthPct > 7,
-				title: `Slot ${p.slot.index}${range} · SOC ${soc}%${grid ? ' · grid charge' : ''}`
+				showTarget: p.widthPct > 7,
+				title: `Slot ${p.slot.index}${range} · ${useVoltage ? 'Target' : 'SOC'} ${target}${unit}${grid ? ' · grid charge' : ''}`
 			};
-		})
-	);
+		});
+	});
 
 	const chips = $derived(
 		slots.map((s) => ({
@@ -188,8 +204,8 @@
 							<span class="truncate text-[10px] font-medium text-muted-foreground">{piece.label}</span>
 						{/if}
 					</div>
-					{#if piece.showSoc}
-						<span class="relative text-xs font-semibold tabular-nums">{piece.soc}%</span>
+					{#if piece.showTarget}
+						<span class="relative text-xs font-semibold tabular-nums">{piece.target}{piece.unit}</span>
 					{/if}
 				</button>
 			{/each}
@@ -232,7 +248,7 @@
 				<span class="h-2.5 w-0.5 bg-foreground/70"></span>
 				Now
 			</span>
-			<span>Bar height = target SOC</span>
+			<span>Bar height = target {mode === 'voltage' ? 'voltage' : 'SOC'}</span>
 		</div>
 	</div>
 

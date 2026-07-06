@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { api } from '$lib/api';
-	import RangeSwitcher from '$lib/components/inverter/range-switcher.svelte';
+	import CostRangePicker from '$lib/components/inverter/cost-range-picker.svelte';
+	import CostBarChart from '$lib/components/inverter/cost-bar-chart.svelte';
 	import MonthlyEnergy from '$lib/components/inverter/monthly-energy.svelte';
+	import { resolveCostPreset, type CostRange } from '$lib/cost/ranges';
 
 	type Cost = {
 		currency: string;
@@ -24,26 +26,40 @@
 		byBand: { name: string; importKwh: number; cost: number }[];
 	};
 
-	const RANGES = [
-		{ id: 'today', label: 'Today' },
-		{ id: 'month', label: 'This month' },
-		{ id: 'year', label: 'This year' }
-	] as const;
-	let rangeId = $state<(typeof RANGES)[number]['id']>('month');
+	// One bar of the contextual chart. Mirrors the server's CostSeriesPoint.
+	type SeriesPoint = { bucket: string; importCost: number; exportEarnings: number; net: number };
 
+	let range = $state<CostRange>(resolveCostPreset('month'));
 	let cost = $state<Cost | null>(null);
 	let loading = $state(true);
+	let series = $state<SeriesPoint[]>([]);
 
-	// Refetch whenever the range changes. `cancelled` guards against an earlier
-	// request resolving after a later one and clobbering fresher data.
+	// Headline tiles: priced over the picked [from, to). `cancelled` guards against
+	// an earlier request resolving after a later one and clobbering fresher data.
 	$effect(() => {
-		const range = rangeId;
+		const from = range.from.toISOString();
+		const to = range.to.toISOString();
 		let cancelled = false;
 		loading = true;
-		api.api.cost.get({ query: { range } }).then(({ data }) => {
+		api.api.cost.get({ query: { from, to } }).then(({ data }) => {
 			if (cancelled) return;
 			cost = (data as Cost) ?? null;
 			loading = false;
+		});
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	// Contextual bar chart: its own "one level up" window/granularity (range.chart),
+	// e.g. a single month charts the trailing 12 months.
+	$effect(() => {
+		const spec = range.chart;
+		const query = { from: spec.from.toISOString(), to: spec.to.toISOString(), bucket: spec.bucket };
+		let cancelled = false;
+		api.api.cost.series.get({ query }).then(({ data }) => {
+			if (cancelled) return;
+			series = (data ?? []) as SeriesPoint[];
 		});
 		return () => {
 			cancelled = true;
@@ -81,7 +97,7 @@
 			<h1 class="text-lg font-semibold">Costs</h1>
 			<p class="text-sm text-muted-foreground">Energy priced with your tariff.</p>
 		</div>
-		<RangeSwitcher options={RANGES} bind:value={rangeId} />
+		<CostRangePicker bind:range />
 	</div>
 
 	{#if loading && !cost}
@@ -114,6 +130,15 @@
 			{@render tile('Self-sufficiency', pct(c.selfSufficiency), 'of load from solar/battery')}
 			{@render tile('Self-consumption', pct(c.selfConsumption), 'of production used on-site')}
 		</div>
+
+		<!-- Contextual net-cost bars. Window/granularity follow the picked range
+		     "one level up" (range.chart), independent of the tiles above. -->
+		<section class="flex flex-col gap-3 border border-border p-4">
+			<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+				Net cost — {range.chart.caption}
+			</h2>
+			<CostBarChart points={series} bucket={range.chart.bucket} currency={c.currency} />
+		</section>
 
 		<!-- 12-month energy split. Own fixed window, independent of the range switcher above. -->
 		<section class="border border-border p-4">

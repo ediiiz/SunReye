@@ -18,7 +18,7 @@ import {
   setInverterConfig,
   setMqttConfig,
 } from "./config";
-import { computeCost, resolveRange } from "./cost";
+import { computeCost, computeCostSeries, resolveRange } from "./cost";
 import { monthlyEnergy } from "./energy";
 import { entitiesApi } from "./entities";
 import { queryRollup } from "./history";
@@ -293,6 +293,27 @@ const app = new Elysia()
         range: t.Optional(t.Union([t.Literal("today"), t.Literal("month"), t.Literal("year")])),
         from: t.Optional(t.String()),
         to: t.Optional(t.String()),
+        inverterId: t.Optional(t.String()),
+      }),
+    },
+  )
+  // Net-cost time-series over an explicit [from, to) window, one point per
+  // `bucket` (hour / day / month). Feeds the Costs page's range-driven bar chart;
+  // band-accurate and cheap (delta + rollup done in SQL, bounded matrix returned).
+  .get(
+    "/api/cost/series",
+    ({ query }) =>
+      computeCostSeries(profile, {
+        from: new Date(query.from),
+        to: new Date(query.to),
+        bucket: query.bucket,
+        inverterId: query.inverterId,
+      }),
+    {
+      query: t.Object({
+        from: t.String(),
+        to: t.String(),
+        bucket: t.Union([t.Literal("hour"), t.Literal("day"), t.Literal("month")]),
         inverterId: t.Optional(t.String()),
       }),
     },

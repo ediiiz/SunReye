@@ -23,7 +23,8 @@ charts stay fast.
 
 The picker offers presets — **Live**, 1 hour, 6 hours, 24 hours, last week, last 14 days,
 last month, last 6 months, last 12 months — plus a custom calendar range. The rollup bucket
-(minute / hour / day) is chosen automatically from the span.
+is chosen automatically from the span: per-minute resolution up to and including the last-week
+(7-day) window, and hourly for anything longer.
 
 ## Entity cards
 

@@ -35,11 +35,15 @@ export const PRESETS: readonly Preset[] = [
   { id: "12mo", label: "Last 12 months", hours: 24 * 365 },
 ];
 
-/** Pick a rollup granularity that keeps a range readable but not oversized. */
+/**
+ * Pick a rollup granularity. Minute resolution up to and including the
+ * last-week (7-day) window; hourly beyond that. A 7-day minute series is
+ * ~10k points, so callers must request a limit that covers it (see
+ * entity-history-card).
+ */
 function bucketForSpan(ms: number): RollupBucket {
-  if (ms <= 3 * HOUR) return "minute";
-  if (ms <= 14 * DAY) return "hour";
-  return "day";
+  if (ms <= 7 * DAY) return "minute";
+  return "hour";
 }
 
 /** Trailing window the live sparkline buffer covers (matches the store). */

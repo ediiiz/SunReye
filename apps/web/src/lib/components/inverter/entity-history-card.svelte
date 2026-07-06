@@ -47,7 +47,10 @@
 			from: range.from.toISOString(),
 			to: range.to.toISOString(),
 			bucket: range.bucket,
-			limit: 5000
+			// A 7-day window renders as minute rollups (~10k points); cap high
+			// enough that the ascending, limited query isn't truncated to the
+			// oldest slice of the range.
+			limit: 12000
 		};
 		let cancelled = false;
 		loading = true;

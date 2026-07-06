@@ -8,6 +8,7 @@ import type { ManifestMetric } from "./types";
  */
 const UNIT_DECIMALS: Record<string, number> = {
   W: 0,
+  "%": 0,
 };
 
 /** Fallback when a unit has no explicit entry: ≥1 decimal (so `2` reads `2.0`), capped at 2. */

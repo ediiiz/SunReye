@@ -6,6 +6,7 @@
 	import House from 'phosphor-svelte/lib/House';
 	import Engine from 'phosphor-svelte/lib/Engine';
 	import CpuIcon from 'phosphor-svelte/lib/Cpu';
+	import GaugeIcon from 'phosphor-svelte/lib/Gauge';
 	import ArrowDown from 'phosphor-svelte/lib/ArrowDown';
 	import ArrowUp from 'phosphor-svelte/lib/ArrowUp';
 	import type { CanonicalRole } from '$lib/inverter/types';
@@ -67,6 +68,11 @@
 	}
 
 	const caps = $derived(inverter.capabilities);
+
+	// Computed metrics shown on the hub itself: self-consumption (conversion
+	// losses + standby draw) and the share of drawn power that reaches the load.
+	const selfUse = $derived(power('inverter.power'));
+	const efficiency = $derived(power('inverter.efficiency'));
 
 	// Battery state-of-charge (0..100) drives the circular gauge on the battery node.
 	const batterySoc = $derived.by(() => {
@@ -266,11 +272,36 @@
 		<!-- Inverter hub. Only the circle is centred on the anchor; the caption floats
 		     below it so the connecting rails meet the circle, not the text. -->
 		<div class="absolute -translate-x-1/2 -translate-y-1/2" style={`left:${HUB.x * 100}%;top:${HUB.y * 100}%`}>
+			{#if (efficiency !== undefined && efficiency > 0) || selfUse !== undefined}
+				<div
+					class="absolute bottom-full left-1/2 mb-2 flex w-32 -translate-x-1/2 justify-center gap-4 leading-tight"
+				>
+					{#if efficiency !== undefined && efficiency > 0}
+						<div class="flex flex-col items-center whitespace-nowrap">
+							<span class="flex items-center gap-0.5 text-sm font-semibold tabular-nums text-primary">
+								<GaugeIcon class="size-3" weight="duotone" />
+								<AnimatedNumber value={efficiency} unit="%" />%
+							</span>
+							<span class="text-[0.6rem] uppercase tracking-wide text-muted-foreground">Eff.</span>
+						</div>
+					{/if}
+					{#if selfUse !== undefined}
+						<div class="flex flex-col items-center whitespace-nowrap">
+							<span class="text-sm font-medium tabular-nums">
+								<AnimatedNumber value={Math.abs(selfUse)} unit="W" /><span
+									class="ml-0.5 text-[0.6rem] font-normal text-muted-foreground">W</span
+								>
+							</span>
+							<span class="text-[0.6rem] uppercase tracking-wide text-muted-foreground">Self-use</span>
+						</div>
+					{/if}
+				</div>
+			{/if}
 			<div class="relative flex size-14 items-center justify-center rounded-full border-2 border-primary bg-background">
 				<span class="hub-ring absolute -inset-1 rounded-full border border-primary/50"></span>
 				<CpuIcon class="size-7 text-primary" weight="duotone" />
 			</div>
-			<div class="absolute left-1/2 top-full mt-2 flex w-24 -translate-x-1/2 flex-col items-center leading-tight">
+			<div class="absolute left-1/2 top-full mt-2 flex w-32 -translate-x-1/2 flex-col items-center leading-tight">
 				<span class="text-xs font-semibold">Inverter</span>
 				<span class="text-[0.62rem] text-muted-foreground">
 					{inverter.status === 'live' ? 'Online' : 'Connecting…'}

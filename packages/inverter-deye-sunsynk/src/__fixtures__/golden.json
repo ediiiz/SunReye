@@ -445,6 +445,30 @@
         "role": "pv.total.power"
       },
       {
+        "key": "inverter.power",
+        "topic": "inverter/power",
+        "label": "Inverter Self-Consumption",
+        "unit": "W",
+        "group": "inverter",
+        "kind": "measurement",
+        "writable": false,
+        "role": "inverter.power"
+      },
+      {
+        "key": "inverter.efficiency",
+        "topic": "inverter/efficiency",
+        "label": "Inverter Efficiency",
+        "unit": "%",
+        "group": "inverter",
+        "kind": "measurement",
+        "writable": false,
+        "role": "inverter.efficiency",
+        "range": {
+          "min": 0,
+          "max": 100
+        }
+      },
+      {
         "key": "battery.daily_charge",
         "topic": "battery/daily_charge",
         "label": "Daily Battery Charge",
@@ -494,8 +518,8 @@
         "writable": false,
         "role": "battery.power",
         "flow": {
-          "positive": "Charging",
-          "negative": "Discharging"
+          "positive": "Discharging",
+          "negative": "Charging"
         }
       },
       {
@@ -532,8 +556,8 @@
         "writable": false,
         "role": "battery.current",
         "flow": {
-          "positive": "Charging",
-          "negative": "Discharging"
+          "positive": "Discharging",
+          "negative": "Charging"
         }
       },
       {
@@ -1697,6 +1721,37 @@
       "compute": "fn"
     },
     {
+      "key": "inverter.power",
+      "topic": "inverter/power",
+      "label": "Inverter Self-Consumption",
+      "unit": "W",
+      "group": "inverter",
+      "type": "U_WORD",
+      "addresses": [],
+      "scale": 1,
+      "access": "r",
+      "role": "inverter.power",
+      "compute": "fn"
+    },
+    {
+      "key": "inverter.efficiency",
+      "topic": "inverter/efficiency",
+      "label": "Inverter Efficiency",
+      "unit": "%",
+      "group": "inverter",
+      "type": "U_WORD",
+      "addresses": [],
+      "scale": 1,
+      "access": "r",
+      "role": "inverter.efficiency",
+      "kind": "measurement",
+      "range": {
+        "min": 0,
+        "max": 100
+      },
+      "compute": "fn"
+    },
+    {
       "key": "battery.daily_charge",
       "topic": "battery/daily_charge",
       "label": "Daily Battery Charge",
@@ -1768,8 +1823,8 @@
       "access": "r",
       "role": "battery.power",
       "flow": {
-        "positive": "Charging",
-        "negative": "Discharging"
+        "positive": "Discharging",
+        "negative": "Charging"
       }
     },
     {
@@ -1818,8 +1873,8 @@
       "access": "r",
       "role": "battery.current",
       "flow": {
-        "positive": "Charging",
-        "negative": "Discharging"
+        "positive": "Discharging",
+        "negative": "Charging"
       }
     },
     {

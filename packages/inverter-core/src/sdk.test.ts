@@ -65,12 +65,14 @@ function goodProfile(): ProfileData {
 describe("role catalog", () => {
   test("CanonicalRole vocabulary is complete and lists the expected roles", () => {
     // Guards against accidental deletion when editing the catalog.
-    expect(ROLE_NAMES.length).toBe(44);
+    expect(ROLE_NAMES.length).toBe(46);
     for (const r of [
       "pv.string.power",
       "battery.power",
       "grid.power",
       "setting.work_mode",
+      "inverter.power",
+      "inverter.efficiency",
     ] as const) {
       expect(ROLE_CATALOG[r]).toBeDefined();
     }
@@ -196,5 +198,19 @@ describe("compileComputeExpr", () => {
     expect(compileComputeExpr({ diff: ["a", "b"] })({ a: 10, b: 4 })).toBe(6);
     expect(compileComputeExpr({ scale: ["a", 0.1] })({ a: 50 })).toBe(5);
     expect(compileComputeExpr({ sum: ["a", "missing"] })({ a: 1 })).toBe(1);
+  });
+
+  test("combine sums adds minus subs, missing keys read as 0", () => {
+    const f = compileComputeExpr({ combine: { add: ["a", "b"], sub: ["c"] } });
+    expect(f({ a: 100, b: -40, c: 20 })).toBe(40);
+    expect(compileComputeExpr({ combine: { add: ["a"] } })({ a: 7 })).toBe(7);
+    expect(f({ a: 10 })).toBe(10);
+  });
+
+  test("ratio scales the num/den quotient, guarding a zero denominator", () => {
+    const eff = compileComputeExpr({ ratio: { num: ["load"], den: ["a", "b"], scale: 100 } });
+    expect(eff({ load: 900, a: 1000, b: 0 })).toBe(90);
+    expect(eff({ load: 900, a: 0, b: 0 })).toBe(0);
+    expect(compileComputeExpr({ ratio: { num: ["a"], den: ["b"] } })({ a: 3, b: 4 })).toBe(0.75);
   });
 });

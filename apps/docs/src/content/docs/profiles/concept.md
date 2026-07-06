@@ -71,8 +71,8 @@ Because a profile is data:
   [validation](/profiles/authoring/#validation).
 
 Derived values (totals, deltas) that used to need code are expressed as a small, closed set
-of declarative **compute expressions** (`sum` / `diff` / `scale`) — never arbitrary
-functions.
+of declarative **compute expressions** (`sum` / `diff` / `scale` / `combine` / `ratio`) —
+never arbitrary functions.
 
 ## Next
 

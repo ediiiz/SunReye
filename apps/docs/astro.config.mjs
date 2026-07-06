@@ -31,6 +31,7 @@ function baseAbsoluteLinks() {
     hooks: {
       "astro:build:done": async ({ dir, logger }) => {
         let count = 0;
+        // fallow-ignore-next-line complexity
         const walk = async (d) => {
           for (const entry of await readdir(d, { withFileTypes: true })) {
             const p = join(d, entry.name);

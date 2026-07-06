@@ -9,6 +9,7 @@
 	import { Label } from '$lib/components/ui/label';
 	import * as Select from '$lib/components/ui/select';
 	import * as Table from '$lib/components/ui/table';
+	import SettingsSection from './settings-section.svelte';
 	import CopyIcon from 'phosphor-svelte/lib/Copy';
 	import PlusIcon from 'phosphor-svelte/lib/Plus';
 	import TrashIcon from 'phosphor-svelte/lib/Trash';
@@ -116,8 +117,7 @@
 	}
 </script>
 
-<section class="flex flex-col gap-4 border border-border p-4">
-	<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">Issue key</h2>
+<SettingsSection title="Issue key">
 	<form class="grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto_auto]" onsubmit={create}>
 		<div class="flex flex-col gap-1.5">
 			<Label>User</Label>
@@ -152,11 +152,10 @@
 			{creating ? 'Creating…' : 'Create'}
 		</Button>
 	</form>
-</section>
+</SettingsSection>
 
-<section class="flex flex-col gap-4 border border-border p-4">
-	<div class="flex items-center justify-between gap-4">
-		<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">API keys</h2>
+<SettingsSection title="API keys">
+	{#snippet actions()}
 		<Select.Root
 			type="single"
 			value={filterUserId}
@@ -175,7 +174,7 @@
 				{/each}
 			</Select.Content>
 		</Select.Root>
-	</div>
+	{/snippet}
 	{#if loading}
 		<p class="text-sm text-muted-foreground">Loading API keys…</p>
 	{:else if keys.length === 0}
@@ -217,7 +216,7 @@
 			</Table.Body>
 		</Table.Root>
 	{/if}
-</section>
+</SettingsSection>
 
 <Dialog.Root open={createdKey !== null} onOpenChange={(o) => !o && (createdKey = null)}>
 	<Dialog.Content>

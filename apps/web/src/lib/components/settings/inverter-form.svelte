@@ -10,6 +10,7 @@
 	import * as Select from "$lib/components/ui/select";
 	import * as Table from "$lib/components/ui/table";
 	import FormActions from "./form-actions.svelte";
+	import SettingsSection from "./settings-section.svelte";
 	import StatusBadge from "./status-badge.svelte";
 
 	type Transport = "tcp" | "rtu-over-tcp";
@@ -110,13 +111,8 @@
 		Loading…
 	</div>
 {:else}
-	<section class="flex flex-col gap-4 border border-border p-4">
-		<div class="flex items-center justify-between">
-			<h2
-				class="text-sm font-medium uppercase tracking-wide text-muted-foreground"
-			>
-				Connection
-			</h2>
+	<SettingsSection title="Connection">
+		{#snippet actions()}
 			{#if status}
 				<StatusBadge
 					ok={status.connected}
@@ -127,7 +123,7 @@
 							: "Disconnected"}
 				/>
 			{/if}
-		</div>
+		{/snippet}
 
 		{#if status?.simulate}
 			<p
@@ -201,7 +197,7 @@
 				</Button>
 			{/if}
 		</FormActions>
-	</section>
+	</SettingsSection>
 
 	<Dialog.Root bind:open={snapshotOpen}>
 		<Dialog.Content class="sm:max-w-2xl">

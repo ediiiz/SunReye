@@ -6,6 +6,7 @@
 	import { Label } from '$lib/components/ui/label';
 	import { Switch } from '$lib/components/ui/switch';
 	import FormActions from './form-actions.svelte';
+	import SettingsSection from './settings-section.svelte';
 	import StatusBadge from './status-badge.svelte';
 
 	// Form shape: the password is write-only. `hasPassword` reflects whether one
@@ -92,16 +93,15 @@
 		Loading…
 	</div>
 {:else}
-	<section class="flex flex-col gap-4 border border-border p-4">
-		<div class="flex items-center justify-between">
-			<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">MQTT broker</h2>
+	<SettingsSection title="MQTT broker">
+		{#snippet actions()}
 			{#if status}
 				<StatusBadge
 					ok={status.connected}
 					label={!status.enabled ? 'Disabled' : status.connected ? 'Connected' : 'Connecting…'}
 				/>
 			{/if}
-		</div>
+		{/snippet}
 
 		<div class="flex items-center justify-between gap-4">
 			<div class="flex flex-col">
@@ -151,5 +151,5 @@
 		{/if}
 
 		<FormActions {result} {testing} {saving} ontest={test} onsave={save} />
-	</section>
+	</SettingsSection>
 {/if}

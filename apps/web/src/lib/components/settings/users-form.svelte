@@ -7,6 +7,7 @@
 	import { Label } from '$lib/components/ui/label';
 	import * as Select from '$lib/components/ui/select';
 	import * as Table from '$lib/components/ui/table';
+	import SettingsSection from './settings-section.svelte';
 	import PlusIcon from 'phosphor-svelte/lib/Plus';
 	import TrashIcon from 'phosphor-svelte/lib/Trash';
 
@@ -74,8 +75,7 @@
 	}
 </script>
 
-<section class="flex flex-col gap-4 border border-border p-4">
-	<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">Add user</h2>
+<SettingsSection title="Add user">
 	<form class="grid items-end gap-3 sm:grid-cols-[1fr_1fr_1fr_auto_auto]" onsubmit={create}>
 		<div class="flex flex-col gap-1.5">
 			<Label for="u-name">Name</Label>
@@ -112,10 +112,9 @@
 			{creating ? 'Adding…' : 'Add'}
 		</Button>
 	</form>
-</section>
+</SettingsSection>
 
-<section class="flex flex-col gap-4 border border-border p-4">
-	<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">Users</h2>
+<SettingsSection title="Users">
 	{#if loading}
 		<p class="text-sm text-muted-foreground">Loading users…</p>
 	{:else}
@@ -162,4 +161,4 @@
 			</Table.Body>
 		</Table.Root>
 	{/if}
-</section>
+</SettingsSection>

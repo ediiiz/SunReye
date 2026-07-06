@@ -6,6 +6,7 @@
 	import { Input } from "$lib/components/ui/input";
 	import { Label } from "$lib/components/ui/label";
 	import { Switch } from "$lib/components/ui/switch";
+	import SettingsSection from "./settings-section.svelte";
 	import StatusBadge from "./status-badge.svelte";
 
 	type RegisteredProfile = {
@@ -141,10 +142,7 @@
 	{/if}
 
 	<!-- Active profile picker -->
-	<section class="flex flex-col gap-4 border border-border p-4">
-		<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-			Installed profiles
-		</h2>
+	<SettingsSection title="Installed profiles">
 		<div class="flex flex-col divide-y divide-border">
 			{#each registered as p (p.id)}
 				<div class="flex items-center justify-between gap-4 py-2.5">
@@ -185,13 +183,10 @@
 				</div>
 			{/each}
 		</div>
-	</section>
+	</SettingsSection>
 
 	<!-- Repo sources -->
-	<section class="flex flex-col gap-4 border border-border p-4">
-		<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-			Profile repositories
-		</h2>
+	<SettingsSection title="Profile repositories">
 		<div class="flex flex-col divide-y divide-border">
 			{#each sources as s (s.url)}
 				<div class="flex items-center justify-between gap-4 py-2.5">
@@ -227,18 +222,15 @@
 				{savingSources ? "Saving…" : "Save repositories"}
 			</Button>
 		</div>
-	</section>
+	</SettingsSection>
 
 	<!-- Browse & download -->
-	<section class="flex flex-col gap-4 border border-border p-4">
-		<div class="flex items-center justify-between">
-			<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-				Available profiles
-			</h2>
+	<SettingsSection title="Available profiles">
+		{#snippet actions()}
 			<Button variant="outline" size="sm" disabled={browsing} onclick={browse}>
 				{browsing ? "Browsing…" : "Browse repositories"}
 			</Button>
-		</div>
+		{/snippet}
 
 		{#each browseErrors as e (e.source)}
 			<p class="text-xs text-destructive">Could not read {e.source}: {e.error}</p>
@@ -277,5 +269,5 @@
 				{/each}
 			</div>
 		{/if}
-	</section>
+	</SettingsSection>
 </div>

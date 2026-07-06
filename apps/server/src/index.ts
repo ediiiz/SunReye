@@ -43,6 +43,20 @@ import { getTariff, setTariff } from "./settings";
 await setupLogging();
 const serverLog = log();
 
+/**
+ * Coax a human-readable message out of whatever a failed Modbus write threw.
+ * modbus-serial rejects with Error subclasses and sometimes plain objects, so
+ * `String(err)` alone can collapse to "[object Object]" and hide the cause. Pull
+ * `message` directly (it reads even when non-enumerable) and append the modbus
+ * exception code when present.
+ */
+function describeWriteError(err: unknown): string {
+  if (!err || typeof err !== "object") return String(err);
+  const e = err as { message?: unknown; modbusCode?: unknown };
+  const detail = e.modbusCode === undefined ? "" : ` (modbusCode=${e.modbusCode})`;
+  return `${String(e.message)}${detail}`;
+}
+
 // Two-phase profile boot: built-in packages self-register on import, then DB
 // profiles are loaded and the active one resolved. Everything the transports
 // need (manifest, catalog, write validation) is derived once here and injected,
@@ -257,7 +271,20 @@ const app = new Elysia()
     async ({ body, status }) => {
       const error = ctx.validateWrite(body.key, body.value);
       if (error) return status(400, { error });
-      await runtime.write(body.key, body.value);
+      try {
+        await runtime.write(body.key, body.value);
+      } catch (err) {
+        // The inverter didn't accept/answer the write (e.g. Modbus timeout or
+        // exception response). Log the real cause and surface it as a gateway
+        // error rather than a bare 500.
+        const message = describeWriteError(err);
+        serverLog.error("setting write failed key={key} value={value}: {message}", {
+          key: body.key,
+          value: body.value,
+          message,
+        });
+        return status(502, { error: message });
+      }
       return { ok: true, key: body.key, value: body.value };
     },
     { requireAdmin: true, body: t.Object({ key: t.String(), value: t.Number() }) },

@@ -8,6 +8,7 @@
  * the core engine.
  */
 
+import type { ControlExpr } from "./profile-data";
 import type { CanonicalRole } from "./roles";
 
 /**
@@ -91,6 +92,13 @@ export interface MetricDef {
    * Modbus. Applied both on real reads and in simulation.
    */
   compute?: (values: MetricValues) => number;
+  /**
+   * Composite control — writing to this metric runs the declarative
+   * {@link ControlExpr} instead of a raw register write. Addressless (no wire
+   * read/write of its own); the runtime interprets it and dispatches to the
+   * referenced target metric(s).
+   */
+  controlExpr?: ControlExpr;
 
   // --- Semantic / render metadata (the UI contract) ---
   /** Canonical concept, if this metric maps to one. */

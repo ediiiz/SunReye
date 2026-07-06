@@ -49,6 +49,33 @@ export type ComputeExpr =
   | { combine: { add: string[]; sub?: string[] } }
   | { ratio: { num: string[]; den: string[]; scale?: number } };
 
+/**
+ * Declarative composite control — the write-side mirror of {@link ComputeExpr}.
+ * A metric carrying one has no register of its own; writing to it runs a trusted
+ * interpreter (server-side, since it has I/O side effects) that issues writes to
+ * real target register(s). Like `computeExpr`, it is a small closed set, never
+ * arbitrary code, so a downloaded profile can never execute. Every `target` must
+ * resolve to a writable, non-composite metric key.
+ *
+ * - `snapshotToggle` a boolean control: on `1` snapshot `target`'s live value
+ *   and write `lockedValue`; on `0` restore the snapshot. Stateful (the snapshot
+ *   is persisted by the runtime).
+ * - `preset`         write a fixed list of `target`→`value`. Stateless.
+ */
+export type ControlExpr<K extends string = string> =
+  | { snapshotToggle: { target: K; lockedValue: number } }
+  | { preset: { writes: { target: K; value: number }[] } };
+
+/**
+ * Canonical key derived from an MQTT topic — the type-level mirror of the
+ * runtime `topic.replaceAll("/", ".")`. Lets {@link control} constrain a
+ * composite control's `target` to the profile's real keys, so authoring gets
+ * IDE autocomplete and typos are compile errors instead of parse-time failures.
+ */
+export type TopicToKey<T extends string> = T extends `${infer H}/${infer R}`
+  ? `${H}.${TopicToKey<R>}`
+  : T;
+
 /** {@link MetricDef} without runtime-only fields: `compute` → `computeExpr`. */
 export interface MetricDataDef {
   key: string;
@@ -62,6 +89,8 @@ export interface MetricDataDef {
   access: MetricAccess;
   /** Declarative derived value; mutually exclusive with reading from the wire. */
   computeExpr?: ComputeExpr;
+  /** Declarative composite control; mutually exclusive with a register + `computeExpr`. */
+  controlExpr?: ControlExpr;
   role?: CanonicalRole;
   index?: number;
   kind?: MetricKind;

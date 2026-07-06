@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { ROLE_CATALOG, ROLE_NAMES, type RoleSpec } from "./roles";
-import type { ComputeExpr, ProfileData } from "./profile-data";
+import type { ComputeExpr, ControlExpr, ProfileData } from "./profile-data";
 
 /**
  * Strict runtime validator for {@link ProfileData}. This is the single gate for
@@ -36,6 +36,17 @@ const computeExprSchema = z.union([
   }),
 ]);
 
+const controlExprSchema = z.union([
+  z.strictObject({
+    snapshotToggle: z.strictObject({ target: z.string().min(1), lockedValue: z.number() }),
+  }),
+  z.strictObject({
+    preset: z.strictObject({
+      writes: z.array(z.strictObject({ target: z.string().min(1), value: z.number() })).min(1),
+    }),
+  }),
+]);
+
 const metricDataSchema = z.strictObject({
   key: z.string().min(1),
   topic: z.string().min(1),
@@ -47,6 +58,7 @@ const metricDataSchema = z.strictObject({
   scale: z.number(),
   access: z.enum(["r", "rw"]),
   computeExpr: computeExprSchema.optional(),
+  controlExpr: controlExprSchema.optional(),
   role: z.enum(ROLE_NAMES).optional(),
   index: z.number().int().positive().optional(),
   kind: z.enum(["measurement", "cumulative", "status", "setting"]).optional(),
@@ -62,6 +74,12 @@ function computeRefs(expr: ComputeExpr): string[] {
   if ("scale" in expr) return [expr.scale[0]];
   if ("combine" in expr) return [...expr.combine.add, ...(expr.combine.sub ?? [])];
   return [...expr.ratio.num, ...expr.ratio.den];
+}
+
+/** Every target metric key a control writes to. */
+function controlRefs(expr: ControlExpr): string[] {
+  if ("snapshotToggle" in expr) return [expr.snapshotToggle.target];
+  return expr.preset.writes.map((w) => w.target);
 }
 
 export const profileDataSchema = z
@@ -88,10 +106,10 @@ export const profileDataSchema = z
       seenKey.add(m.key);
     });
 
-    // --- duplicate wire addresses (computed metrics carry none) ---
+    // --- duplicate wire addresses (computed + control metrics carry none) ---
     const owner = new Map<number, string>();
     metrics.forEach((m, i) => {
-      if (m.computeExpr) return;
+      if (m.computeExpr || m.controlExpr) return;
       for (const a of m.addresses) {
         const prev = owner.get(a);
         if (prev !== undefined) at(i, "addresses", `address ${a} already used by "${prev}"`);
@@ -101,6 +119,11 @@ export const profileDataSchema = z
 
     // --- register width matches type ---
     metrics.forEach((m, i) => {
+      if (m.controlExpr) {
+        if (m.computeExpr) at(i, "controlExpr", "metric cannot be both a control and computed");
+        if (m.addresses.length !== 0) at(i, "addresses", "control metric must have no addresses");
+        return;
+      }
       if (m.computeExpr) {
         if (m.addresses.length !== 0) at(i, "addresses", "computed metric must have no addresses");
         return;
@@ -142,6 +165,19 @@ export const profileDataSchema = z
         } else if (computed.has(ref) && pos >= i) {
           at(i, "computeExpr", `references computed metric "${ref}" not defined earlier`);
         }
+      }
+    });
+
+    // --- controlExpr targets must resolve to a writable, non-control metric ---
+    const byKey = new Map(metrics.map((m) => [m.key, m] as const));
+    metrics.forEach((m, i) => {
+      if (!m.controlExpr) return;
+      for (const ref of controlRefs(m.controlExpr)) {
+        const target = byKey.get(ref);
+        if (!target) at(i, "controlExpr", `references unknown metric key "${ref}"`);
+        else if (target.access !== "rw") at(i, "controlExpr", `target "${ref}" is not writable`);
+        else if (target.controlExpr)
+          at(i, "controlExpr", `target "${ref}" is itself a control (no chaining)`);
       }
     });
   });

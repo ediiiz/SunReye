@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { defineProfile, metric } from "./define";
+import { control, defineProfile, metric } from "./define";
 import { compileComputeExpr, hydrateProfile, type ProfileData } from "./profile-data";
 import { ROLE_CATALOG, ROLE_NAMES } from "./roles";
 import { profileDataSchema, safeParseProfileData } from "./schema";
@@ -175,7 +175,114 @@ describe("profileDataSchema", () => {
   });
 });
 
+/** A profile with a writable target + a composite control that toggles it. */
+function controlProfile(): ProfileData {
+  return defineProfile({
+    id: "test-ctrl",
+    name: "Test Control",
+    manufacturer: "ACME",
+    version: "1.0.0",
+    metrics: [
+      metric("settings/max_discharge", {
+        label: "Max discharge",
+        unit: "A",
+        group: "settings",
+        addr: 109,
+        access: "rw",
+      }),
+      control<"settings.max_discharge">("settings/lock", {
+        label: "Lock",
+        group: "settings",
+        enumLabels: { 0: "Unlocked", 1: "Locked" },
+        controlExpr: { snapshotToggle: { target: "settings.max_discharge", lockedValue: 0 } },
+      }),
+    ],
+  });
+}
+
+describe("control() builder", () => {
+  test("is an addressless, writable metric carrying the controlExpr", () => {
+    const c = control<"a.b">("settings/lock", {
+      label: "Lock",
+      group: "settings",
+      controlExpr: { snapshotToggle: { target: "a.b", lockedValue: 0 } },
+    });
+    expect(c.key).toBe("settings.lock");
+    expect(c.addresses).toEqual([]);
+    expect(c.access).toBe("rw");
+    expect(c.controlExpr).toEqual({ snapshotToggle: { target: "a.b", lockedValue: 0 } });
+  });
+
+  test("target is constrained to the profile key type", () => {
+    control<"a.b">("settings/lock", {
+      label: "Lock",
+      group: "settings",
+      // @ts-expect-error "nope" is not a member of the key union
+      controlExpr: { snapshotToggle: { target: "nope", lockedValue: 0 } },
+    });
+  });
+});
+
+describe("profileDataSchema — controlExpr", () => {
+  test("accepts a valid snapshotToggle control", () => {
+    expect(safeParseProfileData(controlProfile()).success).toBe(true);
+  });
+
+  test("accepts a valid preset control", () => {
+    const p = controlProfile();
+    p.metrics[1]!.controlExpr = {
+      preset: { writes: [{ target: "settings.max_discharge", value: 5 }] },
+    };
+    expect(safeParseProfileData(p).success).toBe(true);
+  });
+
+  test("rejects a control targeting an unknown key", () => {
+    const p = controlProfile();
+    p.metrics[1]!.controlExpr = { snapshotToggle: { target: "does.not.exist", lockedValue: 0 } };
+    expect(safeParseProfileData(p).success).toBe(false);
+  });
+
+  test("rejects a control targeting a read-only metric", () => {
+    const p = controlProfile();
+    p.metrics[0]!.access = "r"; // target no longer writable
+    expect(safeParseProfileData(p).success).toBe(false);
+  });
+
+  test("rejects a control targeting another control (no chaining)", () => {
+    const p = controlProfile();
+    p.metrics.push(
+      control<"settings.lock">("settings/lock2", {
+        label: "Lock2",
+        group: "settings",
+        controlExpr: { snapshotToggle: { target: "settings.lock", lockedValue: 0 } },
+      }),
+    );
+    expect(safeParseProfileData(p).success).toBe(false);
+  });
+
+  test("rejects a control metric that carries addresses", () => {
+    const p = controlProfile();
+    p.metrics[1]!.addresses = [200];
+    expect(safeParseProfileData(p).success).toBe(false);
+  });
+
+  test("rejects a metric that is both a control and computed", () => {
+    const p = controlProfile();
+    p.metrics[1]!.computeExpr = { sum: ["settings.max_discharge"] };
+    expect(safeParseProfileData(p).success).toBe(false);
+  });
+});
+
 describe("hydrateProfile", () => {
+  test("carries controlExpr through to the runtime metric def", () => {
+    const profile = hydrateProfile(controlProfile());
+    const lock = profile.metrics.find((m) => m.key === "settings.lock");
+    expect(lock?.controlExpr).toEqual({
+      snapshotToggle: { target: "settings.max_discharge", lockedValue: 0 },
+    });
+    expect(lock?.addresses).toEqual([]);
+  });
+
   test("compiles computeExpr into a working compute closure", () => {
     const profile = hydrateProfile(goodProfile());
     const total = profile.metrics.find((m) => m.key === "dc.total_power");

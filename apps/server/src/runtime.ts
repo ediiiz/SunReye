@@ -16,6 +16,8 @@ import { env } from "@SunReye/env/server";
 import type { InverterSample, InverterSource } from "@SunReye/inverter-core";
 import mqtt from "mqtt";
 import { getInverterConfig, getMqttConfig } from "./config";
+import { executeControl, injectControlValues } from "./control-expr";
+import { dbControlStore } from "./control-store";
 import { buildSource, type ProfileContext } from "./inverter";
 import { log } from "./logging";
 import { type MqttBridge, startMqttBridge } from "./mqtt";
@@ -57,6 +59,9 @@ async function pollOnce(): Promise<void> {
     inverterStatus.connected = true;
     inverterStatus.lastError = null;
     inverterStatus.lastSampleAt = sample.time;
+    // Composite controls own no register; fold their current (e.g. lock) state
+    // into the sample so every downstream surface sees it.
+    await injectControlValues(sample, context(), dbControlStore);
     liveState.set(sample);
     const rows = Object.entries(sample.metrics).map(([metric, value]) => ({
       time: new Date(sample.time),
@@ -84,6 +89,20 @@ function restartLoop(intervalMs: number): void {
 /** Apply an inbound command write to the live source. */
 export async function write(key: string, value: number): Promise<void> {
   if (!source) throw new Error("inverter not started");
+  // A composite control (controlExpr) runs its declarative action instead of a
+  // raw register write; the interpreter dispatches to the real target(s).
+  const def = context().defByKey.get(key);
+  if (def?.controlExpr) {
+    // The module-level `let source` loses its non-null narrowing inside the
+    // closure, so capture it here.
+    const src = source;
+    return executeControl(def, value, {
+      ctx: context(),
+      store: dbControlStore,
+      write: (target, v) => src.write(target, v),
+      readLive: (target) => liveState.latest?.metrics[target],
+    });
+  }
   await source.write(key, value);
 }
 

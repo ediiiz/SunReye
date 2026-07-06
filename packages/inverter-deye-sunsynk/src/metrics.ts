@@ -1,4 +1,4 @@
-import { metric } from "@SunReye/inverter-core";
+import { control, metric } from "@SunReye/inverter-core";
 import type { MetricDataDef } from "@SunReye/inverter-core";
 
 /**
@@ -16,7 +16,7 @@ const CHARGE_FLOW = { positive: "Discharging", negative: "Charging" } as const;
 const GRID_FLOW = { positive: "Importing", negative: "Exporting" } as const;
 
 /** Table 1 — inverter / PV / grid. */
-const inverter: MetricDataDef[] = [
+const inverter = [
   metric("inverter/status", {
     label: "Running status",
     group: "inverter",
@@ -347,7 +347,7 @@ const inverter: MetricDataDef[] = [
 ];
 
 /** Table 2 — battery. */
-const battery: MetricDataDef[] = [
+const battery = [
   metric("battery/daily_charge", {
     label: "Daily Battery Charge",
     unit: "kWh",
@@ -439,7 +439,7 @@ const battery: MetricDataDef[] = [
 ];
 
 /** Table 3 — generator input ports. */
-const generator: MetricDataDef[] = [
+const generator = [
   metric("ac/generator/a/voltage", {
     label: "Gen port A Voltage",
     unit: "V",
@@ -509,7 +509,7 @@ const generator: MetricDataDef[] = [
 ];
 
 /** Table 4 — writable settings. */
-const settings: MetricDataDef[] = [
+const settings = [
   metric("settings/battery/maximum_charge_current", {
     label: "Max battery charge current",
     unit: "A",
@@ -569,7 +569,7 @@ const settings: MetricDataDef[] = [
 ];
 
 /** Table 5 — system. Packed date/time across three registers (opaque). */
-const system: MetricDataDef[] = [
+const system = [
   metric("settings/system_time", {
     label: "System time",
     group: "system",
@@ -633,7 +633,7 @@ const timeOfUse: MetricDataDef[] = [
 ];
 
 /** Table 7 — backup / UPS load output. */
-const load: MetricDataDef[] = [
+const load = [
   metric("ac/ups/total_power", {
     label: "Total Load Power",
     unit: "W",
@@ -711,7 +711,44 @@ const load: MetricDataDef[] = [
   }),
 ];
 
-/** The full Deye / Sunsynk register + semantic map. */
+/**
+ * Union of every statically-keyed register key, e.g.
+ * `"settings.battery.maximum_discharge_current"`. Each `metric()` returns a
+ * literal `key` type (see `TopicToKey`), so this is the exact set of real keys —
+ * what gives composite-control `target`s IDE autocomplete and compile checks.
+ * The time-of-use table is excluded on purpose: it builds keys from dynamic
+ * template literals (`timeofuse/time/${i}`), so its key type is `string` and
+ * would collapse the union.
+ */
+type DeyeKey =
+  | (typeof inverter)[number]["key"]
+  | (typeof battery)[number]["key"]
+  | (typeof generator)[number]["key"]
+  | (typeof settings)[number]["key"]
+  | (typeof system)[number]["key"]
+  | (typeof load)[number]["key"];
+
+/**
+ * Table 8 — composite controls (no registers of their own). Battery discharge
+ * lock: on, snapshot the max-discharge-current limit and force it to 0; off,
+ * restore the captured limit. `control<DeyeKey>` autocompletes + compile-checks
+ * the `target`.
+ */
+const controls: MetricDataDef[] = [
+  control<DeyeKey>("settings/battery/lock", {
+    label: "Battery discharge lock",
+    group: "settings",
+    enumLabels: { 0: "Unlocked", 1: "Locked" },
+    controlExpr: {
+      snapshotToggle: {
+        target: "settings.battery.maximum_discharge_current",
+        lockedValue: 0,
+      },
+    },
+  }),
+];
+
+/** The full Deye / Sunsynk register + semantic map (controls appended last). */
 export const metrics: MetricDataDef[] = [
   ...inverter,
   ...battery,
@@ -720,4 +757,5 @@ export const metrics: MetricDataDef[] = [
   ...system,
   ...timeOfUse,
   ...load,
+  ...controls,
 ];

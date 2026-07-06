@@ -132,7 +132,8 @@ export class ModbusInverter implements InverterSource {
 
     const metrics: MetricValues = {};
     for (const def of this.profile.metrics) {
-      if (def.compute) continue;
+      // Derived (compute) and composite (controlExpr) metrics own no register.
+      if (def.compute || def.controlExpr) continue;
       const value = decode(def, regs);
       if (value !== undefined) metrics[def.key] = value;
     }

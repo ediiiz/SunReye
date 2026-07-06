@@ -1,2 +1,5 @@
 [install]
 linker = "isolated"
+
+[test]
+coveragePathIgnorePatterns = ["**/dist/**", "**/node_modules/**", "**/*.test.ts"]

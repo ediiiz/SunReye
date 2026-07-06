@@ -1,5 +1,14 @@
 # SunReye
 
+[![CI](https://github.com/ediiiz/SunReye/actions/workflows/ci.yml/badge.svg)](https://github.com/ediiiz/SunReye/actions/workflows/ci.yml)
+[![Docs](https://github.com/ediiiz/SunReye/actions/workflows/docs.yml/badge.svg)](https://github.com/ediiiz/SunReye/actions/workflows/docs.yml)
+[![coverage](https://raw.githubusercontent.com/ediiiz/SunReye/badges/coverage.svg)](https://github.com/ediiiz/SunReye/actions/workflows/ci.yml)
+[![code style: oxlint + oxfmt](https://img.shields.io/badge/code%20style-oxlint%20%C2%B7%20oxfmt-6E40C9)](https://oxc.rs/)
+[![code health: fallow](https://img.shields.io/badge/code%20health-fallow-3FB950)](https://fallow.tools/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Bun](https://img.shields.io/badge/Bun-1.3-000000?logo=bun&logoColor=white)](https://bun.sh/)
+[![SvelteKit](https://img.shields.io/badge/SvelteKit-5-FF3E00?logo=svelte&logoColor=white)](https://kit.svelte.dev/)
+
 **A self-hosted monitoring, control, and integration platform for solar / hybrid inverters.**
 
 SunReye polls your inverter over Modbus, stores every reading as time-series data, and gives

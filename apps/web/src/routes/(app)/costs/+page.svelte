@@ -1,7 +1,10 @@
 <script lang="ts">
+	import { fade } from 'svelte/transition';
 	import { api } from '$lib/api';
-	import RangeSwitcher from '$lib/components/inverter/range-switcher.svelte';
-	import MonthlyEnergy from '$lib/components/inverter/monthly-energy.svelte';
+	import CostRangePicker from '$lib/components/inverter/cost-range-picker.svelte';
+	import CostBarChart from '$lib/components/inverter/cost-bar-chart.svelte';
+	import EnergySplitChart from '$lib/components/inverter/energy-split-chart.svelte';
+	import { resolveCostPreset, type CostBucket, type CostRange } from '$lib/cost/ranges';
 
 	type Cost = {
 		currency: string;
@@ -13,6 +16,7 @@
 		net: number;
 		gridOnlyCost: number;
 		savings: number;
+		solarSavings: number;
 		selfSufficiency: number | null;
 		selfConsumption: number | null;
 		byDay: {
@@ -24,23 +28,33 @@
 		byBand: { name: string; importKwh: number; cost: number }[];
 	};
 
-	const RANGES = [
-		{ id: 'today', label: 'Today' },
-		{ id: 'month', label: 'This month' },
-		{ id: 'year', label: 'This year' }
-	] as const;
-	let rangeId = $state<(typeof RANGES)[number]['id']>('month');
+	// One bar of the contextual chart. Mirrors the server's CostSeriesPoint.
+	type SeriesPoint = {
+		bucket: string;
+		importCost: number;
+		exportEarnings: number;
+		standingCharge: number;
+		net: number;
+	};
 
+	let range = $state<CostRange>(resolveCostPreset('month'));
 	let cost = $state<Cost | null>(null);
 	let loading = $state(true);
+	// Points + the granularity they were fetched at, updated together so the
+	// chart never labels stale points with a freshly-picked bucket.
+	let series = $state<{ points: SeriesPoint[]; bucket: CostBucket }>({
+		points: [],
+		bucket: 'day'
+	});
 
-	// Refetch whenever the range changes. `cancelled` guards against an earlier
-	// request resolving after a later one and clobbering fresher data.
+	// Headline tiles: priced over the picked [from, to). `cancelled` guards against
+	// an earlier request resolving after a later one and clobbering fresher data.
 	$effect(() => {
-		const range = rangeId;
+		const from = range.from.toISOString();
+		const to = range.to.toISOString();
 		let cancelled = false;
 		loading = true;
-		api.api.cost.get({ query: { range } }).then(({ data }) => {
+		api.api.cost.get({ query: { from, to } }).then(({ data }) => {
 			if (cancelled) return;
 			cost = (data as Cost) ?? null;
 			loading = false;
@@ -49,6 +63,28 @@
 			cancelled = true;
 		};
 	});
+
+	// Contextual bar chart: its own "one level up" window/granularity (range.chart),
+	// e.g. a single month charts the trailing 12 months.
+	$effect(() => {
+		const spec = range.chart;
+		const query = { from: spec.from.toISOString(), to: spec.to.toISOString(), bucket: spec.bucket };
+		let cancelled = false;
+		api.api.cost.series.get({ query }).then(({ data }) => {
+			if (cancelled) return;
+			series = { points: (data ?? []) as SeriesPoint[], bucket: spec.bucket };
+		});
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	// Hide the cost chart entirely when every period is zero (no spend, no earnings,
+	// no standing) — matches the "don't render empty components" rule. Checked per
+	// component so a period where earnings exactly cancel costs (net 0) still shows.
+	const costHasData = $derived(
+		series.points.some((p) => p.importCost !== 0 || p.exportEarnings !== 0 || p.net !== 0)
+	);
 
 	const money = (v: number) =>
 		new Intl.NumberFormat(undefined, {
@@ -81,7 +117,7 @@
 			<h1 class="text-lg font-semibold">Costs</h1>
 			<p class="text-sm text-muted-foreground">Energy priced with your tariff.</p>
 		</div>
-		<RangeSwitcher options={RANGES} bind:value={rangeId} />
+		<CostRangePicker bind:range />
 	</div>
 
 	{#if loading && !cost}
@@ -91,7 +127,10 @@
 	{:else if cost}
 		{@const c = cost}
 		<!-- Headline tiles -->
-		<div class="grid gap-px border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
+		<div
+			class="grid gap-px border border-border bg-border sm:grid-cols-2 lg:grid-cols-3"
+			transition:fade={{ duration: 200 }}
+		>
 			{#snippet tile(label: string, value: string, sub?: string, accent?: string)}
 				<div class="flex flex-col gap-1 bg-background px-4 py-3">
 					<span class="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">
@@ -103,31 +142,67 @@
 			{/snippet}
 
 			{@render tile(
-				'Net cost',
+				'Total cost',
 				money(c.net),
 				`incl. ${money(c.standingCharge)} standing`,
 				c.net < 0 ? 'text-emerald-500' : ''
 			)}
 			{@render tile('Grid import', money(c.importCost), kwh(c.importKwh))}
 			{@render tile('Export earnings', money(c.exportEarnings), kwh(c.exportKwh))}
-			{@render tile('Savings vs grid-only', money(c.savings), `grid-only ${money(c.gridOnlyCost)}`)}
-			{@render tile('Self-sufficiency', pct(c.selfSufficiency), 'of load from solar/battery')}
-			{@render tile('Self-consumption', pct(c.selfConsumption), 'of production used on-site')}
+			{@render tile(
+				'Solar savings',
+				money(c.solarSavings),
+				'self-consumed × grid price',
+				c.solarSavings > 0 ? 'text-emerald-500' : ''
+			)}
+			{@render tile('Savings vs grid-only', money(c.savings), `incl. ${money(c.exportEarnings)} export`)}
+
+			<!-- Efficiency: two ratios in one tile so the 6-tile grid stays square. -->
+			<div class="flex flex-col gap-1 bg-background px-4 py-3">
+				<span class="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">
+					Efficiency
+				</span>
+				<div class="flex gap-6">
+					<div class="flex flex-col">
+						<span class="text-2xl font-semibold tabular-nums">{pct(c.selfSufficiency)}</span>
+						<span class="text-xs text-muted-foreground">self-sufficiency</span>
+					</div>
+					<div class="flex flex-col">
+						<span class="text-2xl font-semibold tabular-nums">{pct(c.selfConsumption)}</span>
+						<span class="text-xs text-muted-foreground">self-consumption</span>
+					</div>
+				</div>
+			</div>
 		</div>
 
-		<!-- 12-month energy split. Own fixed window, independent of the range switcher above. -->
-		<section class="border border-border p-4">
-			<MonthlyEnergy />
-		</section>
+		<!-- Contextual total-cost bars. Window/granularity follow the picked range
+		     "one level up" (range.chart), independent of the tiles above. -->
+		{#if costHasData}
+			<section
+				class="flex flex-col gap-3 border border-border p-4"
+				transition:fade={{ duration: 200 }}
+			>
+				<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+					Total cost — {range.chart.caption}
+				</h2>
+				<CostBarChart points={series.points} bucket={series.bucket} currency={c.currency} />
+			</section>
+		{/if}
 
-		<!-- Daily net cost -->
-		<section class="flex flex-col gap-3 border border-border p-4">
-			<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-				Net cost per day
-			</h2>
-			{#if c.byDay.length === 0}
-				<p class="text-sm text-muted-foreground">No data in this range yet.</p>
-			{:else}
+		<!-- Energy split (grid-vs-solar, self-consumed-vs-exported), same range as above.
+		     Owns its own section + fade and hides itself when the range has no energy. -->
+		<EnergySplitChart chart={range.chart} caption={range.chart.caption} />
+
+		<!-- Daily net cost — finer per-day detail than the "one level up" chart for
+		     month/year presets. Hidden entirely when the range has no days. -->
+		{#if c.byDay.length > 0}
+			<section
+				class="flex flex-col gap-3 border border-border p-4"
+				transition:fade={{ duration: 200 }}
+			>
+				<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+					Net cost per day
+				</h2>
 				<div class="flex flex-col gap-1.5">
 					{#each c.byDay as d (d.date)}
 						<div class="flex items-center gap-3 text-xs">
@@ -142,12 +217,15 @@
 						</div>
 					{/each}
 				</div>
-			{/if}
-		</section>
+			</section>
+		{/if}
 
 		<!-- Import by band -->
 		{#if c.byBand.length > 0}
-			<section class="flex flex-col gap-3 border border-border p-4">
+			<section
+				class="flex flex-col gap-3 border border-border p-4"
+				transition:fade={{ duration: 200 }}
+			>
 				<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">
 					Import by tariff band
 				</h2>

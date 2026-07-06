@@ -38,6 +38,10 @@ export interface CostTotals {
   gridOnlyCost: number;
   /** gridOnlyCost − importCost + exportEarnings. */
   savings: number;
+  /** Value of self-consumed solar/battery: (load − import) priced at the grid
+   *  rate = gridOnlyCost − importCost. Every kWh served on-site instead of bought
+   *  is worth the grid price; excludes export feed-in (that is separate income). */
+  solarSavings: number;
   /** (load − import) / load, 0..1, or null when no load data. */
   selfSufficiency: number | null;
   /** (production − export) / production, 0..1, or null when no production. */
@@ -127,6 +131,7 @@ export function allocateCost(
     net: importCost - exportEarnings + standingCharge,
     gridOnlyCost,
     savings: gridOnlyCost - importCost + exportEarnings,
+    solarSavings: gridOnlyCost - importCost,
     selfSufficiency: loadKwh > 0 ? clamp01((loadKwh - importKwh) / loadKwh) : null,
     selfConsumption:
       productionKwh > 0 ? clamp01((productionKwh - exportKwh) / productionKwh) : null,

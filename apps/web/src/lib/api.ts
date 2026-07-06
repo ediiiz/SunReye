@@ -16,4 +16,9 @@ export const api = treaty<App>(env.PUBLIC_SERVER_URL, {
   // Send the Better Auth session cookie so the server can enforce admin-only
   // mutations (see the `requireAdmin` macro in apps/server/src/index.ts).
   fetch: { credentials: "include" },
+  // Eden's date auto-coercion turns any `YYYY-MM-DD`-shaped string in a JSON
+  // response into a Date object, silently breaking string period keys (e.g.
+  // the cost/energy series `bucket` fields). Keep responses as-typed; callers
+  // that want Dates parse explicitly.
+  parseDate: false,
 });

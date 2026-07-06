@@ -2,8 +2,10 @@
  * Cost engine: turns stored energy flows into money using the active tariff.
  *
  * Energy comes from the hourly TimescaleDB rollups of the inverter's monotonic
- * lifetime counters (imported/exported/load/production kWh): energy in an hour
- * is that counter's `max - min` over the bucket. The pricing arithmetic is pure
+ * lifetime counters (imported/exported/load/production kWh): energy in a bucket
+ * is the counter's rise since the *previous* bucket (`max_value` delta), clamped
+ * ≥0 so a reset costs one bucket, not the whole lifetime total. The pricing
+ * arithmetic is pure
  * and unit-tested in {@link ./cost-calc}. Metrics are resolved by canonical
  * role, never vendor keys, so any profile exposing the standard energy roles
  * gets cost tracking for free.
@@ -24,7 +26,7 @@ function keyForRole(p: InverterProfile, role: CanonicalRole): string | undefined
 }
 
 /** The {@link HourEnergy} fields we price, and the role backing each. */
-export const ENERGY_FIELDS = {
+const ENERGY_FIELDS = {
   import: "grid.energy.imported.total",
   export: "grid.energy.exported.total",
   load: "load.energy.total",
@@ -34,10 +36,10 @@ export const ENERGY_FIELDS = {
 type EnergyField = keyof Omit<HourEnergy, "time">;
 
 /** The continuous-aggregate views we can read counter deltas from. */
-export type RollupView = "hourly_rollups" | "daily_rollups";
+type RollupView = "hourly_rollups" | "daily_rollups";
 
 /** Metric key → the HourEnergy field it feeds, for the roles this profile has. */
-export function resolveEnergyKeys(profile: InverterProfile): Map<string, EnergyField> {
+function resolveEnergyKeys(profile: InverterProfile): Map<string, EnergyField> {
   const fieldByKey = new Map<string, EnergyField>();
   for (const [field, role] of Object.entries(ENERGY_FIELDS)) {
     const key = keyForRole(profile, role);
@@ -47,9 +49,18 @@ export function resolveEnergyKeys(profile: InverterProfile): Map<string, EnergyF
 }
 
 /**
- * Read per-bucket energy (counter `max - min`, clamped ≥0 to tolerate counter
- * resets) for the energy roles this profile exposes, over [from, to). `view`
- * selects the rollup granularity (hourly for cost banding, daily for long
+ * Read per-bucket energy for the energy roles this profile exposes, over
+ * [from, to). Energy in a bucket is the monotonic counter's rise since the
+ * previous bucket — `max_value − prior max_value`, clamped ≥0. `max_value` is
+ * the bucket's high-water counter reading; using the cross-bucket delta (not the
+ * intra-bucket `max − min`) means a spurious low read or a counter reset costs
+ * at most a single bucket instead of pricing the entire lifetime total.
+ *
+ * The bucket immediately before `from` is read first as a baseline so the first
+ * in-range bucket is a delta from real prior state; without a baseline (no data
+ * before `from`) the first bucket falls back to its own `max − min`.
+ *
+ * `view` selects the rollup granularity (hourly for cost banding, daily for long
  * windows); both continuous aggregates share the same column shape.
  */
 async function fetchBucketEnergy(
@@ -69,6 +80,21 @@ async function fetchBucketEnergy(
     [...fieldByKey.keys()].map((k) => sql`${k}`),
     sql`, `,
   );
+
+  // Cumulative counter level entering the window, per metric (last bucket before
+  // `from`). Seeds the delta chain so the first in-range bucket is priced as a
+  // rise from prior state rather than from its own intra-bucket minimum.
+  const baselineRows = await db.execute<{ metric: string; last_max: number }>(sql`
+    select distinct on (metric) metric, max_value as last_max
+    from ${viewSql}
+    where inverter_id = ${inverterId}
+      and metric in (${keyList})
+      and bucket < ${from}
+    order by metric, bucket desc
+  `);
+  const prev = new Map<string, number>();
+  for (const r of baselineRows.rows) prev.set(r.metric, Number(r.last_max));
+
   const rows = await db.execute<{
     bucket: string | Date;
     metric: string;
@@ -88,6 +114,12 @@ async function fetchBucketEnergy(
   for (const r of rows.rows) {
     const field = fieldByKey.get(r.metric);
     if (!field) continue;
+    const max = Number(r.max_value);
+    // No baseline for the very first bucket of the counter's history → use its
+    // own intra-bucket delta; otherwise rise since the previous bucket's high.
+    const prior = prev.get(r.metric) ?? Number(r.min_value);
+    prev.set(r.metric, max);
+
     const time = new Date(r.bucket);
     const hour = byBucket.get(time.getTime()) ?? {
       time,
@@ -96,14 +128,14 @@ async function fetchBucketEnergy(
       load: 0,
       production: 0,
     };
-    hour[field] += Math.max(0, Number(r.max_value) - Number(r.min_value));
+    hour[field] += Math.max(0, max - prior);
     byBucket.set(time.getTime(), hour);
   }
   return [...byBucket.values()];
 }
 
 /** Read hourly energy for cost banding. Thin wrapper over {@link fetchBucketEnergy}. */
-export function fetchHourlyEnergy(
+function fetchHourlyEnergy(
   profile: InverterProfile,
   inverterId: string,
   from: Date,

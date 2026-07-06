@@ -35,6 +35,7 @@ import {
   setProfileSources,
   uninstallProfile,
 } from "./profiles";
+import { adminGuard } from "./routes/admin-guard";
 import * as runtime from "./runtime";
 import { getTariff, setTariff } from "./settings";
 
@@ -133,28 +134,8 @@ const app = new Elysia()
   // history, and one validated write route per writable entity). Writes go
   // through the runtime controller's live source.
   .use(entitiesApi({ ctx, write: runtime.write }))
-  // Admin gate for privileged mutations (config + live inverter writes). Opt in
-  // per route with `{ requireAdmin: true }`. Reads stay public. A real session
-  // always decides the outcome; only an *unauthenticated* dev request is waved
-  // through, mirroring the client dev-spoof in apps/web/src/lib/session.ts so
-  // `vite dev` can edit settings without logging in. Production always enforces.
-  .macro({
-    requireAdmin(enabled: boolean) {
-      if (!enabled) return {};
-      return {
-        async beforeHandle({ request, status }) {
-          const session = await auth.api.getSession({ headers: request.headers });
-          if (!session) {
-            if (env.NODE_ENV !== "production") return;
-            return status(401, { error: "Authentication required" });
-          }
-          if (session.user.role !== "admin") {
-            return status(403, { error: "Admin access required" });
-          }
-        },
-      };
-    },
-  })
+  // Admin gate for privileged mutations — see ./routes/admin-guard.
+  .use(adminGuard)
   // Hand the raw request to Better Auth. `parse: "none"` stops Elysia from
   // consuming the request body — other routes in this app define body schemas,
   // which turns on body parsing app-wide, and a parsed (consumed) stream makes

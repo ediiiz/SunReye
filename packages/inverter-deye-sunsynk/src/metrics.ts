@@ -12,7 +12,7 @@ import type { MetricDataDef } from "@SunReye/inverter-core";
  * writability) is checked at compile time.
  */
 
-const CHARGE_FLOW = { positive: "Charging", negative: "Discharging" } as const;
+const CHARGE_FLOW = { positive: "Discharging", negative: "Charging" } as const;
 const GRID_FLOW = { positive: "Importing", negative: "Exporting" } as const;
 
 /** Table 1 — inverter / PV / grid. */
@@ -308,6 +308,41 @@ const inverter: MetricDataDef[] = [
     group: "inverter",
     role: "pv.total.power",
     computeExpr: { sum: ["dc.pv1.power", "dc.pv2.power"] },
+  }),
+  // Power the inverter consumes for itself (conversion losses + standby draw),
+  // from the node balance: everything flowing in minus what reaches the load.
+  // Battery and grid fold in with their signed conventions (battery +discharge
+  // / −charge, grid +import / −export), so charging and export subtract on their
+  // own. Depends on the computed dc.total_power above, so it stays after it.
+  metric("inverter/power", {
+    label: "Inverter Self-Consumption",
+    unit: "W",
+    group: "inverter",
+    role: "inverter.power",
+    computeExpr: {
+      combine: {
+        add: ["dc.total_power", "battery.power", "ac.total_power"],
+        sub: ["ac.ups.total_power"],
+      },
+    },
+  }),
+  // Share of the power drawn into the inverter node that actually reaches the
+  // load: load ÷ (dc + battery + grid), as a percentage. A zero denominator
+  // (night / idle) reads as 0 rather than dividing by zero.
+  metric("inverter/efficiency", {
+    label: "Inverter Efficiency",
+    unit: "%",
+    group: "inverter",
+    role: "inverter.efficiency",
+    kind: "measurement",
+    range: { min: 0, max: 100 },
+    computeExpr: {
+      ratio: {
+        num: ["ac.ups.total_power"],
+        den: ["dc.total_power", "battery.power", "ac.total_power"],
+        scale: 100,
+      },
+    },
   }),
 ];
 

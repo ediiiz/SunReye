@@ -35,14 +35,19 @@ export interface ProfileData {
  * arbitrary code — so a downloaded profile can never execute. Referenced keys
  * are resolved from the sample at compute time; a missing key reads as 0.
  *
- * - `sum`   add the listed metric keys.
- * - `diff`  first minus second.
- * - `scale` a metric key times a constant.
+ * - `sum`     add the listed metric keys.
+ * - `diff`    first minus second.
+ * - `scale`   a metric key times a constant.
+ * - `combine` sum of `add` keys minus sum of `sub` keys (a signed linear mix).
+ * - `ratio`   (sum of `num` / sum of `den`) times `scale` (default 1); a zero
+ *             denominator reads as 0 so night/idle samples never divide by zero.
  */
 export type ComputeExpr =
   | { sum: string[] }
   | { diff: [string, string] }
-  | { scale: [string, number] };
+  | { scale: [string, number] }
+  | { combine: { add: string[]; sub?: string[] } }
+  | { ratio: { num: string[]; den: string[]; scale?: number } };
 
 /** {@link MetricDef} without runtime-only fields: `compute` → `computeExpr`. */
 export interface MetricDataDef {
@@ -75,8 +80,20 @@ export function compileComputeExpr(expr: ComputeExpr): (values: MetricValues) =>
     const [a, b] = expr.diff;
     return (v) => (v[a] ?? 0) - (v[b] ?? 0);
   }
-  const [key, factor] = expr.scale;
-  return (v) => (v[key] ?? 0) * factor;
+  if ("scale" in expr) {
+    const [key, factor] = expr.scale;
+    return (v) => (v[key] ?? 0) * factor;
+  }
+  const sumOf = (keys: string[], v: MetricValues) => keys.reduce((acc, k) => acc + (v[k] ?? 0), 0);
+  if ("combine" in expr) {
+    const { add, sub = [] } = expr.combine;
+    return (v) => sumOf(add, v) - sumOf(sub, v);
+  }
+  const { num, den, scale = 1 } = expr.ratio;
+  return (v) => {
+    const d = sumOf(den, v);
+    return d === 0 ? 0 : (sumOf(num, v) / d) * scale;
+  };
 }
 
 function toMetricDef(m: MetricDataDef): MetricDef {

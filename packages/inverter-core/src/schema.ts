@@ -21,6 +21,19 @@ const computeExprSchema = z.union([
   z.strictObject({ sum: z.array(z.string().min(1)).min(1) }),
   z.strictObject({ diff: z.tuple([z.string().min(1), z.string().min(1)]) }),
   z.strictObject({ scale: z.tuple([z.string().min(1), z.number()]) }),
+  z.strictObject({
+    combine: z.strictObject({
+      add: z.array(z.string().min(1)).min(1),
+      sub: z.array(z.string().min(1)).optional(),
+    }),
+  }),
+  z.strictObject({
+    ratio: z.strictObject({
+      num: z.array(z.string().min(1)).min(1),
+      den: z.array(z.string().min(1)).min(1),
+      scale: z.number().optional(),
+    }),
+  }),
 ]);
 
 const metricDataSchema = z.strictObject({
@@ -46,7 +59,9 @@ const metricDataSchema = z.strictObject({
 function computeRefs(expr: ComputeExpr): string[] {
   if ("sum" in expr) return expr.sum;
   if ("diff" in expr) return expr.diff;
-  return [expr.scale[0]];
+  if ("scale" in expr) return [expr.scale[0]];
+  if ("combine" in expr) return [...expr.combine.add, ...(expr.combine.sub ?? [])];
+  return [...expr.ratio.num, ...expr.ratio.den];
 }
 
 export const profileDataSchema = z

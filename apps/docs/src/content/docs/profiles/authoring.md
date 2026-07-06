@@ -73,8 +73,11 @@ Derived metrics use a small **closed** set — never arbitrary code:
 | `{ sum: ["a", "b", …] }` | Add the listed metric keys. |
 | `{ diff: ["a", "b"] }` | `a − b`. |
 | `{ scale: ["a", k] }` | `a × k`. |
+| `{ combine: { add: [...], sub: [...] } }` | Sum of `add` keys minus sum of `sub` keys — a signed linear mix. `sub` is optional. |
+| `{ ratio: { num: [...], den: [...], scale? } }` | `(Σnum / Σden) × scale` (`scale` defaults to `1`). A zero denominator reads as `0`, so idle/overnight samples never divide by zero. |
 
-A computed metric may only reference metrics defined **earlier** (no forward references).
+Referenced keys are resolved from the live sample at compute time; a **missing key reads as
+0**. A computed metric may only reference metrics defined **earlier** (no forward references).
 
 ## Validation
 

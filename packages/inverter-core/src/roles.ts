@@ -73,6 +73,10 @@ export const ROLE_CATALOG = {
   "inverter.relay_status": { kind: "status", needsEnumLabels: true },
   "inverter.temperature.dc": { kind: "measurement", unitHint: "°C" },
   "inverter.temperature.ac": { kind: "measurement", unitHint: "°C" },
+  // Power the inverter consumes for itself (conversion losses + standby draw)
+  // and the share of drawn power that reaches the load — both computed, not wired.
+  "inverter.power": { kind: "measurement", unitHint: "W" },
+  "inverter.efficiency": { kind: "measurement", unitHint: "%" },
   // --- Settings / controls ---
   "setting.battery.max_charge_current": { kind: "setting", writable: true, unitHint: "A" },
   "setting.battery.max_discharge_current": { kind: "setting", writable: true, unitHint: "A" },

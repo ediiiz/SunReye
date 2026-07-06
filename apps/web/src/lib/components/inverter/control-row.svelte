@@ -29,8 +29,14 @@
 	let pending = $state<number | null>(null);
 	const value = $derived(pending ?? live ?? metric.range?.min ?? 0);
 
-	// Empty until the user types; the current value shows as the placeholder.
+	// Seed the number field with the live value so the browser's native up/down
+	// stepper increments from the current reading instead of starting at 1. We
+	// skip reseeding while the user is editing so live updates don't clobber typing.
 	let inputValue = $state('');
+	let editing = $state(false);
+	$effect(() => {
+		if (!editing && pending === null) inputValue = String(value);
+	});
 
 	let busy = $state(false);
 	async function write(v: number) {
@@ -81,11 +87,17 @@
 		/>
 	{:else}
 		<div class="flex items-center gap-2">
-			<Input type="number" bind:value={inputValue} placeholder={String(value)} class="w-32" />
+			<Input
+				type="number"
+				bind:value={inputValue}
+				onfocus={() => (editing = true)}
+				onblur={() => (editing = false)}
+				class="w-32"
+			/>
 			<Button
 				size="sm"
 				variant="secondary"
-				disabled={busy || inputValue === ''}
+				disabled={busy || inputValue === '' || Number(inputValue) === value}
 				onclick={() => write(Number(inputValue))}
 			>
 				Apply

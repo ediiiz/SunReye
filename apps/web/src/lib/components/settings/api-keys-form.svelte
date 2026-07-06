@@ -7,8 +7,8 @@
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
-	import * as Select from '$lib/components/ui/select';
 	import * as Table from '$lib/components/ui/table';
+	import OptionSelect from './option-select.svelte';
 	import SettingsSection from './settings-section.svelte';
 	import CopyIcon from 'phosphor-svelte/lib/Copy';
 	import PlusIcon from 'phosphor-svelte/lib/Plus';
@@ -53,7 +53,7 @@
 	// One-time secret reveal.
 	let createdKey = $state<string | null>(null);
 
-	const userLabel = (id: string) => users.find((u) => u.id === id)?.email ?? 'Select user';
+	const userItems = $derived(users.map((u) => ({ value: u.id, label: u.email })));
 	const fmtDate = (s: string | null) => (s ? new Date(s).toLocaleDateString() : '—');
 
 	async function loadUsers() {
@@ -121,14 +121,13 @@
 	<form class="grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto_auto]" onsubmit={create}>
 		<div class="flex flex-col gap-1.5">
 			<Label>User</Label>
-			<Select.Root type="single" value={ownerId} onValueChange={(v) => (ownerId = v)}>
-				<Select.Trigger class="w-full">{userLabel(ownerId)}</Select.Trigger>
-				<Select.Content>
-					{#each users as u (u.id)}
-						<Select.Item value={u.id}>{u.email}</Select.Item>
-					{/each}
-				</Select.Content>
-			</Select.Root>
+			<OptionSelect
+				value={ownerId}
+				items={userItems}
+				onchange={(v) => (ownerId = v)}
+				placeholder="Select user"
+				triggerClass="w-full"
+			/>
 		</div>
 		<div class="flex flex-col gap-1.5">
 			<Label for="k-name">Name</Label>
@@ -136,16 +135,13 @@
 		</div>
 		<div class="flex flex-col gap-1.5">
 			<Label>Expires</Label>
-			<Select.Root type="single" value={expiry} onValueChange={(v) => (expiry = v)}>
-				<Select.Trigger class="w-32">
-					{EXPIRY.find((x) => x.value === expiry)?.label ?? 'Never'}
-				</Select.Trigger>
-				<Select.Content>
-					{#each EXPIRY as e (e.value)}
-						<Select.Item value={e.value}>{e.label}</Select.Item>
-					{/each}
-				</Select.Content>
-			</Select.Root>
+			<OptionSelect
+				value={expiry}
+				items={EXPIRY}
+				onchange={(v) => (expiry = v)}
+				placeholder="Never"
+				triggerClass="w-32"
+			/>
 		</div>
 		<Button type="submit" disabled={creating}>
 			<PlusIcon class="size-4" />
@@ -156,24 +152,16 @@
 
 <SettingsSection title="API keys">
 	{#snippet actions()}
-		<Select.Root
-			type="single"
+		<OptionSelect
 			value={filterUserId}
-			onValueChange={(v) => {
+			items={[{ value: '', label: 'All users' }, ...userItems]}
+			onchange={(v) => {
 				filterUserId = v;
 				loadKeys();
 			}}
-		>
-			<Select.Trigger class="w-48">
-				{filterUserId ? userLabel(filterUserId) : 'All users'}
-			</Select.Trigger>
-			<Select.Content>
-				<Select.Item value="">All users</Select.Item>
-				{#each users as u (u.id)}
-					<Select.Item value={u.id}>{u.email}</Select.Item>
-				{/each}
-			</Select.Content>
-		</Select.Root>
+			placeholder="All users"
+			triggerClass="w-48"
+		/>
 	{/snippet}
 	{#if loading}
 		<p class="text-sm text-muted-foreground">Loading API keys…</p>

@@ -16,8 +16,7 @@
     "@better-auth/api-key": "catalog:",
     "better-auth": "catalog:",
     "dotenv": "catalog:",
-    "drizzle-orm": "^0.45.1",
-    "zod": "catalog:"
+    "drizzle-orm": "^0.45.1"
   },
   "devDependencies": {
     "@SunReye/config": "workspace:*",

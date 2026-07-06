@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { BarChart } from 'layerchart';
+	import { fade } from 'svelte/transition';
 	import * as Chart from '$lib/components/ui/chart';
-	import { Skeleton } from '$lib/components/ui/skeleton';
 	import RangeSwitcher from '$lib/components/inverter/range-switcher.svelte';
 	import { api } from '$lib/api';
 	import { periodLabel, type CostRange } from '$lib/cost/ranges';
@@ -131,22 +131,18 @@
 	</div>
 {/snippet}
 
-<div class="flex flex-col gap-4">
-	<div class="flex flex-wrap items-center justify-between gap-3">
-		<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-			Energy split — {caption}
-		</h2>
-		<RangeSwitcher options={LAYOUTS} bind:value={layoutId} />
-	</div>
-
-	{#if loading && periods.length === 0}
-		<div class="grid gap-6 lg:grid-cols-2">
-			<Skeleton class="h-65 w-full" />
-			<Skeleton class="h-65 w-full" />
+{#if !loading && hasData}
+	<section
+		class="flex flex-col gap-4 border border-border p-4"
+		transition:fade={{ duration: 200 }}
+	>
+		<div class="flex flex-wrap items-center justify-between gap-3">
+			<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+				Energy split — {caption}
+			</h2>
+			<RangeSwitcher options={LAYOUTS} bind:value={layoutId} />
 		</div>
-	{:else if !hasData}
-		<p class="text-sm text-muted-foreground">No energy data in this range yet.</p>
-	{:else}
+
 		<div class="grid gap-8 lg:grid-cols-2">
 			{@render chartBlock(
 				'Consumption',
@@ -161,5 +157,5 @@
 				avgSelfConsumption
 			)}
 		</div>
-	{/if}
-</div>
+	</section>
+{/if}

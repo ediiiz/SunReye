@@ -148,15 +148,22 @@ function fetchHourlyEnergy(
 /** Granularity of a {@link computeCostSeries} bar. */
 export type CostBucket = "hour" | "day" | "month";
 
-/** One bar of the cost time-series: net (= import − export) money in a period. */
+/** One bar of the cost time-series: total money in a period. */
 export interface CostSeriesPoint {
   /** Local period key: `YYYY-MM-DDTHH` (hour) | `YYYY-MM-DD` (day) | `YYYY-MM` (month). */
   bucket: string;
   importCost: number;
   exportEarnings: number;
-  /** `importCost − exportEarnings` (no standing charge — matches CostTotals.byDay). */
+  /** Standing charge prorated to this period's overlap with the window. */
+  standingCharge: number;
+  /** `importCost − exportEarnings + standingCharge` — the all-in cost of the
+   *  period, matching the headline Net cost tile. */
   net: number;
 }
+
+/** Days per average month, for prorating the monthly standing charge. */
+const AVG_DAYS_PER_MONTH = 30.4375;
+const DAY_MS = 86_400_000;
 
 /** SQL date_trunc unit + the `to_char` mask that renders its local period key. */
 const PERIOD_FORMAT: Record<CostBucket, { unit: string; mask: string }> = {
@@ -176,13 +183,17 @@ function periodKey(d: Date, bucket: CostBucket): string {
 }
 
 /**
- * Every local period key in `[from, to)` at `bucket` granularity, oldest first.
- * Drives zero-fill so the chart x-axis is stable and gap-free regardless of
- * which periods actually have data. Stepping uses local calendar fields so
- * month lengths and DST are handled by the Date arithmetic itself.
+ * Each period in `[from, to)` at `bucket` granularity, oldest first: its local
+ * key plus `[start, end)` bounds. Stepping uses local calendar fields so month
+ * lengths and DST are handled by the Date arithmetic itself. Shared by the
+ * zero-fill key list and per-period standing-charge proration.
  */
-function periodKeysInRange(from: Date, to: Date, bucket: CostBucket): string[] {
-  const keys: string[] = [];
+function eachPeriod(
+  from: Date,
+  to: Date,
+  bucket: CostBucket,
+): Array<{ key: string; start: Date; end: Date }> {
+  const out: Array<{ key: string; start: Date; end: Date }> = [];
   const cur =
     bucket === "month"
       ? new Date(from.getFullYear(), from.getMonth(), 1)
@@ -190,12 +201,23 @@ function periodKeysInRange(from: Date, to: Date, bucket: CostBucket): string[] {
         ? new Date(from.getFullYear(), from.getMonth(), from.getDate())
         : new Date(from.getFullYear(), from.getMonth(), from.getDate(), from.getHours());
   while (cur < to) {
-    keys.push(periodKey(cur, bucket));
-    if (bucket === "month") cur.setMonth(cur.getMonth() + 1);
-    else if (bucket === "day") cur.setDate(cur.getDate() + 1);
-    else cur.setHours(cur.getHours() + 1);
+    const next = new Date(cur);
+    if (bucket === "month") next.setMonth(next.getMonth() + 1);
+    else if (bucket === "day") next.setDate(next.getDate() + 1);
+    else next.setHours(next.getHours() + 1);
+    out.push({ key: periodKey(cur, bucket), start: new Date(cur), end: new Date(next) });
+    cur.setTime(next.getTime());
   }
-  return keys;
+  return out;
+}
+
+/**
+ * Every local period key in `[from, to)` at `bucket` granularity, oldest first.
+ * Drives zero-fill so the chart x-axis is stable and gap-free regardless of
+ * which periods actually have data.
+ */
+function periodKeysInRange(from: Date, to: Date, bucket: CostBucket): string[] {
+  return eachPeriod(from, to, bucket).map((p) => p.key);
 }
 
 /** One row of {@link fetchCounterDeltaMatrix}: energy (kWh) for a metric within a
@@ -230,9 +252,11 @@ export interface CounterDeltaMatrix {
  * `view` picks the source granularity: hourly keeps the hour-of-day detail
  * time-of-use pricing needs; daily is cheaper for long windows that only care
  * about per-period totals. Local wall-clock (server tz) drives the
- * period/hour/weekday so downstream banding matches the per-hour path. The
- * window function drops each metric's first bucket (null `lag`), costing at most
- * one bucket of energy at the window's leading edge.
+ * period/hour/weekday so downstream banding matches the per-hour path. A
+ * per-metric baseline bucket from just before the window seeds the delta chain,
+ * so the first in-window bucket is a real rise (not dropped by a null `lag`);
+ * only the first bucket in a metric's entire history falls back to its own
+ * intra-bucket min.
  */
 export async function fetchCounterDeltaMatrix(
   profile: InverterProfile,
@@ -262,16 +286,41 @@ export async function fetchCounterDeltaMatrix(
     metric: string;
     kwh: number;
   }>(sql`
-    with deltas as (
-      select
-        (bucket at time zone ${tz}) as local_bucket,
-        metric,
-        greatest(0, max_value - lag(max_value) over (partition by metric order by bucket)) as kwh
+    with src as (
+      -- Buckets inside the window.
+      select bucket, metric, max_value, min_value
       from ${viewSql}
       where inverter_id = ${inverterId}
         and metric in (${keyList})
         and bucket >= ${from}
         and bucket < ${to}
+      union all
+      -- Baseline: last bucket strictly before the window, per metric. Seeds the
+      -- delta chain so the first in-window bucket is a rise from prior state, not
+      -- dropped by a null lag(). Filtered back out after the window fn runs.
+      select bucket, metric, max_value, min_value
+      from (
+        select distinct on (metric) bucket, metric, max_value, min_value
+        from ${viewSql}
+        where inverter_id = ${inverterId}
+          and metric in (${keyList})
+          and bucket < ${from}
+        order by metric, bucket desc
+      ) baseline
+    ),
+    deltas as (
+      select
+        bucket,
+        (bucket at time zone ${tz}) as local_bucket,
+        metric,
+        -- Rise since the previous bucket's high, clamped ≥0. No predecessor (the
+        -- very first bucket in history) → fall back to this bucket's own min so
+        -- it isn't lost, matching fetchBucketEnergy.
+        greatest(
+          0,
+          max_value - coalesce(lag(max_value) over (partition by metric order by bucket), min_value)
+        ) as kwh
+      from src
     )
     select
       to_char(date_trunc(${unit}, local_bucket), ${mask}) as period,
@@ -280,18 +329,43 @@ export async function fetchCounterDeltaMatrix(
       metric,
       sum(kwh) as kwh
     from deltas
+    where bucket >= ${from}
     group by 1, 2, 3, 4
   `);
   return { rows: rows.rows, fieldByKey, periods };
 }
 
 /**
- * Net cost per period ([from, to), one point per `bucket`), tariff-band accurate
- * and zero-filled. Reads the bounded {@link fetchCounterDeltaMatrix} from the
- * hourly rollups (hour-of-day is needed for time-of-use banding), then prices
- * each import group at its (hour, weekday) band and each export group at the
- * feed-in rate in JS — exactly as {@link allocateCost} would per hour, without
- * shipping every hour across the wire.
+ * Prorated standing charge per period key: the monthly standing charge split
+ * across `[from, to)` by each period's overlap with the window (partial first/
+ * last periods included). Summed over all periods this equals the tiles'
+ * standingCharge, so the bars and the headline Net tile agree.
+ */
+function standingByPeriod(
+  from: Date,
+  to: Date,
+  bucket: CostBucket,
+  monthly: number,
+): Map<string, number> {
+  const perDay = monthly / AVG_DAYS_PER_MONTH;
+  const out = new Map<string, number>();
+  for (const { key, start, end } of eachPeriod(from, to, bucket)) {
+    // Overlap of this period with the window, in days (partial edges included).
+    const s = Math.max(start.getTime(), from.getTime());
+    const e = Math.min(end.getTime(), to.getTime());
+    out.set(key, perDay * Math.max(0, (e - s) / DAY_MS));
+  }
+  return out;
+}
+
+/**
+ * Total cost per period ([from, to), one point per `bucket`), tariff-band
+ * accurate and zero-filled. Reads the bounded {@link fetchCounterDeltaMatrix}
+ * from the hourly rollups (hour-of-day is needed for time-of-use banding), then
+ * prices each import group at its (hour, weekday) band and each export group at
+ * the feed-in rate in JS — exactly as {@link allocateCost} would per hour,
+ * without shipping every hour across the wire. The monthly standing charge is
+ * prorated into each period so a bar is the period's all-in cost.
  */
 export async function computeCostSeries(
   profile: InverterProfile,
@@ -301,12 +375,15 @@ export async function computeCostSeries(
     ...opts,
     view: "hourly_rollups",
   });
-  const byKey = new Map<string, CostSeriesPoint>(
-    periods.map((b) => [b, { bucket: b, importCost: 0, exportEarnings: 0, net: 0 }]),
-  );
-  if (rows.length === 0) return [...byKey.values()];
-
   const tariff = await getTariff();
+  const standing = standingByPeriod(opts.from, opts.to, opts.bucket, tariff.standingChargeMonthly);
+  const byKey = new Map<string, CostSeriesPoint>(
+    periods.map((b) => {
+      const standingCharge = standing.get(b) ?? 0;
+      return [b, { bucket: b, importCost: 0, exportEarnings: 0, standingCharge, net: standingCharge }];
+    }),
+  );
+
   for (const r of rows) {
     // Only import/export flows carry money; load/production rows are ignored here.
     const field = fieldByKey.get(r.metric);
@@ -319,7 +396,7 @@ export async function computeCostSeries(
     } else {
       point.exportEarnings += kwh * tariff.export.feedInPerKwh;
     }
-    point.net = point.importCost - point.exportEarnings;
+    point.net = point.importCost - point.exportEarnings + point.standingCharge;
   }
   return [...byKey.values()];
 }

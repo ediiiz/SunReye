@@ -63,6 +63,10 @@
 
   --energy-export: #4478c4;
 
+  /* Fixed grid-connection fee in the cost charts. Teal: distinct from the four
+     energy-flow hues under CVD (validated with grid + export, dataviz skill). */
+  --cost-standing: #0f9878;
+
   --radius: 0rem;
 
   --sidebar: oklch(0.985 0 0);
@@ -138,6 +142,9 @@
 
   --energy-export: #5586cc;
 
+  /* Lifted standing-charge teal for the dark surface (dataviz-validated). */
+  --cost-standing: #14a385;
+
   --sidebar: oklch(0.205 0 0);
 
   --sidebar-foreground: oklch(0.985 0 0);
@@ -193,6 +200,8 @@
   --color-energy-selfused: var(--energy-selfused);
 
   --color-energy-export: var(--energy-export);
+
+  --color-cost-standing: var(--cost-standing);
 
   --color-ring: var(--ring);
 

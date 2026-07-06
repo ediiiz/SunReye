@@ -2,9 +2,10 @@
 	import { BarChart } from 'layerchart';
 	import { fade } from 'svelte/transition';
 	import * as Chart from '$lib/components/ui/chart';
+	import ChartLegend from '$lib/components/inverter/chart-legend.svelte';
 	import RangeSwitcher from '$lib/components/inverter/range-switcher.svelte';
 	import { api } from '$lib/api';
-	import { periodLabel, type CostRange } from '$lib/cost/ranges';
+	import { COST_X_TICKS, periodLabel, type CostBucket, type CostRange } from '$lib/cost/ranges';
 
 	// One period of energy, split for the two stacked bars. Mirrors the server's
 	// PeriodEnergy (apps/server/src/energy-calc.ts).
@@ -25,7 +26,10 @@
 	// Follows the page's range picker: same window/granularity as the net-cost chart.
 	let { chart, caption }: { chart: CostRange['chart']; caption: string } = $props();
 
-	let periods = $state<Period[]>([]);
+	// Periods + the granularity they were fetched at, updated together so labels
+	// never mix stale periods with a freshly-picked bucket.
+	let view = $state<{ periods: Period[]; bucket: CostBucket }>({ periods: [], bucket: 'day' });
+	const periods = $derived(view.periods);
 	let loading = $state(true);
 
 	// The two stacks are read the same way whether shown as absolute kWh or as a
@@ -47,7 +51,7 @@
 		loading = true;
 		api.api.energy.series.get({ query }).then(({ data }) => {
 			if (cancelled) return;
-			periods = (data ?? []) as Period[];
+			view = { periods: (data ?? []) as Period[], bucket: chart.bucket };
 			loading = false;
 		});
 		return () => {
@@ -55,7 +59,7 @@
 		};
 	});
 
-	const data = $derived(periods.map((p) => ({ ...p, label: periodLabel(p.bucket, chart.bucket) })));
+	const data = $derived(periods.map((p) => ({ ...p, label: periodLabel(p.bucket, view.bucket) })));
 	const hasData = $derived(periods.some((p) => p.loadKwh > 0 || p.productionKwh > 0));
 
 	// Window-average ratio (mean over periods that have the relevant flow), shown
@@ -94,13 +98,15 @@
 </script>
 
 {#snippet chartBlock(title: string, subtitle: string, series: Series[], ratio: number | null)}
-	<div class="flex flex-col gap-3">
+	<!-- min-w-0 lets the grid column shrink below the chart's intrinsic width;
+	     without it the block overflows the section edge on narrow screens. -->
+	<div class="flex min-w-0 flex-col gap-3">
 		<div class="flex items-baseline justify-between gap-3">
 			<div class="flex flex-col">
 				<h3 class="text-sm font-medium">{title}</h3>
 				<span class="text-xs text-muted-foreground">{subtitle}</span>
 			</div>
-			<span class="text-sm tabular-nums text-muted-foreground">
+			<span class="shrink-0 whitespace-nowrap text-sm tabular-nums text-muted-foreground">
 				avg <span class="font-semibold text-foreground">{pct(ratio)}</span>
 			</span>
 		</div>
@@ -113,21 +119,14 @@
 				bandPadding={0.25}
 				stackPadding={2}
 				padding={{ top: 8, right: 8, bottom: 20, left: 44 }}
+				props={{ xAxis: { ticks: COST_X_TICKS[view.bucket] } }}
 			>
 				{#snippet tooltip()}
 					<Chart.Tooltip />
 				{/snippet}
 			</BarChart>
 		</Chart.Container>
-		<!-- Legend keeps identity off color-alone (dataviz accessibility pass). -->
-		<div class="flex flex-wrap gap-x-4 gap-y-1">
-			{#each series as s (s.key)}
-				<span class="flex items-center gap-1.5 text-xs text-muted-foreground">
-					<span class="size-2.5 rounded-xs" style="background: {s.color}"></span>
-					{s.label}
-				</span>
-			{/each}
-		</div>
+		<ChartLegend items={series} />
 	</div>
 {/snippet}
 

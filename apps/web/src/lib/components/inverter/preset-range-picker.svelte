@@ -54,7 +54,12 @@
 			</Button>
 		{/snippet}
 	</Popover.Trigger>
-	<Popover.Content class="w-auto p-0" align="end">
+	<!-- Clamp to the viewport space bits-ui reports so the preset row wraps on
+	     mobile instead of sizing the popover to its single-line max-content. -->
+	<Popover.Content
+		class="w-auto max-w-(--bits-popover-content-available-width) overflow-x-auto p-0"
+		align="end"
+	>
 		<div class="flex flex-col sm:flex-row">
 			<div
 				class="flex flex-row flex-wrap gap-1 border-b p-2 sm:w-40 sm:flex-col sm:border-b-0 sm:border-r"
@@ -70,7 +75,9 @@
 					</Button>
 				{/each}
 			</div>
-			<RangeCalendar bind:value={custom} numberOfMonths={1} />
+			<!-- Stacked (mobile) layout: stretch the calendar's fluid grid across the
+		     popover; side-by-side it keeps its intrinsic width. -->
+		<RangeCalendar bind:value={custom} numberOfMonths={1} class="w-full sm:w-auto" />
 		</div>
 	</Popover.Content>
 </Popover.Root>

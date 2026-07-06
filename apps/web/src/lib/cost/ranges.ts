@@ -40,6 +40,13 @@ export const COST_PRESETS = [
  * Keys are local wall-clock: `YYYY-MM-DDTHH` (hour) | `YYYY-MM-DD` (day) |
  * `YYYY-MM` (month). Shared by the net-cost and energy-split charts.
  */
+/**
+ * Max x-axis tick labels for a bucket, sized so labels don't collide on a
+ * ~350px mobile chart (layerchart thins a band domain to every Nth entry).
+ * Hover/tooltip still exposes every period; the axis only needs anchors.
+ */
+export const COST_X_TICKS: Record<CostBucket, number> = { hour: 6, day: 8, month: 6 };
+
 export function periodLabel(key: string, bucket: CostBucket): string {
   if (bucket === "hour") return `${key.slice(11, 13)}:00`;
   if (bucket === "day") {

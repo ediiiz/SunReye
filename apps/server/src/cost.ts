@@ -34,10 +34,10 @@ const ENERGY_FIELDS = {
   production: "production.total",
 } as const satisfies Record<keyof Omit<HourEnergy, "time">, CanonicalRole>;
 
-type EnergyField = keyof Omit<HourEnergy, "time">;
+export type EnergyField = keyof Omit<HourEnergy, "time">;
 
 /** The continuous-aggregate views we can read counter deltas from. */
-type RollupView = "hourly_rollups" | "daily_rollups";
+export type RollupView = "hourly_rollups" | "daily_rollups";
 
 /** Metric key → the HourEnergy field it feeds, for the roles this profile has. */
 function resolveEnergyKeys(profile: InverterProfile): Map<string, EnergyField> {
@@ -145,16 +145,6 @@ function fetchHourlyEnergy(
   return fetchBucketEnergy(profile, inverterId, from, to, "hourly_rollups");
 }
 
-/** Read daily energy for long-window (e.g. monthly) aggregation. */
-export function fetchDailyEnergy(
-  profile: InverterProfile,
-  inverterId: string,
-  from: Date,
-  to: Date,
-): Promise<HourEnergy[]> {
-  return fetchBucketEnergy(profile, inverterId, from, to, "daily_rollups");
-}
-
 /** Granularity of a {@link computeCostSeries} bar. */
 export type CostBucket = "hour" | "day" | "month";
 
@@ -208,42 +198,60 @@ function periodKeysInRange(from: Date, to: Date, bucket: CostBucket): string[] {
   return keys;
 }
 
+/** One row of {@link fetchCounterDeltaMatrix}: energy (kWh) for a metric within a
+ *  period, further split by the local hour-of-day and ISO weekday it fell on. */
+export interface CounterDeltaRow {
+  period: string;
+  /** Local hour-of-day 0–23 (meaningful only for sub-daily source views). */
+  hod: number;
+  /** Local ISO weekday 1 (Mon) – 7 (Sun). */
+  dow: number;
+  metric: string;
+  kwh: number;
+}
+
+/** Result of {@link fetchCounterDeltaMatrix}. */
+export interface CounterDeltaMatrix {
+  rows: CounterDeltaRow[];
+  /** metric key → the energy field it feeds, for the roles this profile exposes. */
+  fieldByKey: Map<string, EnergyField>;
+  /** Zero-fill period keys in `[from, to)`, oldest first. */
+  periods: string[];
+}
+
 /**
- * Net cost per period ([from, to), one point per `bucket`), tariff-band accurate
- * and zero-filled. The heavy lifting stays in SQL: the counter delta is computed
- * with a window function (`max_value − prev max_value`, clamped ≥0) and the
- * result pre-aggregated to a bounded `(period, hour-of-day, ISO-weekday, metric)`
- * matrix — so the row count is fixed by the calendar shape (≤ periods·24·7·keys),
- * never by how many hourly rows the window spans. Pricing then applies the
- * time-of-use band per (hour, weekday) group in JS, exactly as {@link allocateCost}
- * would per hour, without shipping every hour across the wire.
+ * Bounded counter-delta matrix over `[from, to)`: per-metric energy (the
+ * `max_value` rise since the previous rollup bucket, clamped ≥0) aggregated to
+ * `(period, hour-of-day, ISO-weekday)`. The row count is fixed by the calendar
+ * shape (≤ periods·24·7·metrics), never by how many rollup buckets the window
+ * spans — the delta and the rollup both happen in SQL, so nothing ships every
+ * bucket across the wire.
  *
- * Local time: buckets are stored UTC, but bands are defined in wall-clock time,
- * so the period/hour/weekday are all derived from `bucket AT TIME ZONE <server tz>`
- * — matching the JS-local pricing the per-hour path uses. The window function's
- * first bucket has no predecessor and is dropped (null `lag`), costing at most one
- * hour of energy at the very start of the window.
+ * `view` picks the source granularity: hourly keeps the hour-of-day detail
+ * time-of-use pricing needs; daily is cheaper for long windows that only care
+ * about per-period totals. Local wall-clock (server tz) drives the
+ * period/hour/weekday so downstream banding matches the per-hour path. The
+ * window function drops each metric's first bucket (null `lag`), costing at most
+ * one bucket of energy at the window's leading edge.
  */
-export async function computeCostSeries(
+export async function fetchCounterDeltaMatrix(
   profile: InverterProfile,
-  opts: { from: Date; to: Date; bucket: CostBucket; inverterId?: string },
-): Promise<CostSeriesPoint[]> {
+  opts: { from: Date; to: Date; bucket: CostBucket; inverterId?: string; view?: RollupView },
+): Promise<CounterDeltaMatrix> {
   const { from, to, bucket } = opts;
   const inverterId = opts.inverterId ?? profile.id;
+  const view = opts.view ?? "hourly_rollups";
+  const fieldByKey = resolveEnergyKeys(profile);
+  const periods = periodKeysInRange(from, to, bucket);
+  if (fieldByKey.size === 0) return { rows: [], fieldByKey, periods };
 
-  const byKey = new Map(byBucketPoints(periodKeysInRange(from, to, bucket)));
-  // Only import/export flows carry money; skip load/production to keep the scan lean.
-  const priced = new Map(
-    [...resolveEnergyKeys(profile)].filter(([, f]) => f === "import" || f === "export"),
-  );
-  if (priced.size === 0) return [...byKey.values()];
-
-  const tariff = await getTariff();
+  // `view` is a fixed internal literal (not user input) → safe raw identifier.
+  const viewSql = sql.raw(view);
   const { unit, mask } = PERIOD_FORMAT[bucket];
   // Server-local IANA zone so SQL wall-clock matches the per-hour path's getHours().
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const keyList = sql.join(
-    [...priced.keys()].map((k) => sql`${k}`),
+    [...fieldByKey.keys()].map((k) => sql`${k}`),
     sql`, `,
   );
 
@@ -259,7 +267,7 @@ export async function computeCostSeries(
         (bucket at time zone ${tz}) as local_bucket,
         metric,
         greatest(0, max_value - lag(max_value) over (partition by metric order by bucket)) as kwh
-      from hourly_rollups
+      from ${viewSql}
       where inverter_id = ${inverterId}
         and metric in (${keyList})
         and bucket >= ${from}
@@ -274,10 +282,35 @@ export async function computeCostSeries(
     from deltas
     group by 1, 2, 3, 4
   `);
+  return { rows: rows.rows, fieldByKey, periods };
+}
 
-  for (const r of rows.rows) {
-    const field = priced.get(r.metric);
-    if (!field) continue;
+/**
+ * Net cost per period ([from, to), one point per `bucket`), tariff-band accurate
+ * and zero-filled. Reads the bounded {@link fetchCounterDeltaMatrix} from the
+ * hourly rollups (hour-of-day is needed for time-of-use banding), then prices
+ * each import group at its (hour, weekday) band and each export group at the
+ * feed-in rate in JS — exactly as {@link allocateCost} would per hour, without
+ * shipping every hour across the wire.
+ */
+export async function computeCostSeries(
+  profile: InverterProfile,
+  opts: { from: Date; to: Date; bucket: CostBucket; inverterId?: string },
+): Promise<CostSeriesPoint[]> {
+  const { rows, fieldByKey, periods } = await fetchCounterDeltaMatrix(profile, {
+    ...opts,
+    view: "hourly_rollups",
+  });
+  const byKey = new Map<string, CostSeriesPoint>(
+    periods.map((b) => [b, { bucket: b, importCost: 0, exportEarnings: 0, net: 0 }]),
+  );
+  if (rows.length === 0) return [...byKey.values()];
+
+  const tariff = await getTariff();
+  for (const r of rows) {
+    // Only import/export flows carry money; load/production rows are ignored here.
+    const field = fieldByKey.get(r.metric);
+    if (field !== "import" && field !== "export") continue;
     const point = byKey.get(r.period);
     if (!point) continue; // outside the zero-filled window (edge rounding) → ignore
     const kwh = Number(r.kwh);
@@ -289,11 +322,6 @@ export async function computeCostSeries(
     point.net = point.importCost - point.exportEarnings;
   }
   return [...byKey.values()];
-}
-
-/** Zero-filled `[key, point]` pairs in order, seeding the accumulator map. */
-function byBucketPoints(keys: string[]): Array<[string, CostSeriesPoint]> {
-  return keys.map((bucket) => [bucket, { bucket, importCost: 0, exportEarnings: 0, net: 0 }]);
 }
 
 /** Full cost breakdown for an explicit [from, to) window. */

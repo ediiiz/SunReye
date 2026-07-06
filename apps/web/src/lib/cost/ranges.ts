@@ -35,6 +35,22 @@ export const COST_PRESETS = [
   { id: "year", label: "This year" },
 ] as const;
 
+/**
+ * Compact x-axis label for a server period key at the given bucket granularity.
+ * Keys are local wall-clock: `YYYY-MM-DDTHH` (hour) | `YYYY-MM-DD` (day) |
+ * `YYYY-MM` (month). Shared by the net-cost and energy-split charts.
+ */
+export function periodLabel(key: string, bucket: CostBucket): string {
+  if (bucket === "hour") return `${key.slice(11, 13)}:00`;
+  if (bucket === "day") {
+    return new Date(`${key}T00:00:00`).toLocaleDateString(undefined, {
+      day: "numeric",
+      month: "short",
+    });
+  }
+  return new Date(`${key}-01T00:00:00`).toLocaleDateString(undefined, { month: "short" });
+}
+
 const startOfDay = (d: Date): Date => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 const startOfMonth = (d: Date): Date => new Date(d.getFullYear(), d.getMonth(), 1);
 

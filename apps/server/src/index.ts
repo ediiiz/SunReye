@@ -18,8 +18,8 @@ import {
   setInverterConfig,
   setMqttConfig,
 } from "./config";
-import { computeCost, computeCostSeries, resolveRange } from "./cost";
-import { monthlyEnergy } from "./energy";
+import { type CostBucket, computeCost, computeCostSeries, resolveRange } from "./cost";
+import { energySeries } from "./energy";
 import { entitiesApi } from "./entities";
 import { queryRollup } from "./history";
 import { createApiKeyForUser, listApiKeys, revokeApiKey } from "./api-keys";
@@ -37,6 +37,21 @@ import {
 } from "./profiles";
 import * as runtime from "./runtime";
 import { getTariff, setTariff } from "./settings";
+
+// Shared query for the per-period series endpoints (cost + energy): an explicit
+// [from, to) window at a chosen bucket, plus an optional inverter override.
+const seriesQuery = t.Object({
+  from: t.String(),
+  to: t.String(),
+  bucket: t.Union([t.Literal("hour"), t.Literal("day"), t.Literal("month")]),
+  inverterId: t.Optional(t.String()),
+});
+const seriesArgs = (q: { from: string; to: string; bucket: CostBucket; inverterId?: string }) => ({
+  from: new Date(q.from),
+  to: new Date(q.to),
+  bucket: q.bucket,
+  inverterId: q.inverterId,
+});
 
 // Wire LogTape before anything logs (Elysia's request logger and the app
 // loggers below both flow through the sinks configured here).
@@ -300,38 +315,15 @@ const app = new Elysia()
   // Net-cost time-series over an explicit [from, to) window, one point per
   // `bucket` (hour / day / month). Feeds the Costs page's range-driven bar chart;
   // band-accurate and cheap (delta + rollup done in SQL, bounded matrix returned).
-  .get(
-    "/api/cost/series",
-    ({ query }) =>
-      computeCostSeries(profile, {
-        from: new Date(query.from),
-        to: new Date(query.to),
-        bucket: query.bucket,
-        inverterId: query.inverterId,
-      }),
-    {
-      query: t.Object({
-        from: t.String(),
-        to: t.String(),
-        bucket: t.Union([t.Literal("hour"), t.Literal("day"), t.Literal("month")]),
-        inverterId: t.Optional(t.String()),
-      }),
-    },
-  )
-  // Per-month energy over a trailing window (default 12 months) for the
-  // self-sufficiency / self-consumption charts. Derived at query time from the
-  // daily rollups — no dedicated monthly aggregate. Always returns `months`
-  // entries, zero-filling months with no data so the chart x-axis is stable.
-  .get(
-    "/api/energy/monthly",
-    ({ query }) => monthlyEnergy(profile, { months: query.months, inverterId: query.inverterId }),
-    {
-      query: t.Object({
-        months: t.Number({ default: 12, minimum: 1, maximum: 24 }),
-        inverterId: t.Optional(t.String()),
-      }),
-    },
-  )
+  .get("/api/cost/series", ({ query }) => computeCostSeries(profile, seriesArgs(query)), {
+    query: seriesQuery,
+  })
+  // Per-period energy split (grid-vs-solar consumption, self-consumed-vs-exported
+  // production) over the same window/bucket. Feeds the Costs page energy chart;
+  // derived at query time from the rollups, zero-filled so the x-axis stays stable.
+  .get("/api/energy/series", ({ query }) => energySeries(profile, seriesArgs(query)), {
+    query: seriesQuery,
+  })
   // --- Runtime configuration (inverter + MQTT), editable from the UI. Saving
   // persists and hot-applies via the runtime controller; no restart needed. ---
   .get("/api/settings/inverter", () => getInverterConfig())

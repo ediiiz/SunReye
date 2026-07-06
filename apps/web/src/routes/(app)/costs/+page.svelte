@@ -2,7 +2,7 @@
 	import { api } from '$lib/api';
 	import CostRangePicker from '$lib/components/inverter/cost-range-picker.svelte';
 	import CostBarChart from '$lib/components/inverter/cost-bar-chart.svelte';
-	import MonthlyEnergy from '$lib/components/inverter/monthly-energy.svelte';
+	import EnergySplitChart from '$lib/components/inverter/energy-split-chart.svelte';
 	import { resolveCostPreset, type CostRange } from '$lib/cost/ranges';
 
 	type Cost = {
@@ -15,6 +15,7 @@
 		net: number;
 		gridOnlyCost: number;
 		savings: number;
+		solarSavings: number;
 		selfSufficiency: number | null;
 		selfConsumption: number | null;
 		byDay: {
@@ -126,7 +127,13 @@
 			)}
 			{@render tile('Grid import', money(c.importCost), kwh(c.importKwh))}
 			{@render tile('Export earnings', money(c.exportEarnings), kwh(c.exportKwh))}
-			{@render tile('Savings vs grid-only', money(c.savings), `grid-only ${money(c.gridOnlyCost)}`)}
+			{@render tile(
+				'Solar savings',
+				money(c.solarSavings),
+				'self-consumed × grid price',
+				c.solarSavings > 0 ? 'text-emerald-500' : ''
+			)}
+			{@render tile('Savings vs grid-only', money(c.savings), `incl. ${money(c.exportEarnings)} export`)}
 			{@render tile('Self-sufficiency', pct(c.selfSufficiency), 'of load from solar/battery')}
 			{@render tile('Self-consumption', pct(c.selfConsumption), 'of production used on-site')}
 		</div>
@@ -140,9 +147,9 @@
 			<CostBarChart points={series} bucket={range.chart.bucket} currency={c.currency} />
 		</section>
 
-		<!-- 12-month energy split. Own fixed window, independent of the range switcher above. -->
+		<!-- Energy split (grid-vs-solar, self-consumed-vs-exported), same range as above. -->
 		<section class="border border-border p-4">
-			<MonthlyEnergy />
+			<EnergySplitChart chart={range.chart} caption={range.chart.caption} />
 		</section>
 
 		<!-- Daily net cost -->

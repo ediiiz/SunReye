@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { BarChart } from 'layerchart';
 	import * as Chart from '$lib/components/ui/chart';
-	import type { CostBucket } from '$lib/cost/ranges';
+	import { periodLabel, type CostBucket } from '$lib/cost/ranges';
 
 	// One bar of net cost per period. Mirrors the server's CostSeriesPoint
 	// (apps/server/src/cost.ts).
@@ -28,18 +28,7 @@
 	const money = (v: number) =>
 		new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(v);
 
-	// Period key → a compact axis label. Keys are local wall-clock (see server).
-	function labelOf(key: string): string {
-		if (bucket === 'hour') return `${key.slice(11, 13)}:00`; // YYYY-MM-DDTHH
-		if (bucket === 'day') {
-			const d = new Date(`${key}T00:00:00`);
-			return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-		}
-		const d = new Date(`${key}-01T00:00:00`); // YYYY-MM
-		return d.toLocaleDateString(undefined, { month: 'short' });
-	}
-
-	const data = $derived(points.map((p) => ({ ...p, label: labelOf(p.bucket) })));
+	const data = $derived(points.map((p) => ({ ...p, label: periodLabel(p.bucket, bucket) })));
 	const hasData = $derived(points.some((p) => p.importCost !== 0 || p.exportEarnings !== 0));
 </script>
 

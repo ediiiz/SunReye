@@ -4,7 +4,7 @@
 	import CostRangePicker from '$lib/components/inverter/cost-range-picker.svelte';
 	import CostBarChart from '$lib/components/inverter/cost-bar-chart.svelte';
 	import EnergySplitChart from '$lib/components/inverter/energy-split-chart.svelte';
-	import { resolveCostPreset, type CostRange } from '$lib/cost/ranges';
+	import { resolveCostPreset, type CostBucket, type CostRange } from '$lib/cost/ranges';
 
 	type Cost = {
 		currency: string;
@@ -40,7 +40,12 @@
 	let range = $state<CostRange>(resolveCostPreset('month'));
 	let cost = $state<Cost | null>(null);
 	let loading = $state(true);
-	let series = $state<SeriesPoint[]>([]);
+	// Points + the granularity they were fetched at, updated together so the
+	// chart never labels stale points with a freshly-picked bucket.
+	let series = $state<{ points: SeriesPoint[]; bucket: CostBucket }>({
+		points: [],
+		bucket: 'day'
+	});
 
 	// Headline tiles: priced over the picked [from, to). `cancelled` guards against
 	// an earlier request resolving after a later one and clobbering fresher data.
@@ -67,7 +72,7 @@
 		let cancelled = false;
 		api.api.cost.series.get({ query }).then(({ data }) => {
 			if (cancelled) return;
-			series = (data ?? []) as SeriesPoint[];
+			series = { points: (data ?? []) as SeriesPoint[], bucket: spec.bucket };
 		});
 		return () => {
 			cancelled = true;
@@ -75,8 +80,11 @@
 	});
 
 	// Hide the cost chart entirely when every period is zero (no spend, no earnings,
-	// no standing) — matches the "don't render empty components" rule.
-	const costHasData = $derived(series.some((p) => p.net !== 0));
+	// no standing) — matches the "don't render empty components" rule. Checked per
+	// component so a period where earnings exactly cancel costs (net 0) still shows.
+	const costHasData = $derived(
+		series.points.some((p) => p.importCost !== 0 || p.exportEarnings !== 0 || p.net !== 0)
+	);
 
 	const money = (v: number) =>
 		new Intl.NumberFormat(undefined, {
@@ -177,7 +185,7 @@
 				<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">
 					Total cost — {range.chart.caption}
 				</h2>
-				<CostBarChart points={series} bucket={range.chart.bucket} currency={c.currency} />
+				<CostBarChart points={series.points} bucket={series.bucket} currency={c.currency} />
 			</section>
 		{/if}
 

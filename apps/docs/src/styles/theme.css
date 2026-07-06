@@ -1,27 +1,68 @@
-/* SunReye docs — solar/amber accent over Starlight defaults */
-:root {
-  /* Accent (amber) */
-  --sl-color-accent-low: #3a2a06;
-  --sl-color-accent: #d97706;
-  --sl-color-accent-high: #fcd9a0;
+/* SunReye docs — aligned with the web app's industrial console look:
+   Geist Mono, pure-neutral grays, white / near-black surfaces, Tailwind-blue
+   accent, sharp corners. Sources of truth: apps/web/src/app.css tokens. */
+@import "@fontsource-variable/geist-mono";
 
-  --sl-color-white: #ffffff;
-  --sl-color-gray-1: #eceef2;
-  --sl-color-gray-2: #c0c2c7;
-  --sl-color-gray-3: #888b96;
-  --sl-color-gray-4: #545861;
-  --sl-color-gray-5: #353841;
-  --sl-color-gray-6: #24272f;
-  --sl-color-black: #17181c;
+:root {
+  --sl-font: "Geist Mono Variable", monospace;
+  --sl-font-mono: "Geist Mono Variable", monospace;
+
+  /* Accent (blue) — dark theme. #2563eb = app --sidebar-primary (blue-600). */
+  --sl-color-accent-low: #172554; /* blue-950 */
+  --sl-color-accent: #2563eb; /* blue-600 */
+  --sl-color-accent-high: #bfdbfe; /* blue-200 */
+
+  /* Neutral grays (chroma 0), page bg = web dark --background oklch(0.145 0 0) */
+  --sl-color-white: #fafafa; /* web dark --foreground */
+  --sl-color-gray-1: #ececec;
+  --sl-color-gray-2: #c0c0c0;
+  --sl-color-gray-3: #8a8a8a;
+  --sl-color-gray-4: #565656;
+  --sl-color-gray-5: #363636;
+  --sl-color-gray-6: #262626;
+  --sl-color-black: #0a0a0a;
+
+  /* Tip asides are purple by default; pull them onto the blue accent. */
+  --sl-color-purple-low: #1e2a4a;
+  --sl-color-purple: #3b82f6;
+  --sl-color-purple-high: #bfdbfe;
 }
 
 :root[data-theme="light"] {
-  --sl-color-accent-low: #ffe8c7;
-  --sl-color-accent: #b45309;
-  --sl-color-accent-high: #612f04;
+  /* Accent (blue) — light theme. #1d4ed8 = app --primary (blue-700). */
+  --sl-color-accent-low: #dbeafe; /* blue-100 */
+  --sl-color-accent: #1d4ed8; /* blue-700 */
+  --sl-color-accent-high: #172554; /* blue-950 */
+
+  /* Inverted neutral scale, page bg = web light --background (white) */
+  --sl-color-white: #0a0a0a; /* web light --foreground */
+  --sl-color-gray-1: #262626;
+  --sl-color-gray-2: #363636;
+  --sl-color-gray-3: #565656;
+  --sl-color-gray-4: #8a8a8a;
+  --sl-color-gray-5: #c0c0c0;
+  --sl-color-gray-6: #ececec;
+  --sl-color-gray-7: #f5f5f5;
+  --sl-color-black: #ffffff;
+
+  /* Tip asides on blue (light theme values). */
+  --sl-color-purple-low: #dbeafe;
+  --sl-color-purple: #2563eb;
+  --sl-color-purple-high: #1e3a8a;
 }
 
-/* Warmer hero gradient on the splash page */
+/* Industrial: sharp corners everywhere, like the app's --radius: 0. Unlayered,
+   so it wins over Starlight's @layer styles without !important. */
+:where(*, *::before, *::after) {
+  border-radius: 0;
+}
+
+/* Expressive Code frames define their own radius variable. */
+:root {
+  --ec-brdRad: 0;
+}
+
+/* Hero tagline stays muted */
 .hero > .stack .tagline {
   color: var(--sl-color-gray-2);
 }

@@ -26,6 +26,7 @@
       "version": "0.0.1",
       "dependencies": {
         "@astrojs/starlight": "^0.41.2",
+        "@fontsource-variable/geist-mono": "^5.2.8",
         "astro": "^7.0.2",
         "sharp": "^0.34.5",
       },
@@ -110,6 +111,10 @@
         "@SunReye/config": "workspace:*",
         "typescript": "catalog:",
       },
+    },
+    "packages/brand": {
+      "name": "@SunReye/brand",
+      "version": "0.0.0",
     },
     "packages/config": {
       "name": "@SunReye/config",
@@ -200,6 +205,8 @@
   },
   "packages": {
     "@SunReye/auth": ["@SunReye/auth@workspace:packages/auth"],
+
+    "@SunReye/brand": ["@SunReye/brand@workspace:packages/brand"],
 
     "@SunReye/config": ["@SunReye/config@workspace:packages/config"],
 

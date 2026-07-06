@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import LightningIcon from 'phosphor-svelte/lib/Lightning';
+	import Logo from '$lib/components/logo.svelte';
 
 	let { title, subtitle, children }: { title: string; subtitle: string; children: Snippet } =
 		$props();
@@ -17,9 +17,7 @@
 		class="relative flex w-full max-w-sm flex-col gap-6 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-500"
 	>
 		<div class="flex flex-col items-center gap-3 text-center">
-			<div class="flex size-11 items-center justify-center bg-primary text-primary-foreground">
-				<LightningIcon class="size-6" weight="fill" />
-			</div>
+			<Logo class="size-12 text-primary" />
 			<div>
 				<h1 class="text-xl font-semibold tracking-tight">{title}</h1>
 				<p class="text-sm text-muted-foreground">{subtitle}</p>

@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import * as Sidebar from '$lib/components/ui/sidebar';
+	import Logo from '$lib/components/logo.svelte';
 	import { authClient } from '$lib/auth-client';
 	import { useAppSession } from '$lib/session';
 	import { inverter } from '$lib/inverter/store.svelte';
@@ -11,7 +12,6 @@
 	import SlidersIcon from 'phosphor-svelte/lib/SlidersHorizontal';
 	import CoinsIcon from 'phosphor-svelte/lib/Coins';
 	import GearIcon from 'phosphor-svelte/lib/Gear';
-	import LightningIcon from 'phosphor-svelte/lib/Lightning';
 	import SignOutIcon from 'phosphor-svelte/lib/SignOut';
 	import UserIcon from 'phosphor-svelte/lib/User';
 
@@ -53,9 +53,7 @@
 <Sidebar.Root collapsible="icon">
 	<Sidebar.Header>
 		<div class="flex items-center gap-2 px-1 py-1.5">
-			<div class="flex size-8 shrink-0 items-center justify-center bg-primary text-primary-foreground">
-				<LightningIcon class="size-5" weight="fill" />
-			</div>
+			<Logo class="size-8 shrink-0 text-primary" />
 			<div class="flex min-w-0 flex-col group-data-[collapsible=icon]:hidden">
 				<span class="text-sm font-semibold leading-tight">SunReye</span>
 				<span class="truncate text-xs text-muted-foreground">

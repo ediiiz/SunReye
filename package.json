@@ -37,6 +37,7 @@
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f",
     "check": "oxlint && oxfmt --write",
+    "sync:brand": "node scripts/sync-brand.mjs",
     "prepare": "husky"
   },
   "dependencies": {

@@ -1,5 +1,7 @@
 import ModbusRTU from "modbus-serial";
 
+import { applyComputed } from "./computed";
+
 import { decode, encodeWord } from "./codec";
 import type {
   InverterConnection,
@@ -132,7 +134,8 @@ export class ModbusInverter implements InverterSource {
 
     const metrics: MetricValues = {};
     for (const def of this.profile.metrics) {
-      if (def.compute) continue;
+      // Derived (compute) and composite (controlExpr) metrics own no register.
+      if (def.compute || def.controlExpr) continue;
       const value = decode(def, regs);
       if (value !== undefined) metrics[def.key] = value;
     }
@@ -161,12 +164,5 @@ export class ModbusInverter implements InverterSource {
       else resolve();
     });
     this.client = null;
-  }
-}
-
-/** Run every computed metric against the current values (mutates in place). */
-export function applyComputed(metrics: MetricDef[], values: MetricValues): void {
-  for (const def of metrics) {
-    if (def.compute) values[def.key] = def.compute(values);
   }
 }

@@ -1,7 +1,7 @@
 {
   "manifest": {
-    "id": "deye-sunsynk",
-    "name": "Deye / Sunsynk Hybrid",
+    "id": "deye-sg05lp3",
+    "name": "Deye SG05LP3",
     "manufacturer": "Deye",
     "capabilities": {
       "battery": true,
@@ -53,7 +53,8 @@
         "timeofuse.enabled.3",
         "timeofuse.enabled.4",
         "timeofuse.enabled.5",
-        "timeofuse.enabled.6"
+        "timeofuse.enabled.6",
+        "settings.battery.lock"
       ]
     },
     "metrics": [
@@ -544,6 +545,32 @@
         "range": {
           "min": 0,
           "max": 100
+        }
+      },
+      {
+        "key": "battery.1.current",
+        "topic": "battery/1/current",
+        "label": "Battery 1 Current",
+        "unit": "A",
+        "group": "battery",
+        "kind": "measurement",
+        "writable": false,
+        "flow": {
+          "positive": "Discharging",
+          "negative": "Charging"
+        }
+      },
+      {
+        "key": "battery.2.current",
+        "topic": "battery/2/current",
+        "label": "Battery 2 Current",
+        "unit": "A",
+        "group": "battery",
+        "kind": "measurement",
+        "writable": false,
+        "flow": {
+          "positive": "Discharging",
+          "negative": "Charging"
         }
       },
       {
@@ -1136,6 +1163,19 @@
         "kind": "cumulative",
         "writable": false,
         "role": "load.energy.total"
+      },
+      {
+        "key": "settings.battery.lock",
+        "topic": "settings/battery/lock",
+        "label": "Battery discharge lock",
+        "unit": null,
+        "group": "settings",
+        "kind": "setting",
+        "writable": true,
+        "enumLabels": {
+          "0": "Unlocked",
+          "1": "Locked"
+        }
       }
     ]
   },
@@ -1189,7 +1229,8 @@
       "timeofuse.enabled.3",
       "timeofuse.enabled.4",
       "timeofuse.enabled.5",
-      "timeofuse.enabled.6"
+      "timeofuse.enabled.6",
+      "settings.battery.lock"
     ]
   },
   "metrics": [
@@ -1690,6 +1731,7 @@
         540
       ],
       "scale": 0.1,
+      "offset": -100,
       "access": "r",
       "role": "inverter.temperature.dc"
     },
@@ -1704,6 +1746,7 @@
         541
       ],
       "scale": 0.1,
+      "offset": -100,
       "access": "r",
       "role": "inverter.temperature.ac"
     },
@@ -1860,9 +1903,9 @@
       }
     },
     {
-      "key": "battery.current",
-      "topic": "battery/current",
-      "label": "Battery Current",
+      "key": "battery.1.current",
+      "topic": "battery/1/current",
+      "label": "Battery 1 Current",
       "unit": "A",
       "group": "battery",
       "type": "S_WORD",
@@ -1871,11 +1914,44 @@
       ],
       "scale": 0.01,
       "access": "r",
-      "role": "battery.current",
       "flow": {
         "positive": "Discharging",
         "negative": "Charging"
       }
+    },
+    {
+      "key": "battery.2.current",
+      "topic": "battery/2/current",
+      "label": "Battery 2 Current",
+      "unit": "A",
+      "group": "battery",
+      "type": "S_WORD",
+      "addresses": [
+        594
+      ],
+      "scale": 0.01,
+      "access": "r",
+      "flow": {
+        "positive": "Discharging",
+        "negative": "Charging"
+      }
+    },
+    {
+      "key": "battery.current",
+      "topic": "battery/current",
+      "label": "Battery Current",
+      "unit": "A",
+      "group": "battery",
+      "type": "U_WORD",
+      "addresses": [],
+      "scale": 1,
+      "access": "r",
+      "role": "battery.current",
+      "flow": {
+        "positive": "Discharging",
+        "negative": "Charging"
+      },
+      "compute": "fn"
     },
     {
       "key": "battery.temperature",
@@ -1888,6 +1964,7 @@
         586
       ],
       "scale": 0.1,
+      "offset": -100,
       "access": "r",
       "role": "battery.temperature"
     },
@@ -2689,6 +2766,27 @@
       "scale": 0.1,
       "access": "r",
       "role": "load.energy.total"
+    },
+    {
+      "key": "settings.battery.lock",
+      "topic": "settings/battery/lock",
+      "label": "Battery discharge lock",
+      "unit": null,
+      "group": "settings",
+      "type": "U_WORD",
+      "addresses": [],
+      "scale": 1,
+      "access": "rw",
+      "controlExpr": {
+        "snapshotToggle": {
+          "target": "settings.battery.maximum_discharge_current",
+          "lockedValue": 0
+        }
+      },
+      "enumLabels": {
+        "0": "Unlocked",
+        "1": "Locked"
+      }
     }
   ],
   "computeSample": 300

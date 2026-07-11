@@ -3,9 +3,9 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { deyeSunsynkData } from "@SunReye/inverter-deye-sunsynk";
+import { deyeSg05lp3Data } from "@SunReye/inverter-deye-sg05lp3";
 
-import { cmdCoverage, cmdScaffold, cmdValidate, flags } from "./cli-commands";
+import { cmdBuild, cmdCoverage, cmdScaffold, cmdValidate, flags } from "./cli-commands";
 
 const dir = mkdtempSync(join(tmpdir(), "profile-cli-"));
 
@@ -15,7 +15,7 @@ function writeFixture(name: string, content: string): string {
   return path;
 }
 
-const validProfilePath = writeFixture("deye.json", JSON.stringify(deyeSunsynkData));
+const validProfilePath = writeFixture("deye.json", JSON.stringify(deyeSg05lp3Data));
 const brokenProfilePath = writeFixture(
   "broken.json",
   JSON.stringify({
@@ -126,5 +126,63 @@ describe("cmdScaffold", () => {
     io = captureIo();
     await expect(cmdScaffold(csvPath, { id: "x" })).rejects.toThrow("exit 1");
     expect(io.err.join("\n")).toContain("requires --id");
+  });
+});
+
+describe("cmdBuild", () => {
+  // A code-defined entry module: named export, wrapped export with description,
+  // and a default-export array — all shapes cmdBuild should pick up.
+  const modulePath = writeFixture(
+    "repo-entry.ts",
+    [
+      `const base = ${JSON.stringify(deyeSg05lp3Data)};`,
+      `export const one = { ...base, id: "one" };`,
+      `export const two = { profile: { ...base, id: "two" }, description: "second" };`,
+      `export default [{ ...base, id: "three" }];`,
+    ].join("\n"),
+  );
+
+  test("builds index.json + profile files from a module and a json file", async () => {
+    io = captureIo();
+    const out = join(dir, "repo-out");
+    await cmdBuild([modulePath, validProfilePath], { out, name: "My Repo" });
+
+    const index = JSON.parse(await Bun.file(join(out, "index.json")).text()) as {
+      name: string;
+      profiles: { id: string; path: string; description?: string }[];
+    };
+    expect(index.name).toBe("My Repo");
+    expect(index.profiles.map((p) => p.id)).toEqual([deyeSg05lp3Data.id, "one", "three", "two"]);
+    expect(index.profiles.find((p) => p.id === "two")?.description).toBe("second");
+    for (const entry of index.profiles) {
+      expect(await Bun.file(join(out, entry.path)).exists()).toBe(true);
+    }
+    expect(io.out.join("\n")).toContain("wrote 4 profile(s)");
+  });
+
+  test("fails the build on duplicate ids across entries", async () => {
+    io = captureIo();
+    await expect(
+      cmdBuild([validProfilePath, validProfilePath], { out: join(dir, "dupe-out") }),
+    ).rejects.toThrow("exit 1");
+    expect(io.err.join("\n")).toContain("duplicate profile id");
+  });
+
+  test("requires --out and at least one entry", async () => {
+    io = captureIo();
+    await expect(cmdBuild([], {})).rejects.toThrow("exit 1");
+    expect(io.err.join("\n")).toContain("usage: profile build");
+
+    io.restore();
+    io = captureIo();
+    await expect(cmdBuild([modulePath], {})).rejects.toThrow("exit 1");
+    expect(io.err.join("\n")).toContain("requires --out");
+  });
+
+  test("fails when a module exports no profiles", async () => {
+    io = captureIo();
+    const empty = writeFixture("no-profiles.ts", "export const x = 1;");
+    await expect(cmdBuild([empty], { out: join(dir, "empty-out") })).rejects.toThrow("exit 1");
+    expect(io.err.join("\n")).toContain("no profiles exported");
   });
 });

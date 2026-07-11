@@ -58,9 +58,18 @@ function describeWriteError(err: unknown): string {
 // profiles are loaded and the active one resolved. Everything the transports
 // need (manifest, catalog, write validation) is derived once here and injected,
 // since the active profile is a boot concern (changing it requires a restart).
+//
+// When nothing is configured (`initProfiles` → null: a fresh install), the
+// server boots in a degraded, onboarding-only mode. The route *shapes* stay
+// identical (so the typed client is unaffected), but every profile-dependent
+// handler short-circuits with 503 and the poll loop / MQTT bridge never start —
+// the admin picks a profile from the first-run flow, then restarts into the
+// full API.
 const profile = await initProfiles();
-const ctx = buildProfileContext(profile);
-const { manifest } = ctx;
+const ctx = profile ? buildProfileContext(profile) : null;
+const manifest = ctx?.manifest ?? null;
+// 503 payload for a profile-dependent surface hit before onboarding is done.
+const ONBOARDING_REQUIRED = { error: "No active inverter profile — onboarding required" } as const;
 
 // Live sample: arbitrary metric keys → numeric values, defined by the profile.
 const SampleSchema = t.Object({
@@ -140,10 +149,17 @@ const app = new Elysia()
     const [row] = await db.select({ n: count() }).from(user);
     return { needsSetup: (row?.n ?? 0) === 0 };
   })
+  // First-run profile gate for the web app: true until a profile is active.
+  // Public + independent of runtime health so the onboarding flow can read it
+  // even while the server is booted onboarding-only.
+  .get("/api/profile-status", () => ({
+    needsProfile: profile === null,
+    activeProfileId: profile?.id ?? null,
+  }))
   // Capability manifest for the active inverter profile: capabilities + a
   // render-ready metric catalog (role, kind, range, enum labels, flow). The UI
-  // builds itself from this — no per-inverter code.
-  .get("/api/profile", () => manifest)
+  // builds itself from this — no per-inverter code. 503 until a profile is active.
+  .get("/api/profile", ({ status }) => manifest ?? status(503, ONBOARDING_REQUIRED))
   // Live metrics stream: clients subscribe to the shared topic; the God-loop
   // publishes every sample via `app.server.publish(METRICS_TOPIC, ...)`.
   .ws("/ws/metrics", {
@@ -184,9 +200,10 @@ const app = new Elysia()
   // page load instead of rebuilding over several minutes.
   .get(
     "/api/history/recent",
-    async ({ query }) => {
+    async ({ query, status }) => {
+      const inverterId = query.inverterId ?? profile?.id;
+      if (!inverterId) return status(503, ONBOARDING_REQUIRED);
       const since = new Date(Date.now() - query.seconds * 1000);
-      const inverterId = query.inverterId ?? profile.id;
       // Most-recent-first so a capped result keeps the latest samples (the
       // client sorts ascending per metric).
       const rows = await db
@@ -213,7 +230,9 @@ const app = new Elysia()
   // rather than a drizzle table.
   .get(
     "/api/history/rollup",
-    async ({ query }) => {
+    async ({ query, status }) => {
+      const inverterId = query.inverterId ?? profile?.id;
+      if (!inverterId) return status(503, ONBOARDING_REQUIRED);
       // Explicit [from, to) window (custom date-range picker) takes precedence;
       // otherwise fall back to the open-ended hours-ago offset.
       const window =
@@ -222,7 +241,7 @@ const app = new Elysia()
           : { since: new Date(Date.now() - (query.hours ?? 168) * 60 * 60 * 1000) };
       return queryRollup({
         metric: query.metric,
-        inverterId: query.inverterId ?? profile.id,
+        inverterId,
         limit: query.limit,
         bucket: query.bucket ?? "hour",
         ...window,
@@ -246,6 +265,7 @@ const app = new Elysia()
   .post(
     "/api/commands/setting",
     async ({ body, status }) => {
+      if (!ctx) return status(503, ONBOARDING_REQUIRED);
       const error = ctx.validateWrite(body.key, body.value);
       if (error) return status(400, { error });
       try {
@@ -272,7 +292,8 @@ const app = new Elysia()
   // an explicit [from, to) window. Prices stored energy with the active tariff.
   .get(
     "/api/cost",
-    ({ query }) => {
+    ({ query, status }) => {
+      if (!profile) return status(503, ONBOARDING_REQUIRED);
       const { from, to } =
         query.from && query.to
           ? { from: new Date(query.from), to: new Date(query.to) }
@@ -291,15 +312,21 @@ const app = new Elysia()
   // Net-cost time-series over an explicit [from, to) window, one point per
   // `bucket` (hour / day / month). Feeds the Costs page's range-driven bar chart;
   // band-accurate and cheap (delta + rollup done in SQL, bounded matrix returned).
-  .get("/api/cost/series", ({ query }) => computeCostSeries(profile, seriesArgs(query)), {
-    query: seriesQuery,
-  })
+  .get(
+    "/api/cost/series",
+    ({ query, status }) =>
+      profile ? computeCostSeries(profile, seriesArgs(query)) : status(503, ONBOARDING_REQUIRED),
+    { query: seriesQuery },
+  )
   // Per-period energy split (grid-vs-solar consumption, self-consumed-vs-exported
   // production) over the same window/bucket. Feeds the Costs page energy chart;
   // derived at query time from the rollups, zero-filled so the x-axis stays stable.
-  .get("/api/energy/series", ({ query }) => energySeries(profile, seriesArgs(query)), {
-    query: seriesQuery,
-  })
+  .get(
+    "/api/energy/series",
+    ({ query, status }) =>
+      profile ? energySeries(profile, seriesArgs(query)) : status(503, ONBOARDING_REQUIRED),
+    { query: seriesQuery },
+  )
   // Profile management: registered list, repo sources, browse/install/activate.
   .use(profileRoutes)
   // Admin-only maintenance: data reset + API-key administration.
@@ -307,16 +334,19 @@ const app = new Elysia()
   .listen(env.PORT, () => {
     serverLog.info("server running on http://localhost:{port} — profile {profile}", {
       port: env.PORT,
-      profile: profile.id,
+      profile: profile?.id ?? "(onboarding-only)",
     });
   });
 
 // Start the runtime controller: it owns the poll loop, the live source, and the
 // MQTT bridge (all hot-reconfigurable). Each sample is broadcast to WebSocket
 // subscribers here; persistence + MQTT publishing happen inside the controller.
-runtime.start((sample) => {
-  app.server?.publish(METRICS_TOPIC, JSON.stringify(sample));
-}, ctx);
+// Skipped in onboarding-only boot — there's no profile to poll yet.
+if (ctx) {
+  runtime.start((sample) => {
+    app.server?.publish(METRICS_TOPIC, JSON.stringify(sample));
+  }, ctx);
+}
 
 // Graceful shutdown: stop polling and release the transport + broker.
 for (const signal of ["SIGINT", "SIGTERM"] as const) {

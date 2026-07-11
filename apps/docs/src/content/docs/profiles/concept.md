@@ -14,7 +14,7 @@ A profile (`ProfileData`) is:
 ```ts
 {
   schemaVersion: 1,
-  id: "deye-sunsynk",          // lowercase slug
+  id: "deye-sg05lp3",          // lowercase slug
   name: "Deye / Sunsynk",
   manufacturer: "Deye",
   version: "1.0.0",            // semver of the profile content

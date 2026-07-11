@@ -2,9 +2,18 @@ import { Elysia, t } from "elysia";
 import { createApiKeyForUser, listApiKeys, revokeApiKey } from "../api-keys";
 import { log } from "../logging";
 import { RESET_DATA_CONFIRM, resetTimeseries } from "../maintenance";
+import * as runtime from "../runtime";
 import { adminGuard } from "./admin-guard";
 
 const adminLog = log();
+
+/**
+ * Exit code signalling "restart me" to whatever supervises the process. The dev
+ * runner (`bun run --watch` inside a restart loop) relaunches only on this code
+ * — Ctrl-C exits 0 and a crash exits non-zero, so neither loops — and the prod
+ * container's `restart: unless-stopped` policy relaunches on any exit.
+ */
+const RESTART_EXIT_CODE = 75;
 
 // Admin-only maintenance surface: destructive data reset + API-key management.
 export const adminRoutes = new Elysia({ name: "admin-routes" })
@@ -46,4 +55,22 @@ export const adminRoutes = new Elysia({ name: "admin-routes" })
   .post("/api/admin/api-keys/revoke", ({ body }) => revokeApiKey(body.id), {
     requireAdmin: true,
     body: t.Object({ id: t.String() }),
-  });
+  })
+  // Restart the process so a boot-time change (chiefly a newly activated inverter
+  // profile, which reshapes the routes/manifest/topics built once at boot) takes
+  // effect. Responds first, then releases the runtime and exits with the restart
+  // sentinel for the supervisor to relaunch. The client polls until the server
+  // answers again, then reloads.
+  .post(
+    "/api/admin/restart",
+    () => {
+      adminLog.warn("server restart requested via admin API — exiting for supervised relaunch");
+      // Defer past the response flush, then shut down gracefully and exit.
+      setTimeout(async () => {
+        await runtime.stop();
+        process.exit(RESTART_EXIT_CODE);
+      }, 150);
+      return { ok: true };
+    },
+    { requireAdmin: true },
+  );

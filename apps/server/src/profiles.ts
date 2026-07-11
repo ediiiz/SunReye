@@ -12,6 +12,7 @@
 import { db } from "@SunReye/db";
 import {
   ACTIVE_PROFILE_KEY,
+  LEGACY_DEFAULT_SOURCE_URL,
   PROFILE_SOURCES_KEY,
   activeProfileSchema,
   profileSourcesSchema,
@@ -26,7 +27,7 @@ import { log } from "./logging";
 
 const logger = log("profiles");
 
-/** The configured git repo sources (defaults to the standard repo). */
+/** The configured git repo sources (none by default — added manually). */
 export function getProfileSources(): Promise<ProfileSources> {
   return readSetting(PROFILE_SOURCES_KEY, profileSourcesSchema, profileSourcesSchema.parse({}));
 }
@@ -35,6 +36,20 @@ export async function setProfileSources(input: unknown): Promise<ProfileSources>
   const parsed = profileSourcesSchema.parse(input);
   await writeSetting(PROFILE_SOURCES_KEY, parsed);
   return parsed;
+}
+
+/**
+ * One-time seed migration: early builds seeded a hardcoded default source
+ * ({@link LEGACY_DEFAULT_SOURCE_URL}) that points at a repo which never existed.
+ * Drop it from already-deployed DBs so it doesn't linger as a dead, un-browsable
+ * source. No-op once removed (and on fresh installs, which now start empty).
+ */
+export async function dropLegacyDefaultSource(): Promise<void> {
+  const { sources } = await getProfileSources();
+  const kept = sources.filter((s) => s.url !== LEGACY_DEFAULT_SOURCE_URL);
+  if (kept.length === sources.length) return;
+  await setProfileSources({ sources: kept });
+  logger.info("dropped stale default profile source {url}", { url: LEGACY_DEFAULT_SOURCE_URL });
 }
 
 /** Persist the active profile id (takes effect on the next restart). */

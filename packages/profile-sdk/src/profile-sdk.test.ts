@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { defineProfile, metric, type ProfileData } from "@SunReye/inverter-core";
-import { deyeSunsynkData } from "@SunReye/inverter-deye-sunsynk";
+import { deyeSg05lp3Data } from "@SunReye/inverter-deye-sg05lp3";
 
 import { coverage } from "./coverage";
 import { exerciseProfile } from "./harness";
@@ -28,7 +28,7 @@ function tinyProfile(): ProfileData {
 
 describe("validateProfile", () => {
   test("accepts the real Deye profile", () => {
-    expect(validateProfile(deyeSunsynkData).ok).toBe(true);
+    expect(validateProfile(deyeSg05lp3Data).ok).toBe(true);
   });
 
   test("reports readable issues for a broken profile", () => {
@@ -48,7 +48,7 @@ describe("validateProfile", () => {
 
 describe("coverage", () => {
   test("Deye maps most roles; tiny maps almost none", () => {
-    const deye = coverage(deyeSunsynkData);
+    const deye = coverage(deyeSg05lp3Data);
     expect(deye.mappedCount).toBeGreaterThan(30);
     expect(deye.total).toBe(deye.mapped.length + deye.missing.length);
 
@@ -60,8 +60,8 @@ describe("coverage", () => {
 
 describe("exerciseProfile (test harness)", () => {
   test("runs the Deye profile through manifest + capabilities + a sim sample", async () => {
-    const { manifest, capabilities, sample } = await exerciseProfile(deyeSunsynkData);
-    expect(manifest.id).toBe("deye-sunsynk");
+    const { manifest, capabilities, sample } = await exerciseProfile(deyeSg05lp3Data);
+    expect(manifest.id).toBe("deye-sg05lp3");
     expect(capabilities.pvStrings).toBe(2);
     // Every non-RAW, non-computed metric should produce a value.
     expect(Object.keys(sample).length).toBeGreaterThan(90);

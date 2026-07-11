@@ -16,7 +16,15 @@ import { env } from "@SunReye/env/server";
 import type { InverterSample, InverterSource } from "@SunReye/inverter-core";
 import mqtt from "mqtt";
 import { getInverterConfig, getMqttConfig } from "./config";
-import { buildSource, type ProfileContext } from "./inverter";
+import { executeControl, injectControlValues } from "./control-expr";
+import { dbControlStore } from "./control-store";
+import {
+  buildProfileContext,
+  buildSource,
+  getActiveProfileOrNull,
+  resolveProfileById,
+  type ProfileContext,
+} from "./inverter";
 import { log } from "./logging";
 import { type MqttBridge, startMqttBridge } from "./mqtt";
 import { liveState } from "./state";
@@ -57,6 +65,9 @@ async function pollOnce(): Promise<void> {
     inverterStatus.connected = true;
     inverterStatus.lastError = null;
     inverterStatus.lastSampleAt = sample.time;
+    // Composite controls own no register; fold their current (e.g. lock) state
+    // into the sample so every downstream surface sees it.
+    await injectControlValues(sample, context(), dbControlStore);
     liveState.set(sample);
     const rows = Object.entries(sample.metrics).map(([metric, value]) => ({
       time: new Date(sample.time),
@@ -84,6 +95,20 @@ function restartLoop(intervalMs: number): void {
 /** Apply an inbound command write to the live source. */
 export async function write(key: string, value: number): Promise<void> {
   if (!source) throw new Error("inverter not started");
+  // A composite control (controlExpr) runs its declarative action instead of a
+  // raw register write; the interpreter dispatches to the real target(s).
+  const def = context().defByKey.get(key);
+  if (def?.controlExpr) {
+    // The module-level `let source` loses its non-null narrowing inside the
+    // closure, so capture it here.
+    const src = source;
+    return executeControl(def, value, {
+      ctx: context(),
+      store: dbControlStore,
+      write: (target, v) => src.write(target, v),
+      readLive: (target) => liveState.latest?.metrics[target],
+    });
+  }
   await source.write(key, value);
 }
 
@@ -112,20 +137,27 @@ export async function start(listener: SampleListener, profileCtx: ProfileContext
   await rebuildBridge(await getMqttConfig());
 }
 
-/** Rebuild the source (and restart the loop) for updated inverter settings. */
+/**
+ * Rebuild the source (and restart the loop) for updated inverter settings. In
+ * onboarding-only boot the runtime isn't started (no active profile), so the
+ * config is persisted by the caller but there's nothing live to hot-apply yet —
+ * it takes effect on the restart that activates a profile.
+ */
 export async function applyInverterConfig(config: InverterConfig): Promise<void> {
+  if (!ctx) return;
   await rebuildInverter(config);
 }
 
 /** Rebuild the MQTT bridge for updated broker/discovery settings. */
 export async function applyMqttConfig(config: MqttConfig): Promise<void> {
+  if (!ctx) return;
   await rebuildBridge(config);
 }
 
-/** Live health for `/api/status`. */
+/** Live health for `/api/status` (tolerates the not-started onboarding boot). */
 export function status() {
   return {
-    inverter: { ...inverterStatus, profile: context().profile.id },
+    inverter: { ...inverterStatus, profile: ctx?.profile.id ?? null },
     mqtt: bridge
       ? { enabled: true, ...bridge.status() }
       : { enabled: false, connected: false, lastError: null },
@@ -157,17 +189,32 @@ export interface TestInverterResult {
  * Try a config against a throwaway source without disturbing the live one.
  * Times the read and returns the full captured snapshot so the operator can
  * eyeball every value for plausibility before saving.
+ *
+ * The profile is resolved independent of the running runtime ({@link resolveProfileById}),
+ * so this works during onboarding — before any profile is active — against the
+ * chosen (built-in or freshly-installed) profile. A null `profileId` falls back
+ * to the active profile, for the ordinary settings-page re-test.
  */
-export async function testInverter(config: InverterConfig): Promise<TestInverterResult> {
-  const ctx = context();
-  const probe = buildSource(ctx.profile, config);
+export async function testInverter(
+  profileId: string | null,
+  config: InverterConfig,
+): Promise<TestInverterResult> {
+  const profile = profileId ? await resolveProfileById(profileId) : getActiveProfileOrNull();
+  if (!profile) {
+    return {
+      ok: false,
+      error: profileId ? `Unknown profile "${profileId}"` : "No profile selected",
+    };
+  }
+  const testCtx = buildProfileContext(profile);
+  const probe = buildSource(profile, config);
   try {
     const started = performance.now();
     const sample = await probe.read();
     const durationMs = Math.round(performance.now() - started);
     const metrics = Object.entries(sample.metrics)
       .map(([key, value]) => {
-        const meta = ctx.metaByKey.get(key);
+        const meta = testCtx.metaByKey.get(key);
         const display = meta?.enumLabels?.[value];
         return {
           key,

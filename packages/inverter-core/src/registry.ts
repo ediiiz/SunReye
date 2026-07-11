@@ -26,6 +26,11 @@ export function getProfile(id: string): InverterProfile {
   return profile;
 }
 
+/** Non-throwing lookup — `undefined` when the id isn't registered. */
+export function tryGetProfile(id: string): InverterProfile | undefined {
+  return profiles.get(id);
+}
+
 export function listProfiles(): InverterProfile[] {
   return [...profiles.values()];
 }

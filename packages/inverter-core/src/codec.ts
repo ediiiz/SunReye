@@ -22,17 +22,18 @@ function toSigned16(v: number): number {
  */
 export function decode(def: MetricDef, regs: ReadonlyMap<number, number>): number | undefined {
   const [a0, a1] = def.addresses;
+  const offset = def.offset ?? 0;
   switch (def.type) {
     case "U_WORD":
-      return a0 === undefined ? undefined : (regs.get(a0) ?? 0) * def.scale;
+      return a0 === undefined ? undefined : (regs.get(a0) ?? 0) * def.scale + offset;
     case "S_WORD":
-      return a0 === undefined ? undefined : toSigned16(regs.get(a0) ?? 0) * def.scale;
+      return a0 === undefined ? undefined : toSigned16(regs.get(a0) ?? 0) * def.scale + offset;
     case "U_DWORD": {
       if (a0 === undefined || a1 === undefined) return undefined;
       // Low word first, high word second (LW,HW). Avoid bit-shift so the
       // 32-bit value stays an exact double rather than a signed int32.
       const raw = (regs.get(a0) ?? 0) + (regs.get(a1) ?? 0) * 0x10000;
-      return raw * def.scale;
+      return raw * def.scale + offset;
     }
     case "RAW":
       return undefined;
@@ -44,7 +45,7 @@ export function decode(def: MetricDef, regs: ReadonlyMap<number, number>): numbe
  * Only `U_WORD`/`S_WORD` settings are writable.
  */
 export function encodeWord(def: MetricDef, value: number): number {
-  const raw = Math.round(value / def.scale);
+  const raw = Math.round((value - (def.offset ?? 0)) / def.scale);
   if (def.type === "S_WORD") return raw < 0 ? raw + 0x10000 : raw;
   return raw & 0xffff;
 }

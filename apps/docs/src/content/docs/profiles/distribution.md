@@ -32,8 +32,14 @@ A "repo" is a **public git repository** containing:
 2. One committed **`ProfileData` JSON file** per entry, at the `path` given in the index —
    exactly what [`defineProfile`](/profiles/authoring/) emits, serialized.
 
-The default (standard) source is `https://github.com/sunreye/inverter-profiles.git`. Source
-URLs must be `https://` and end in `.git`.
+You don't have to write this layout by hand: `bunx profile build ./src/profiles.ts --out .`
+[generates it](/profiles/authoring/#profile-build-entries---out-dir) from code-defined
+profiles — validate, emit, commit, push.
+
+**No source ships by default** — the core stays clean. Out of the box the only profiles
+present are the **built-in** ones (shipped in-repo, badged "Built in" in the UI and selectable
+directly). To pull external profiles, add a repository yourself. Source URLs must be
+`https://` and end in `.git`.
 
 ## Managing sources
 
@@ -77,8 +83,10 @@ On startup, profiles are registered in two phases before any routes or topics ar
    predate a schema change) and registered; an invalid row is logged and skipped, so one bad
    download can't take the server down.
 
-Then the active profile id — from settings, seeded from `INVERTER_PROFILE` on first boot —
-is resolved and the engine is built for it.
+Then the active profile id — from settings, or seeded from `INVERTER_PROFILE` — is resolved
+and the engine is built for it. **When nothing is configured** (a fresh install), the server
+boots in a degraded, **onboarding-only** mode: the admin picks a profile and tests the Modbus
+connection with it from the first-run flow, then restarts into the full API.
 
 ## Non-goals
 

@@ -1,6 +1,6 @@
 import { listProfiles } from "@SunReye/inverter-core";
 import { Elysia, t } from "elysia";
-import { getActiveProfile } from "../inverter";
+import { getActiveProfileOrNull } from "../inverter";
 import {
   browseAvailable,
   getProfileSources,
@@ -17,8 +17,10 @@ import { adminGuard } from "./admin-guard";
 export const profileRoutes = new Elysia({ name: "profile-routes" })
   .use(adminGuard)
   // Registered profiles (built-in + DB-installed) with active/installed/version.
+  // A profile registered but absent from `installed_profiles` is a built-in
+  // (shipped in-repo), which the UI badges "Built in".
   .get("/api/profiles", async () => {
-    const activeId = getActiveProfile().id;
+    const activeId = getActiveProfileOrNull()?.id ?? null;
     const installed = new Map((await listInstalled()).map((p) => [p.id, p]));
     return listProfiles().map((p) => ({
       id: p.id,
@@ -26,6 +28,7 @@ export const profileRoutes = new Elysia({ name: "profile-routes" })
       manufacturer: p.manufacturer,
       active: p.id === activeId,
       installed: installed.has(p.id),
+      builtin: !installed.has(p.id),
       version: installed.get(p.id)?.version,
     }));
   })
@@ -60,7 +63,7 @@ export const profileRoutes = new Elysia({ name: "profile-routes" })
   .delete(
     "/api/profiles/:id",
     async ({ params, status }) => {
-      if (params.id === getActiveProfile().id) {
+      if (params.id === getActiveProfileOrNull()?.id) {
         return status(409, { error: "Cannot uninstall the active profile" });
       }
       await uninstallProfile(params.id);
@@ -75,7 +78,7 @@ export const profileRoutes = new Elysia({ name: "profile-routes" })
     async ({ body, status }) => {
       try {
         const { id } = await setActiveProfile(body);
-        return { id, restartRequired: id !== getActiveProfile().id };
+        return { id, restartRequired: id !== getActiveProfileOrNull()?.id };
       } catch (error) {
         return status(400, { error: error instanceof Error ? error.message : "Invalid profile" });
       }

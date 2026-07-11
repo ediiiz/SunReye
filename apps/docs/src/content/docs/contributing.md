@@ -57,7 +57,7 @@ Examples:
 | Dashboard | `apps/web` |
 | Documentation (this site) | `apps/docs` |
 | Modbus engine, registry, entity model | `packages/inverter-core` |
-| Deye / Sunsynk profile | `packages/inverter-deye-sunsynk` |
+| Deye / Sunsynk profile | `packages/inverter-deye-sg05lp3` |
 | Profile SDK + CLI | `packages/profile-sdk` |
 | Schema, TimescaleDB, runtime settings | `packages/db` |
 | Env schema, auth, shared config | `packages/env`, `packages/auth`, `packages/config` |

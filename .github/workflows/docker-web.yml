@@ -3,7 +3,7 @@ name: Docker · web
 on:
   push:
     branches: [master]
-    tags: ["v*"]
+    tags: ["v*", "web-v*"]
     paths:
       - "apps/web/**"
       - "packages/**"
@@ -55,6 +55,8 @@ jobs:
             type=ref,event=branch
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
+            type=match,pattern=web-v(\d+\.\d+\.\d+),group=1
+            type=match,pattern=web-v(\d+\.\d+)\.,group=1
             type=sha,format=short
             type=raw,value=latest,enable={{is_default_branch}}
 

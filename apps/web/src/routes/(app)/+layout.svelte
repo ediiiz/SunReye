@@ -9,6 +9,7 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import AppSidebar from '$lib/components/app-sidebar.svelte';
 	import { useAppSession } from '$lib/session';
+	import { firstRunGate, type FirstRunGate } from '$lib/setup';
 	import { inverter } from '$lib/inverter/store.svelte';
 	import SunIcon from 'phosphor-svelte/lib/Sun';
 	import MoonIcon from 'phosphor-svelte/lib/Moon';
@@ -22,6 +23,20 @@
 		if (!$sessionQuery.isPending && !$sessionQuery.data) goto('/login');
 	});
 
+	// First-run gate, in precedence order: no admin yet → `/onboarding`; admin but
+	// no active profile (server booted onboarding-only, so there's no manifest or
+	// live data) → `/setup`; otherwise render the workspace. `gate` is null until
+	// the check resolves, so the shell never flashes before we know where to go.
+	let gate = $state<FirstRunGate | null>(null);
+	$effect(() => {
+		if ($sessionQuery.isPending || !$sessionQuery.data || gate) return;
+		firstRunGate().then((g) => {
+			gate = g;
+			if (g === 'setup-account') goto('/onboarding');
+			else if (g === 'setup-profile') goto('/setup');
+		});
+	});
+
 	// Admin-only areas (Settings + Controls). The server enforces every mutation;
 	// this bounces non-admins who reach the page by direct URL. The nav hides
 	// these entries too (app-sidebar.svelte).
@@ -33,9 +48,10 @@
 		}
 	});
 
-	// Open the manifest + live stream once the workspace mounts.
+	// Open the manifest + live stream once the instance is fully configured
+	// (skipped in onboarding-only boot, where `/api/profile` has no manifest).
 	$effect(() => {
-		inverter.start();
+		if (gate === 'ready') inverter.start();
 	});
 
 	const SECTION: Record<string, string> = {
@@ -58,6 +74,10 @@
 	<div class="grid h-svh place-items-center text-muted-foreground">Loading…</div>
 {:else if !$sessionQuery.data}
 	<div class="grid h-svh place-items-center text-muted-foreground">Redirecting to login…</div>
+{:else if gate === null}
+	<div class="grid h-svh place-items-center text-muted-foreground">Loading…</div>
+{:else if gate !== 'ready'}
+	<div class="grid h-svh place-items-center text-muted-foreground">Redirecting…</div>
 {:else}
 	<Sidebar.Provider>
 		<AppSidebar />

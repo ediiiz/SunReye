@@ -17,11 +17,12 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 import { env } from "@SunReye/env/server";
-import type { ProfileData } from "@SunReye/inverter-core";
-import { parseProfileData } from "@SunReye/inverter-core";
-import { z } from "zod";
+import type { ProfileData, RepoIndex } from "@SunReye/inverter-core";
+import { parseProfileData, repoIndexSchema } from "@SunReye/inverter-core";
 
 import { log } from "./logging";
+
+export type { RepoIndex, RepoProfileEntry } from "@SunReye/inverter-core";
 
 const logger = log("git-source");
 
@@ -33,25 +34,6 @@ const GIT_TIMEOUT_MS = 30_000;
 
 /** Refuse to parse a profile/index larger than this (defense against junk). */
 const MAX_FILE_BYTES = 1_000_000;
-
-/** One profile entry in a repo's root `index.json`. */
-const repoProfileEntrySchema = z.object({
-  id: z.string().min(1),
-  name: z.string().min(1),
-  manufacturer: z.string().min(1),
-  version: z.string().min(1),
-  /** Repo-relative path to the ProfileData JSON, e.g. `profiles/deye.json`. */
-  path: z.string().min(1),
-  description: z.string().optional(),
-});
-export type RepoProfileEntry = z.infer<typeof repoProfileEntrySchema>;
-
-const repoIndexSchema = z.object({
-  name: z.string().optional(),
-  maintainer: z.string().optional(),
-  profiles: z.array(repoProfileEntrySchema),
-});
-export type RepoIndex = z.infer<typeof repoIndexSchema>;
 
 function assertAllowedGitUrl(url: string): void {
   if (url.startsWith("https://")) return;

@@ -1,4 +1,4 @@
-import { metric } from "@SunReye/inverter-core";
+import { control, metric } from "@SunReye/inverter-core";
 import type { MetricDataDef } from "@SunReye/inverter-core";
 
 /**
@@ -16,7 +16,7 @@ const CHARGE_FLOW = { positive: "Discharging", negative: "Charging" } as const;
 const GRID_FLOW = { positive: "Importing", negative: "Exporting" } as const;
 
 /** Table 1 — inverter / PV / grid. */
-const inverter: MetricDataDef[] = [
+const inverter = [
   metric("inverter/status", {
     label: "Running status",
     group: "inverter",
@@ -284,6 +284,8 @@ const inverter: MetricDataDef[] = [
     type: "S_WORD",
     addr: 635,
   }),
+  // Vendor "+1000" temperature encoding: register = °C×10 + 1000, so decode as
+  // raw×0.1 − 100. Without the offset these read ~100 °C high (25 → 125).
   metric("radiator_temp", {
     label: "DC Temperature",
     unit: "°C",
@@ -291,6 +293,7 @@ const inverter: MetricDataDef[] = [
     type: "S_WORD",
     addr: 540,
     scale: 0.1,
+    offset: -100,
     role: "inverter.temperature.dc",
   }),
   metric("ac/temperature", {
@@ -300,6 +303,7 @@ const inverter: MetricDataDef[] = [
     type: "S_WORD",
     addr: 541,
     scale: 0.1,
+    offset: -100,
     role: "inverter.temperature.ac",
   }),
   metric("dc/total_power", {
@@ -347,7 +351,7 @@ const inverter: MetricDataDef[] = [
 ];
 
 /** Table 2 — battery. */
-const battery: MetricDataDef[] = [
+const battery = [
   metric("battery/daily_charge", {
     label: "Daily Battery Charge",
     unit: "kWh",
@@ -382,6 +386,9 @@ const battery: MetricDataDef[] = [
     scale: 0.1,
     role: "battery.energy.discharged.total",
   }),
+  // Aggregate pack power across both BMS banks — verified to read the full pack
+  // (~745 W = battery.voltage × total current), not a single bank's share. So it
+  // stays the canonical total; only current is reported per-bank (see below).
   metric("battery/power", {
     label: "Battery Power",
     unit: "W",
@@ -407,15 +414,38 @@ const battery: MetricDataDef[] = [
     role: "battery.soc",
     range: { min: 0, max: 100 },
   }),
-  metric("battery/current", {
-    label: "Battery Current",
+  // Dual-BMS pack: current is sensed per bank (591 / 594) while power (590) is
+  // already the aggregate. Each bank register reads ~half the true current, so
+  // the canonical Battery Current sums them (verified: 7.73 + 8.13 = 15.86 A,
+  // matching 829 W ÷ voltage). Sign flows from each bank (CHARGE_FLOW: +
+  // discharging). Only current is split out — the bank-2 voltage/SOC/power/temp
+  // registers (589/593/595/596) read 0 on this model, so voltage, SOC, power and
+  // temperature stay pack-level (the canonical metrics above).
+  metric("battery/1/current", {
+    label: "Battery 1 Current",
     unit: "A",
     group: "battery",
     type: "S_WORD",
     addr: 591,
     scale: 0.01,
+    flow: CHARGE_FLOW,
+  }),
+  metric("battery/2/current", {
+    label: "Battery 2 Current",
+    unit: "A",
+    group: "battery",
+    type: "S_WORD",
+    addr: 594,
+    scale: 0.01,
+    flow: CHARGE_FLOW,
+  }),
+  metric("battery/current", {
+    label: "Battery Current",
+    unit: "A",
+    group: "battery",
     role: "battery.current",
     flow: CHARGE_FLOW,
+    computeExpr: { sum: ["battery.1.current", "battery.2.current"] },
   }),
   metric("battery/temperature", {
     label: "Battery Temperature",
@@ -423,6 +453,7 @@ const battery: MetricDataDef[] = [
     group: "battery",
     addr: 586,
     scale: 0.1,
+    offset: -100,
     role: "battery.temperature",
   }),
   // Battery Charging Type Control Mode (read-only for now). Decides whether the
@@ -439,7 +470,7 @@ const battery: MetricDataDef[] = [
 ];
 
 /** Table 3 — generator input ports. */
-const generator: MetricDataDef[] = [
+const generator = [
   metric("ac/generator/a/voltage", {
     label: "Gen port A Voltage",
     unit: "V",
@@ -509,7 +540,7 @@ const generator: MetricDataDef[] = [
 ];
 
 /** Table 4 — writable settings. */
-const settings: MetricDataDef[] = [
+const settings = [
   metric("settings/battery/maximum_charge_current", {
     label: "Max battery charge current",
     unit: "A",
@@ -569,7 +600,7 @@ const settings: MetricDataDef[] = [
 ];
 
 /** Table 5 — system. Packed date/time across three registers (opaque). */
-const system: MetricDataDef[] = [
+const system = [
   metric("settings/system_time", {
     label: "System time",
     group: "system",
@@ -633,7 +664,7 @@ const timeOfUse: MetricDataDef[] = [
 ];
 
 /** Table 7 — backup / UPS load output. */
-const load: MetricDataDef[] = [
+const load = [
   metric("ac/ups/total_power", {
     label: "Total Load Power",
     unit: "W",
@@ -711,7 +742,44 @@ const load: MetricDataDef[] = [
   }),
 ];
 
-/** The full Deye / Sunsynk register + semantic map. */
+/**
+ * Union of every statically-keyed register key, e.g.
+ * `"settings.battery.maximum_discharge_current"`. Each `metric()` returns a
+ * literal `key` type (see `TopicToKey`), so this is the exact set of real keys —
+ * what gives composite-control `target`s IDE autocomplete and compile checks.
+ * The time-of-use table is excluded on purpose: it builds keys from dynamic
+ * template literals (`timeofuse/time/${i}`), so its key type is `string` and
+ * would collapse the union.
+ */
+type DeyeKey =
+  | (typeof inverter)[number]["key"]
+  | (typeof battery)[number]["key"]
+  | (typeof generator)[number]["key"]
+  | (typeof settings)[number]["key"]
+  | (typeof system)[number]["key"]
+  | (typeof load)[number]["key"];
+
+/**
+ * Table 8 — composite controls (no registers of their own). Battery discharge
+ * lock: on, snapshot the max-discharge-current limit and force it to 0; off,
+ * restore the captured limit. `control<DeyeKey>` autocompletes + compile-checks
+ * the `target`.
+ */
+const controls: MetricDataDef[] = [
+  control<DeyeKey>("settings/battery/lock", {
+    label: "Battery discharge lock",
+    group: "settings",
+    enumLabels: { 0: "Unlocked", 1: "Locked" },
+    controlExpr: {
+      snapshotToggle: {
+        target: "settings.battery.maximum_discharge_current",
+        lockedValue: 0,
+      },
+    },
+  }),
+];
+
+/** The full Deye / Sunsynk register + semantic map (controls appended last). */
 export const metrics: MetricDataDef[] = [
   ...inverter,
   ...battery,
@@ -720,4 +788,5 @@ export const metrics: MetricDataDef[] = [
   ...system,
   ...timeOfUse,
   ...load,
+  ...controls,
 ];

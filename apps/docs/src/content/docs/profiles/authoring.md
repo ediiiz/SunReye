@@ -4,15 +4,16 @@ description: Describe a new inverter with the typed profile SDK, validate it, an
 ---
 
 You describe an inverter *as code* using the typed builders in
-`@SunReye/inverter-core`, compile it down to a serializable `ProfileData`, then validate and
-score it with the `@SunReye/profile-sdk` CLI. The SDK's job is to make the profile
+[`@sunreye/profile-sdk`](https://www.npmjs.com/package/@sunreye/profile-sdk) (`bun add -d
+@sunreye/profile-sdk`), compile it down to a serializable `ProfileData`, then validate and
+score it with the same package's CLI. The SDK's job is to make the profile
 **correct by construction** — picking a role forces you to supply exactly what that role
 needs, or the code won't compile.
 
 ## `defineProfile` and `metric`
 
 ```ts
-import { defineProfile, metric } from "@SunReye/inverter-core";
+import { defineProfile, metric } from "@sunreye/profile-sdk";
 
 export const acme = defineProfile({
   id: "acme-hybrid",
@@ -95,7 +96,7 @@ manifest — **it can never execute code**.
 
 ## The `profile` CLI
 
-`@SunReye/profile-sdk` ships a `profile` command with three subcommands. It exits non-zero
+`@sunreye/profile-sdk` ships a `profile` command with three subcommands. It exits non-zero
 on failure, so it works as a CI or pre-commit gate.
 
 ### `profile validate <file>`
@@ -138,6 +139,22 @@ bunx profile scaffold ./deye-registers.csv \
 
 The real authoring work is transcribing the register map and assigning roles; scaffold gives
 you the skeleton.
+
+### `profile build <entries...> --out <dir>`
+
+Turns code-defined profiles into a complete, installable
+[profile repo](/profiles/distribution/): validates every profile, writes one
+`profiles/<id>.json` per profile, and regenerates the root `index.json`:
+
+```bash
+bunx profile build ./src/profiles.ts --out . --name "My Profiles" --maintainer you
+```
+
+An entry is either a `ProfileData` JSON file or a TS/JS module — every export that is a
+profile, a `{ profile, description }` wrapper (the description shows up in SunReye's repo
+browser), or an array of either gets included. Any invalid profile or duplicate id fails
+the whole build, so a broken repo never gets published. The same logic is available
+programmatically as `buildRepo(entries, { name, maintainer })`.
 
 ## Testing without hardware
 

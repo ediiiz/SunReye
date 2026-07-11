@@ -33,7 +33,7 @@ Inverter (Modbus TCP)  ──►  Core engine (Elysia)  ──►  TimescaleDB (
 | Package | Role |
 | --- | --- |
 | [`packages/inverter-core`](https://github.com/ediiiz/SunReye/tree/master/packages/inverter-core) | The engine: Modbus codec/driver, the profile registry, capability derivation, and transport-neutral entity descriptors (constraints, bounds, enums) that every transport generates from. |
-| [`packages/inverter-deye-sunsynk`](https://github.com/ediiiz/SunReye/tree/master/packages/inverter-deye-sunsynk) | A first-party profile package. Self-registers on import. |
+| [`packages/inverter-deye-sg05lp3`](https://github.com/ediiiz/SunReye/tree/master/packages/inverter-deye-sg05lp3) | A first-party profile package. Self-registers on import. |
 | [`packages/profile-sdk`](https://github.com/ediiiz/SunReye/tree/master/packages/profile-sdk) | Tooling to author, validate, and score inverter profiles. |
 | [`apps/server`](https://github.com/ediiiz/SunReye/tree/master/apps/server) | The core engine (Elysia + Bun): poll loop, WebSocket stream, REST API, MQTT bridge, history endpoints. |
 | [`apps/web`](https://github.com/ediiiz/SunReye/tree/master/apps/web) | The SvelteKit dashboard. Builds itself from the profile manifest. |

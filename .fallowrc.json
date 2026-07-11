@@ -26,7 +26,7 @@
   "health": {
     "thresholdOverrides": [
       {
-        "files": ["packages/inverter-core/**", "packages/inverter-deye-sunsynk/**"],
+        "files": ["packages/inverter-core/**", "packages/inverter-deye-sg05lp3/**"],
         "maxCyclomatic": 15,
         "maxCognitive": 20,
         "maxCrap": 200,
@@ -35,8 +35,10 @@
       {
         "files": [
           "apps/web/src/routes/(app)/**",
+          "apps/web/src/routes/setup/**",
           "apps/web/src/lib/components/inverter/**",
           "apps/web/src/lib/components/settings/**",
+          "apps/web/src/lib/components/setup/**",
           "apps/web/src/lib/components/app-sidebar.svelte",
           "apps/web/src/lib/inverter/**",
           "apps/web/src/lib/cost/**",

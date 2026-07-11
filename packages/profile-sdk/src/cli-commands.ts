@@ -5,7 +5,11 @@
  * always had; tests stub `process.exit`.
  */
 
+import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+
 import { coverage, groupByPrefix, isIndexedRole } from "./coverage";
+import { buildRepo, type RepoEntryInput } from "./repo";
 import { scaffoldFromCsv } from "./scaffold";
 import { validateProfile } from "./validate";
 import type { ProfileData } from "@SunReye/inverter-core";
@@ -82,4 +86,83 @@ export async function cmdScaffold(
   });
   // Emit to stdout so it can be piped to a file and hand-edited (add roles).
   console.log(JSON.stringify(data, null, 2));
+}
+
+/**
+ * Loose shape check used to pick profile exports out of a module — full
+ * validation happens in `buildRepo`, so a broken profile is reported as a
+ * validation error instead of silently skipped here.
+ */
+function isProfileLike(value: unknown): value is ProfileData {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    (value as ProfileData).schemaVersion === 1 &&
+    typeof (value as ProfileData).id === "string" &&
+    Array.isArray((value as ProfileData).metrics)
+  );
+}
+
+/**
+ * Collect profiles from one entry file: a `.json` file is a single serialized
+ * profile; anything else is imported as a module and every export (including
+ * array elements and `{ profile, description }` wrappers) that looks like a
+ * profile is taken.
+ */
+async function loadEntry(path: string): Promise<RepoEntryInput[]> {
+  if (path.endsWith(".json")) {
+    return [{ profile: (await readJson(path)) as ProfileData }];
+  }
+  const mod: Record<string, unknown> = await import(pathToFileURL(resolve(path)).href);
+  const found: RepoEntryInput[] = [];
+  // Dedupe by identity: `export const x` + `export default x` is one profile.
+  const taken = new Set<unknown>();
+  const visit = (value: unknown): void => {
+    if (Array.isArray(value)) {
+      for (const item of value) visit(item);
+      return;
+    }
+    if (typeof value !== "object" || value === null || taken.has(value)) return;
+    if (isProfileLike(value)) {
+      taken.add(value);
+      found.push({ profile: value });
+      return;
+    }
+    const wrapper = value as Partial<RepoEntryInput>;
+    if (isProfileLike(wrapper.profile) && !taken.has(wrapper.profile)) {
+      taken.add(wrapper.profile);
+      found.push({ profile: wrapper.profile, description: wrapper.description });
+    }
+  };
+  for (const value of Object.values(mod)) visit(value);
+  if (found.length === 0) fail(`no profiles exported from ${path}`);
+  return found;
+}
+
+export async function cmdBuild(paths: string[], opts: Record<string, string>): Promise<void> {
+  if (paths.length === 0) {
+    fail(
+      "usage: profile build <module.ts|profile.json ...> --out <dir> [--name n] [--maintainer m]",
+    );
+  }
+  const out = opts.out;
+  if (!out) fail("build requires --out <dir>");
+
+  const entries: RepoEntryInput[] = [];
+  for (const path of paths) entries.push(...(await loadEntry(path)));
+
+  const result = buildRepo(entries, { name: opts.name, maintainer: opts.maintainer });
+  if (!result.ok) {
+    console.error("✗ repo build failed:");
+    for (const issue of result.issues) console.error(`  • ${issue}`);
+    process.exit(1);
+  }
+
+  for (const [relPath, contents] of Object.entries(result.files)) {
+    await Bun.write(join(out, relPath), contents);
+  }
+  console.log(`✓ wrote ${result.index.profiles.length} profile(s) + index.json to ${out}`);
+  for (const entry of result.index.profiles) {
+    console.log(`  • ${entry.id}@${entry.version} → ${entry.path}`);
+  }
 }

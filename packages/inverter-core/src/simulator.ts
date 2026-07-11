@@ -1,4 +1,4 @@
-import { applyComputed } from "./driver";
+import { applyComputed } from "./computed";
 import type {
   InverterProfile,
   InverterSample,

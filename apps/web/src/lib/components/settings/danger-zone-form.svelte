@@ -5,6 +5,7 @@
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
+	import RestartButton from './restart-button.svelte';
 	import WarningIcon from 'phosphor-svelte/lib/Warning';
 
 	// Must match RESET_DATA_CONFIRM on the server (apps/server/src/maintenance.ts):
@@ -39,6 +40,21 @@
 		<WarningIcon class="size-4" weight="fill" />
 		<h2 class="text-sm font-medium uppercase tracking-wide">Danger zone</h2>
 	</div>
+
+	<div class="flex flex-col gap-1">
+		<p class="text-sm font-medium">Restart server</p>
+		<p class="text-sm text-muted-foreground">
+			Restart the server process to apply boot-time changes — chiefly a newly activated inverter
+			profile, which reshapes the API, manifest, and topics built once at boot. Polling and live
+			data pause briefly while it comes back.
+		</p>
+	</div>
+
+	<div>
+		<RestartButton label="Restart server" variant="outline" />
+	</div>
+
+	<div class="border-t border-destructive/30"></div>
 
 	<div class="flex flex-col gap-1">
 		<p class="text-sm font-medium">Reset all data</p>

@@ -35,7 +35,16 @@
 		profile: string;
 	};
 
-	let { status = null }: { status?: InverterStatus | null } = $props();
+	let {
+		status = null,
+		profileId = undefined
+	}: {
+		status?: InverterStatus | null;
+		// When set (onboarding), test-reads run against this chosen profile instead
+		// of the active one. Omitted on the settings page, where the server falls
+		// back to the active profile.
+		profileId?: string;
+	} = $props();
 
 	type SnapshotMetric = {
 		key: string;
@@ -82,7 +91,9 @@
 		if (!cfg) return;
 		testing = true;
 		testResult = null;
-		const { data, error } = await api.api.settings.inverter.test.post(cfg);
+		const { data, error } = await api.api.settings.inverter.test.post(
+			profileId ? { ...cfg, profileId } : cfg
+		);
 		testing = false;
 		testResult = data ?? {
 			ok: false,
@@ -177,15 +188,17 @@
 					bind:value={cfg.pollIntervalMs}
 				/>
 			</div>
-			<div class="flex flex-col gap-1.5">
-				<Label>Active profile</Label>
-				<div
-					class="flex h-9 items-center px-1 text-sm text-muted-foreground"
-				>
-					{status?.profile ?? "—"}
-					<span class="ml-2 text-xs">(change requires restart)</span>
+			{#if status}
+				<div class="flex flex-col gap-1.5">
+					<Label>Active profile</Label>
+					<div
+						class="flex h-9 items-center px-1 text-sm text-muted-foreground"
+					>
+						{status.profile ?? "—"}
+						<span class="ml-2 text-xs">(change requires restart)</span>
+					</div>
 				</div>
-			</div>
+			{/if}
 		</div>
 
 		<FormActions {result} {testing} {saving} ontest={test} onsave={save}>

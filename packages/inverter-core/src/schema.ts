@@ -56,6 +56,7 @@ const metricDataSchema = z.strictObject({
   type: registerTypeSchema,
   addresses: z.array(z.number().int().min(0).max(65535)),
   scale: z.number(),
+  offset: z.number().optional(),
   access: z.enum(["r", "rw"]),
   computeExpr: computeExprSchema.optional(),
   controlExpr: controlExprSchema.optional(),

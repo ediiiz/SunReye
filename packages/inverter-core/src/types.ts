@@ -3,7 +3,7 @@
  *
  * A profile is a data-only description of an inverter's Modbus map plus an
  * optional simulation hook. Profiles ship as their own packages
- * (e.g. `@SunReye/inverter-deye-sunsynk`) and register themselves into the
+ * (e.g. `@SunReye/inverter-deye-sg05lp3`) and register themselves into the
  * runtime registry, so new inverters can be "downloaded" without touching
  * the core engine.
  */
@@ -86,6 +86,12 @@ export interface MetricDef {
   addresses: number[];
   /** Multiply the raw integer by this to get engineering units. */
   scale: number;
+  /**
+   * Added after scaling: engineering value = `raw * scale + offset`. For the
+   * vendor "+1000" temperature encoding (register = °C×10 + 1000) pair
+   * `scale: 0.1` with `offset: -100`. Absent ⇒ treated as 0.
+   */
+  offset?: number;
   access: MetricAccess;
   /**
    * Derived metric — computed from other decoded values instead of read from
@@ -135,7 +141,7 @@ export interface SimContext {
 export type SimulateFn = (ctx: SimContext) => MetricValues;
 
 export interface InverterProfile {
-  /** Stable slug used to select the profile at runtime, e.g. `deye-sunsynk`. */
+  /** Stable slug used to select the profile at runtime, e.g. `deye-sg05lp3`. */
   id: string;
   name: string;
   manufacturer: string;

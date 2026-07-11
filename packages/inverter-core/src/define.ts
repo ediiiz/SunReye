@@ -27,6 +27,8 @@ interface BaseMetricOpts {
   type?: RegisterType;
   unit?: string | null;
   scale?: number;
+  /** Post-scale additive offset (`raw * scale + offset`), e.g. `-100` for +1000-encoded temps. */
+  offset?: number;
   access?: MetricAccess;
   /** Declarative derived value (replaces a code `compute`). */
   computeExpr?: ComputeExpr;
@@ -82,6 +84,7 @@ export function metric<const T extends string>(
     type: opts.type ?? "U_WORD",
     addresses: addr === undefined ? [] : Array.isArray(addr) ? addr : [addr],
     scale: opts.scale ?? 1,
+    offset: opts.offset,
     access: opts.access ?? "r",
     computeExpr: opts.computeExpr,
     role: opts.role,

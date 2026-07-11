@@ -86,6 +86,8 @@ export interface MetricDataDef {
   type: RegisterType;
   addresses: number[];
   scale: number;
+  /** Post-scale additive offset (`raw * scale + offset`); 0 when absent. */
+  offset?: number;
   access: MetricAccess;
   /** Declarative derived value; mutually exclusive with reading from the wire. */
   computeExpr?: ComputeExpr;

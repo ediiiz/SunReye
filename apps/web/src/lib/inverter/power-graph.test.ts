@@ -36,16 +36,16 @@ describe("buildPowerGraph", () => {
     expect(g.segments.every((s) => s.pts.length === 4)).toBe(true);
   });
 
-  test("battery sign convention: positive charges, negative discharges", () => {
-    const charging = buildPowerGraph(caps({ battery: true }), powerFrom({ "battery.power": 800 }));
-    expect(charging.nodes.find((n) => n.id === "battery")?.state).toBe("Charging");
-    expect(charging.nodes.find((n) => n.id === "battery")?.flow).toBe("out");
+  test("battery sign convention: positive discharges, negative charges", () => {
     const discharging = buildPowerGraph(
       caps({ battery: true }),
-      powerFrom({ "battery.power": -800 }),
+      powerFrom({ "battery.power": 800 }),
     );
     expect(discharging.nodes.find((n) => n.id === "battery")?.state).toBe("Discharging");
     expect(discharging.nodes.find((n) => n.id === "battery")?.flow).toBe("in");
+    const charging = buildPowerGraph(caps({ battery: true }), powerFrom({ "battery.power": -800 }));
+    expect(charging.nodes.find((n) => n.id === "battery")?.state).toBe("Charging");
+    expect(charging.nodes.find((n) => n.id === "battery")?.flow).toBe("out");
   });
 
   test("grid uses cost colors: import red, export green", () => {

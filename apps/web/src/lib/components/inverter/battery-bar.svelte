@@ -13,9 +13,9 @@
 		power: number | undefined;
 	} = $props();
 
-	// Sign convention: power > 0 charging, < 0 discharging.
+	// Sign convention (Deye register 590): power > 0 discharging, < 0 charging.
 	const state = $derived(
-		power === undefined || power === 0 ? 'Idle' : power > 0 ? 'Charging' : 'Discharging'
+		power === undefined || power === 0 ? 'Idle' : power > 0 ? 'Discharging' : 'Charging'
 	);
 
 	// Drive the bar with the same tween as the number (450ms cubicOut) so both

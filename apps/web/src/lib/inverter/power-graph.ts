@@ -167,8 +167,8 @@ export function buildPowerGraph(
 
   if (caps?.battery) {
     const v = power("battery.power");
-    // Sign convention: power > 0 charging (out), < 0 discharging (in).
-    const s = sense(v, { flow: "out", state: "Charging" }, { flow: "in", state: "Discharging" });
+    // Sign convention (Deye register 590): power > 0 discharging (in), < 0 charging (out).
+    const s = sense(v, { flow: "in", state: "Discharging" }, { flow: "out", state: "Charging" });
     nodes.push({
       id: "battery",
       label: "Battery",

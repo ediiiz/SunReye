@@ -35,8 +35,10 @@
       {
         "files": [
           "apps/web/src/routes/(app)/**",
+          "apps/web/src/routes/setup/**",
           "apps/web/src/lib/components/inverter/**",
           "apps/web/src/lib/components/settings/**",
+          "apps/web/src/lib/components/setup/**",
           "apps/web/src/lib/components/app-sidebar.svelte",
           "apps/web/src/lib/inverter/**",
           "apps/web/src/lib/cost/**",

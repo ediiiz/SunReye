@@ -1,0 +1,123 @@
+<script lang="ts">
+	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
+	import { toast } from 'svelte-sonner';
+	import { api } from '$lib/api';
+	import Logo from '$lib/components/logo.svelte';
+	import { Button } from '$lib/components/ui/button';
+	import InverterForm from '$lib/components/settings/inverter-form.svelte';
+	import type { RegisteredProfile } from '$lib/components/settings/profile-types';
+	import ActivateStep from '$lib/components/setup/activate-step.svelte';
+	import ProfileStep from '$lib/components/setup/profile-step.svelte';
+	import { firstRunGate } from '$lib/setup';
+	import { useAppSession } from '$lib/session';
+
+	const sessionQuery = useAppSession();
+
+	// Gate the wizard (mirrors the app shell), same precedence: no session →
+	// `/login`; no admin yet → `/onboarding`; already configured → `/`. Only a
+	// logged-in, admin-created, profile-less instance stays here.
+	$effect(() => {
+		if (!$sessionQuery.isPending && !$sessionQuery.data) goto('/login');
+	});
+	$effect(() => {
+		if ($sessionQuery.isPending || !$sessionQuery.data) return;
+		firstRunGate().then((g) => {
+			if (g === 'setup-account') goto('/onboarding');
+			else if (g === 'ready') goto('/');
+		});
+	});
+
+	type Step = 'profile' | 'connect' | 'activate';
+	let step = $state<Step>('profile');
+
+	let registered = $state<RegisteredProfile[]>([]);
+	let selectedId = $state<string | null>(null);
+	const selected = $derived(registered.find((p) => p.id === selectedId) ?? null);
+
+	let activating = $state(false);
+	let activated = $state(false);
+
+	async function loadRegistered() {
+		const { data } = await api.api.profiles.get();
+		if (data) registered = data as RegisteredProfile[];
+	}
+	onMount(loadRegistered);
+
+	async function onExternalInstalled(id: string) {
+		selectedId = id;
+		await loadRegistered();
+	}
+
+	async function activate() {
+		if (!selectedId) return;
+		activating = true;
+		const { error } = await api.api.settings['active-profile'].put({ id: selectedId });
+		activating = false;
+		if (error) {
+			toast.error(`Failed to activate profile: ${String(error.value)}`);
+			return;
+		}
+		activated = true;
+	}
+
+	const steps: [Step, string][] = [
+		['profile', '1 · Profile'],
+		['connect', '2 · Connection'],
+		['activate', '3 · Activate']
+	];
+</script>
+
+<div class="relative min-h-svh overflow-y-auto bg-background p-4">
+	<div
+		class="pointer-events-none absolute inset-0 opacity-[0.35] bg-[linear-gradient(to_right,var(--color-border)_1px,transparent_1px),linear-gradient(to_bottom,var(--color-border)_1px,transparent_1px)] bg-size-[44px_44px] mask-[radial-gradient(ellipse_at_center,black,transparent_75%)]"
+		aria-hidden="true"
+	></div>
+
+	<div class="relative mx-auto flex w-full max-w-2xl flex-col gap-6 py-8">
+		<div class="flex flex-col items-center gap-3 text-center">
+			<Logo class="size-12 text-primary" />
+			<div>
+				<h1 class="text-xl font-semibold tracking-tight">Set up your inverter</h1>
+				<p class="text-sm text-muted-foreground">
+					Choose a profile, test the connection, then activate it.
+				</p>
+			</div>
+		</div>
+
+		<ol class="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+			{#each steps as [key, label] (key)}
+				<li
+					class="border border-border px-2.5 py-1 {step === key
+						? 'bg-primary/10 font-medium text-foreground'
+						: ''}"
+				>
+					{label}
+				</li>
+			{/each}
+		</ol>
+
+		{#if step === 'profile'}
+			<ProfileStep
+				profiles={registered}
+				bind:selectedId
+				onContinue={() => (step = 'connect')}
+				{onExternalInstalled}
+			/>
+		{:else if step === 'connect'}
+			<InverterForm profileId={selectedId ?? undefined} />
+			<div class="flex justify-between">
+				<Button variant="ghost" onclick={() => (step = 'profile')}>Back</Button>
+				<Button onclick={() => (step = 'activate')}>Continue</Button>
+			</div>
+		{:else}
+			<ActivateStep
+				profileName={selected?.name}
+				{activating}
+				{activated}
+				onActivate={activate}
+				onBack={() => (step = 'connect')}
+			/>
+		{/if}
+	</div>
+</div>

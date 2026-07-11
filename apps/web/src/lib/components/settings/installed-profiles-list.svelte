@@ -27,10 +27,13 @@
 						{#if p.active}
 							<StatusBadge ok label="Active" />
 						{/if}
+						{#if p.builtin}
+							<StatusBadge label="Built in" />
+						{/if}
 					</span>
 					<span class="text-xs text-muted-foreground">
 						{p.manufacturer}{p.version ? ` · v${p.version}` : ""}
-						{p.installed ? " · downloaded" : " · built-in"}
+						{p.builtin ? " · built-in" : " · downloaded"}
 					</span>
 				</div>
 				<div class="flex items-center gap-2">

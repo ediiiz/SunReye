@@ -6,6 +6,8 @@ export type RegisteredProfile = {
   manufacturer: string;
   active: boolean;
   installed: boolean;
+  /** Shipped in-repo (registered but not downloaded); shown as "Built in". */
+  builtin: boolean;
   version?: string;
 };
 

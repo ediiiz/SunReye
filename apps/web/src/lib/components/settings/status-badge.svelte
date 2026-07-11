@@ -2,7 +2,7 @@
 	import { Badge } from '$lib/components/ui/badge';
 
 	// Small connection-state pill: green when healthy, muted otherwise.
-	let { ok, label }: { ok: boolean; label: string } = $props();
+	let { ok = false, label }: { ok?: boolean; label: string } = $props();
 </script>
 
 <Badge variant={ok ? 'default' : 'secondary'} class={ok ? 'bg-emerald-500 text-white' : ''}>

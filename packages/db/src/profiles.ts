@@ -19,11 +19,13 @@ export const PROFILE_SOURCES_KEY = "profileSources";
 /** `app_settings.key` under which the active profile id is stored. */
 export const ACTIVE_PROFILE_KEY = "activeProfile";
 
-/** The official, always-present profile repo. */
-export const STANDARD_PROFILE_SOURCE = {
-  url: "https://github.com/sunreye/inverter-profiles.git",
-  label: "SunReye Official",
-} as const;
+/**
+ * The old hardcoded default source, shipped in early builds. No source is
+ * shipped anymore (the core is clean — only in-repo built-ins are present out of
+ * the box, and any external repos are added manually). Kept solely so the boot
+ * seed migration can recognize and drop this stale entry from deployed DBs.
+ */
+export const LEGACY_DEFAULT_SOURCE_URL = "https://github.com/sunreye/inverter-profiles.git";
 
 /** Only public https git URLs are accepted (no ssh / private auth yet). */
 const gitUrlSchema = z
@@ -41,7 +43,8 @@ export const profileSourceSchema = z.object({
 export type ProfileSource = z.infer<typeof profileSourceSchema>;
 
 export const profileSourcesSchema = z.object({
-  sources: z.array(profileSourceSchema).default([{ ...STANDARD_PROFILE_SOURCE, enabled: true }]),
+  // No source ships by default — external profile repos are added manually.
+  sources: z.array(profileSourceSchema).default([]),
 });
 export type ProfileSources = z.infer<typeof profileSourcesSchema>;
 

@@ -87,7 +87,7 @@ SunReye/
 │   └── docs/         # Astro Starlight documentation site
 └── packages/
     ├── inverter-core/         # Modbus engine, profile registry, entity model
-    ├── inverter-deye-sunsynk/ # Deye / Sunsynk profile package
+    ├── inverter-deye-sg05lp3/ # Deye / Sunsynk profile package
     ├── profile-sdk/           # Profile authoring: validate / coverage / scaffold
     ├── db/                    # Drizzle schema + TimescaleDB + runtime settings
     ├── auth/ env/ config/     # Auth, env schema (single source of truth), tooling

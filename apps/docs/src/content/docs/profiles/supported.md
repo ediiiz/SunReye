@@ -10,7 +10,7 @@ exists." SunReye ships one first-party profile and can load more at runtime.
 
 ### Deye / Sunsynk hybrid
 
-The `deye-sunsynk` profile ships in the box (`packages/inverter-deye-sunsynk`) and
+The `deye-sg05lp3` profile ships in the box (`packages/inverter-deye-sg05lp3`) and
 self-registers on import. It covers roughly **99 metrics** (≈38 writable), including:
 
 - PV strings (power / voltage / current per string)
@@ -24,7 +24,7 @@ self-registers on import. It covers roughly **99 metrics** (≈38 writable), inc
 As a first-party package it also ships a coherent **simulator**, so it runs with realistic
 fake data out of the box.
 
-It's the default active profile (`INVERTER_PROFILE=deye-sunsynk`).
+It's the default active profile (`INVERTER_PROFILE=deye-sg05lp3`).
 
 ## Adding more
 

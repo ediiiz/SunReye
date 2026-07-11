@@ -26,7 +26,7 @@
   "health": {
     "thresholdOverrides": [
       {
-        "files": ["packages/inverter-core/**", "packages/inverter-deye-sunsynk/**"],
+        "files": ["packages/inverter-core/**", "packages/inverter-deye-sg05lp3/**"],
         "maxCyclomatic": 15,
         "maxCognitive": 20,
         "maxCrap": 200,

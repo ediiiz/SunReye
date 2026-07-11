@@ -13,7 +13,7 @@ The core of the "inverter is data" design is a small in-memory **profile registr
 (`packages/inverter-core/src/registry.ts`) — a `Map<string, InverterProfile>`. Profiles get
 into it two ways:
 
-1. **Code profiles** (first-party npm packages like `@SunReye/inverter-deye-sunsynk`)
+1. **Code profiles** (first-party npm packages like `@SunReye/inverter-deye-sg05lp3`)
    self-register via a side-effecting import that calls `registerProfile()`. These may carry
    a real `simulate` function and closures.
 2. **Data profiles** (downloaded) are read from the database, validated, **hydrated** into

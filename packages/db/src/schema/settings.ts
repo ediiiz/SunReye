@@ -26,7 +26,7 @@ export type AppSettingInsert = typeof appSettings.$inferInsert;
  * downloaded profile to become selectable. See {@link @SunReye/db/profiles}.
  */
 export const installedProfiles = pgTable("installed_profiles", {
-  /** Profile id (`ProfileData.id`), e.g. `deye-sunsynk`. */
+  /** Profile id (`ProfileData.id`), e.g. `deye-sg05lp3`. */
   id: text("id").primaryKey(),
   /** Git repo URL this profile was downloaded from. */
   source: text("source").notNull(),

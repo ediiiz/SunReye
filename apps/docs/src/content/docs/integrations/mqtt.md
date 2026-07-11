@@ -43,7 +43,7 @@ Only writable entities get a `.../set` command topic. When a message arrives:
 Example (publish a new max charge current):
 
 ```bash
-mosquitto_pub -t 'sunreye/deye-sunsynk/settings/battery/max_charge_current/set' -m '40'
+mosquitto_pub -t 'sunreye/deye-sg05lp3/settings/battery/max_charge_current/set' -m '40'
 ```
 
 ## Availability (Last-Will)

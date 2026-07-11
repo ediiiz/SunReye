@@ -182,7 +182,10 @@ export function simulate({ now, dtSec, state }: SimContext): MetricValues {
     "battery.power": round(battPower),
     "battery.voltage": round(battV, 2),
     "battery.soc": round(s.soc),
-    "battery.current": round(battCurrent, 2),
+    // Split the modeled current across the two BMS banks; the canonical
+    // battery.current is computed as their sum (see metrics.ts).
+    "battery.1.current": round(battCurrent / 2, 2),
+    "battery.2.current": round(battCurrent / 2, 2),
     "battery.temperature": round(battTemp, 1),
     "battery.daily_charge": round(s.dailyCharge, 1),
     "battery.daily_discharge": round(s.dailyDischarge, 1),

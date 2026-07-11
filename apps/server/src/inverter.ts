@@ -26,7 +26,7 @@ import type {
 // the inverter-core registry. Add more `@SunReye/inverter-*` imports here to
 // ship additional inverter support in the box; downloaded profiles are loaded
 // from the database by `loadInstalledProfiles` at boot.
-import "@SunReye/inverter-deye-sunsynk";
+import "@SunReye/inverter-deye-sg05lp3";
 import { readSetting } from "./app-settings";
 import { log } from "./logging";
 

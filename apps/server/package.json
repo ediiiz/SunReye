@@ -16,7 +16,7 @@
     "@SunReye/db": "workspace:*",
     "@SunReye/env": "workspace:*",
     "@SunReye/inverter-core": "workspace:*",
-    "@SunReye/inverter-deye-sunsynk": "workspace:*",
+    "@SunReye/inverter-deye-sg05lp3": "workspace:*",
     "@elysiajs/cors": "^1.4.1",
     "@elysiajs/openapi": "^1.4.0",
     "@logtape/elysia": "^2.2.3",

@@ -38,7 +38,7 @@
         "@SunReye/db": "workspace:*",
         "@SunReye/env": "workspace:*",
         "@SunReye/inverter-core": "workspace:*",
-        "@SunReye/inverter-deye-sunsynk": "workspace:*",
+        "@SunReye/inverter-deye-sg05lp3": "workspace:*",
         "@elysiajs/cors": "^1.4.1",
         "@elysiajs/openapi": "^1.4.0",
         "@logtape/elysia": "^2.2.3",
@@ -163,8 +163,8 @@
         "typescript": "catalog:",
       },
     },
-    "packages/inverter-deye-sunsynk": {
-      "name": "@SunReye/inverter-deye-sunsynk",
+    "packages/inverter-deye-sg05lp3": {
+      "name": "@SunReye/inverter-deye-sg05lp3",
       "version": "0.0.0",
       "dependencies": {
         "@SunReye/inverter-core": "workspace:*",
@@ -186,7 +186,7 @@
       },
       "devDependencies": {
         "@SunReye/config": "workspace:*",
-        "@SunReye/inverter-deye-sunsynk": "workspace:*",
+        "@SunReye/inverter-deye-sg05lp3": "workspace:*",
         "@types/bun": "catalog:",
         "typescript": "catalog:",
       },
@@ -216,7 +216,7 @@
 
     "@SunReye/inverter-core": ["@SunReye/inverter-core@workspace:packages/inverter-core"],
 
-    "@SunReye/inverter-deye-sunsynk": ["@SunReye/inverter-deye-sunsynk@workspace:packages/inverter-deye-sunsynk"],
+    "@SunReye/inverter-deye-sg05lp3": ["@SunReye/inverter-deye-sg05lp3@workspace:packages/inverter-deye-sg05lp3"],
 
     "@SunReye/profile-sdk": ["@SunReye/profile-sdk@workspace:packages/profile-sdk"],
 

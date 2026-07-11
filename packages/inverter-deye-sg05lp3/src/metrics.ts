@@ -284,6 +284,8 @@ const inverter = [
     type: "S_WORD",
     addr: 635,
   }),
+  // Vendor "+1000" temperature encoding: register = °C×10 + 1000, so decode as
+  // raw×0.1 − 100. Without the offset these read ~100 °C high (25 → 125).
   metric("radiator_temp", {
     label: "DC Temperature",
     unit: "°C",
@@ -291,6 +293,7 @@ const inverter = [
     type: "S_WORD",
     addr: 540,
     scale: 0.1,
+    offset: -100,
     role: "inverter.temperature.dc",
   }),
   metric("ac/temperature", {
@@ -300,6 +303,7 @@ const inverter = [
     type: "S_WORD",
     addr: 541,
     scale: 0.1,
+    offset: -100,
     role: "inverter.temperature.ac",
   }),
   metric("dc/total_power", {
@@ -382,6 +386,9 @@ const battery = [
     scale: 0.1,
     role: "battery.energy.discharged.total",
   }),
+  // Aggregate pack power across both BMS banks — verified to read the full pack
+  // (~745 W = battery.voltage × total current), not a single bank's share. So it
+  // stays the canonical total; only current is reported per-bank (see below).
   metric("battery/power", {
     label: "Battery Power",
     unit: "W",
@@ -407,15 +414,38 @@ const battery = [
     role: "battery.soc",
     range: { min: 0, max: 100 },
   }),
-  metric("battery/current", {
-    label: "Battery Current",
+  // Dual-BMS pack: current is sensed per bank (591 / 594) while power (590) is
+  // already the aggregate. Each bank register reads ~half the true current, so
+  // the canonical Battery Current sums them (verified: 7.73 + 8.13 = 15.86 A,
+  // matching 829 W ÷ voltage). Sign flows from each bank (CHARGE_FLOW: +
+  // discharging). Only current is split out — the bank-2 voltage/SOC/power/temp
+  // registers (589/593/595/596) read 0 on this model, so voltage, SOC, power and
+  // temperature stay pack-level (the canonical metrics above).
+  metric("battery/1/current", {
+    label: "Battery 1 Current",
     unit: "A",
     group: "battery",
     type: "S_WORD",
     addr: 591,
     scale: 0.01,
+    flow: CHARGE_FLOW,
+  }),
+  metric("battery/2/current", {
+    label: "Battery 2 Current",
+    unit: "A",
+    group: "battery",
+    type: "S_WORD",
+    addr: 594,
+    scale: 0.01,
+    flow: CHARGE_FLOW,
+  }),
+  metric("battery/current", {
+    label: "Battery Current",
+    unit: "A",
+    group: "battery",
     role: "battery.current",
     flow: CHARGE_FLOW,
+    computeExpr: { sum: ["battery.1.current", "battery.2.current"] },
   }),
   metric("battery/temperature", {
     label: "Battery Temperature",
@@ -423,6 +453,7 @@ const battery = [
     group: "battery",
     addr: 586,
     scale: 0.1,
+    offset: -100,
     role: "battery.temperature",
   }),
   // Battery Charging Type Control Mode (read-only for now). Decides whether the

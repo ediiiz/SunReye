@@ -3,7 +3,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { deyeSunsynkData } from "@SunReye/inverter-deye-sunsynk";
+import { deyeSg05lp3Data } from "@SunReye/inverter-deye-sg05lp3";
 
 import { cmdCoverage, cmdScaffold, cmdValidate, flags } from "./cli-commands";
 
@@ -15,7 +15,7 @@ function writeFixture(name: string, content: string): string {
   return path;
 }
 
-const validProfilePath = writeFixture("deye.json", JSON.stringify(deyeSunsynkData));
+const validProfilePath = writeFixture("deye.json", JSON.stringify(deyeSg05lp3Data));
 const brokenProfilePath = writeFixture(
   "broken.json",
   JSON.stringify({

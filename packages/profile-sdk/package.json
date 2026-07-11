@@ -18,7 +18,7 @@
   },
   "devDependencies": {
     "@SunReye/config": "workspace:*",
-    "@SunReye/inverter-deye-sunsynk": "workspace:*",
+    "@SunReye/inverter-deye-sg05lp3": "workspace:*",
     "@types/bun": "catalog:",
     "typescript": "catalog:"
   }

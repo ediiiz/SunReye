@@ -1,0 +1,50 @@
+name: Release Please
+
+on:
+  push:
+    branches: [master]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      sdk_released: ${{ steps.release.outputs['packages/profile-sdk--release_created'] }}
+    steps:
+      - name: Run release-please
+        id: release
+        uses: googleapis/release-please-action@v4
+
+  publish-sdk:
+    name: Publish profile-sdk to npm
+    needs: release-please
+    if: needs.release-please.outputs.sdk_released == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Test
+        run: bun test src
+        working-directory: packages/profile-sdk
+
+      - name: Publish
+        run: bun publish --access public
+        working-directory: packages/profile-sdk
+        env:
+          NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}

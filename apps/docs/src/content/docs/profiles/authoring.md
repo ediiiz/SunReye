@@ -4,15 +4,16 @@ description: Describe a new inverter with the typed profile SDK, validate it, an
 ---
 
 You describe an inverter *as code* using the typed builders in
-`@SunReye/inverter-core`, compile it down to a serializable `ProfileData`, then validate and
-score it with the `@SunReye/profile-sdk` CLI. The SDK's job is to make the profile
+[`@sunreye/profile-sdk`](https://www.npmjs.com/package/@sunreye/profile-sdk) (`bun add -d
+@sunreye/profile-sdk`), compile it down to a serializable `ProfileData`, then validate and
+score it with the same package's CLI. The SDK's job is to make the profile
 **correct by construction** — picking a role forces you to supply exactly what that role
 needs, or the code won't compile.
 
 ## `defineProfile` and `metric`
 
 ```ts
-import { defineProfile, metric } from "@SunReye/inverter-core";
+import { defineProfile, metric } from "@sunreye/profile-sdk";
 
 export const acme = defineProfile({
   id: "acme-hybrid",
@@ -95,7 +96,7 @@ manifest — **it can never execute code**.
 
 ## The `profile` CLI
 
-`@SunReye/profile-sdk` ships a `profile` command with three subcommands. It exits non-zero
+`@sunreye/profile-sdk` ships a `profile` command with three subcommands. It exits non-zero
 on failure, so it works as a CI or pre-commit gate.
 
 ### `profile validate <file>`

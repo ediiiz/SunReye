@@ -1,26 +1,42 @@
 {
-  "name": "@SunReye/profile-sdk",
+  "name": "@sunreye/profile-sdk",
   "version": "0.0.0",
+  "description": "Authoring SDK + CLI for SunReye inverter profiles: define, validate, scaffold, and exercise ProfileData without hardware.",
   "license": "AGPL-3.0-only",
-  "private": true,
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ediiiz/SunReye.git",
+    "directory": "packages/profile-sdk"
+  },
+  "homepage": "https://github.com/ediiiz/SunReye",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    }
   },
   "bin": {
-    "profile": "./src/cli.ts"
+    "profile": "./dist/cli.mjs"
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
+    "build": "tsdown",
+    "prepublishOnly": "bun run build",
     "test": "bun test src",
     "profile": "bun run src/cli.ts"
   },
   "dependencies": {
-    "@SunReye/inverter-core": "workspace:*"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@SunReye/config": "workspace:*",
+    "@SunReye/inverter-core": "workspace:*",
     "@SunReye/inverter-deye-sg05lp3": "workspace:*",
     "@types/bun": "catalog:",
+    "tsdown": "^0.22.5",
     "typescript": "catalog:"
   }
 }

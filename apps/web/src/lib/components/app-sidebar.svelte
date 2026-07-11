@@ -39,13 +39,8 @@
 			$sessionQuery.data?.user?.email?.split('@')[0] ||
 			'Signed in'
 	);
-	const isDev = $derived($sessionQuery.isDev);
 
 	async function signOut() {
-		if (isDev) {
-			await goto('/login');
-			return;
-		}
 		await authClient.signOut({ fetchOptions: { onSuccess: () => goto('/login') } });
 	}
 </script>
@@ -96,11 +91,6 @@
 				>
 					<UserIcon class="size-4 shrink-0" />
 					<span class="truncate">{userName}</span>
-					{#if isDev}
-						<span class="shrink-0 bg-primary/15 px-1 text-[10px] font-medium uppercase text-primary">
-							dev
-						</span>
-					{/if}
 				</div>
 			</Sidebar.MenuItem>
 			<Sidebar.MenuItem>

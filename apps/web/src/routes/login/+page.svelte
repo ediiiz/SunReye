@@ -1,10 +1,7 @@
 <script lang="ts">
-	import { dev } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import * as Card from '$lib/components/ui/card';
-	import { Button } from '$lib/components/ui/button';
 	import { needsSetup } from '$lib/setup';
-	import ArrowRightIcon from 'phosphor-svelte/lib/ArrowRight';
 	import AuthForm from '../../components/AuthForm.svelte';
 	import AuthShell from '../../components/AuthShell.svelte';
 
@@ -27,11 +24,4 @@
 			<AuthForm mode="signin" />
 		</Card.Content>
 	</Card.Root>
-
-	{#if dev}
-		<Button variant="outline" class="w-full" onclick={() => goto('/')}>
-			Continue as developer
-			<ArrowRightIcon class="size-4" />
-		</Button>
-	{/if}
 </AuthShell>

@@ -27,3 +27,5 @@ export type {
   TopicToKey,
 } from "./profile-data";
 export { profileDataSchema, parseProfileData, safeParseProfileData } from "./schema";
+export { repoIndexSchema, repoProfileEntrySchema } from "./repo-index";
+export type { RepoIndex, RepoProfileEntry } from "./repo-index";

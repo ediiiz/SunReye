@@ -32,6 +32,10 @@ A "repo" is a **public git repository** containing:
 2. One committed **`ProfileData` JSON file** per entry, at the `path` given in the index —
    exactly what [`defineProfile`](/profiles/authoring/) emits, serialized.
 
+You don't have to write this layout by hand: `bunx profile build ./src/profiles.ts --out .`
+[generates it](/profiles/authoring/#profile-build-entries---out-dir) from code-defined
+profiles — validate, emit, commit, push.
+
 **No source ships by default** — the core stays clean. Out of the box the only profiles
 present are the **built-in** ones (shipped in-repo, badged "Built in" in the UI and selectable
 directly). To pull external profiles, add a repository yourself. Source URLs must be

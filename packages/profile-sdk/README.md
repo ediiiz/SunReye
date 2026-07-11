@@ -57,15 +57,39 @@ const { manifest, capabilities, sample } = await exerciseProfile(acme);
 bunx profile validate ./profiles/acme.json    # strict validation + lints, non-zero exit on failure
 bunx profile coverage ./profiles/acme.json    # role coverage report
 bunx profile scaffold ./registers.csv --id acme-hybrid --name "Acme Hybrid" --manufacturer Acme
+bunx profile build ./src/profiles.ts --out . --name "My Profiles"   # emit installable repo
 ```
 
-`validate` exits non-zero on failure, so it works as a CI or pre-commit gate.
+`validate` and `build` exit non-zero on failure, so they work as a CI or pre-commit gate.
 
-## Distributing profiles
+## Build an installable profile repo
 
-Serialize what `defineProfile` returns to JSON and host it in a public git repo with an
-`index.json` — SunReye installs profiles from such repos at runtime. See the
-[authoring guide](https://ediiiz.github.io/SunReye/profiles/authoring/) and
+SunReye installs profiles at runtime from any public git repo containing an `index.json`
+plus one `ProfileData` JSON file per profile. `profile build` generates exactly that layout
+from your code-defined profiles:
+
+```sh
+bunx profile build ./src/profiles.ts --out . --name "My Profiles" --maintainer you
+```
+
+Every export of the entry module that is a profile (or a `{ profile, description }`
+wrapper, or an array of either) is validated and written to `profiles/<id>.json`, and
+`index.json` is regenerated — commit, push, and the repo is installable from
+Settings → Profiles. Any invalid profile or duplicate id fails the whole build.
+
+Same thing programmatically:
+
+```ts
+import { buildRepo } from "@sunreye/profile-sdk";
+
+const { ok, issues, files } = buildRepo(
+  [acme, { profile: zeta, description: "Zeta 3–6 kW range" }],
+  { name: "My Profiles" },
+);
+// files: { "index.json": "...", "profiles/acme-hybrid.json": "...", ... }
+```
+
+See the [authoring guide](https://ediiiz.github.io/SunReye/profiles/authoring/) and
 [distribution guide](https://ediiiz.github.io/SunReye/profiles/distribution/).
 
 ## License

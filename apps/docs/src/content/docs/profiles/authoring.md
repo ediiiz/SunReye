@@ -140,6 +140,22 @@ bunx profile scaffold ./deye-registers.csv \
 The real authoring work is transcribing the register map and assigning roles; scaffold gives
 you the skeleton.
 
+### `profile build <entries...> --out <dir>`
+
+Turns code-defined profiles into a complete, installable
+[profile repo](/profiles/distribution/): validates every profile, writes one
+`profiles/<id>.json` per profile, and regenerates the root `index.json`:
+
+```bash
+bunx profile build ./src/profiles.ts --out . --name "My Profiles" --maintainer you
+```
+
+An entry is either a `ProfileData` JSON file or a TS/JS module — every export that is a
+profile, a `{ profile, description }` wrapper (the description shows up in SunReye's repo
+browser), or an array of either gets included. Any invalid profile or duplicate id fails
+the whole build, so a broken repo never gets published. The same logic is available
+programmatically as `buildRepo(entries, { name, maintainer })`.
+
 ## Testing without hardware
 
 The SDK's test harness (`exerciseProfile`) runs a `ProfileData` end to end offline —

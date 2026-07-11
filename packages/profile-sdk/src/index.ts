@@ -13,6 +13,8 @@ export type {
   TopicToKey,
 } from "@SunReye/inverter-core";
 export { ROLE_CATALOG, ROLE_NAMES } from "@SunReye/inverter-core";
+export { repoIndexSchema, repoProfileEntrySchema } from "@SunReye/inverter-core";
+export type { RepoIndex, RepoProfileEntry } from "@SunReye/inverter-core";
 
 export { validateProfile } from "./validate";
 export type { ValidationResult } from "./validate";
@@ -22,3 +24,5 @@ export { scaffoldFromCsv } from "./scaffold";
 export type { ScaffoldMeta } from "./scaffold";
 export { exerciseProfile } from "./harness";
 export type { HarnessResult } from "./harness";
+export { buildRepo } from "./repo";
+export type { BuildRepoOptions, RepoBuildResult, RepoEntryInput } from "./repo";

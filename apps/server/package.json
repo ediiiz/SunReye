@@ -7,7 +7,7 @@
     "build": "tsdown",
     "check-types": "tsc -b",
     "compile": "bun build --compile --minify --sourcemap --bytecode ./src/index.ts --outfile server",
-    "dev": "bun run --watch src/index.ts",
+    "dev": "while true; do bun run --watch src/index.ts; [ $? -eq 75 ] || break; done",
     "start": "bun run dist/index.mjs",
     "preview": "bun run dist/index.mjs",
     "test": "bun test src"

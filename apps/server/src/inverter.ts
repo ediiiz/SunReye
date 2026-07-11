@@ -3,16 +3,17 @@ import type { InverterConfig } from "@SunReye/db/inverter-config";
 import { ACTIVE_PROFILE_KEY, activeProfileSchema } from "@SunReye/db/profiles";
 import { installedProfiles } from "@SunReye/db/schema/settings";
 import { env } from "@SunReye/env/server";
+import { eq } from "drizzle-orm";
 import {
   buildManifest,
   createInverter,
   entityConstraint,
   getProfile,
   hydrateProfile,
-  listProfiles,
   metricByKey,
   parseProfileData,
   registerProfile,
+  tryGetProfile,
 } from "@SunReye/inverter-core";
 import type {
   InverterManifest,
@@ -29,6 +30,7 @@ import type {
 import "@SunReye/inverter-deye-sg05lp3";
 import { readSetting } from "./app-settings";
 import { log } from "./logging";
+import { dropLegacyDefaultSource } from "./profiles";
 
 const logger = log("profiles");
 
@@ -55,6 +57,21 @@ async function loadInstalledProfiles(): Promise<void> {
 }
 
 /**
+ * Resolve a profile by id independent of the running runtime — for a test read
+ * during onboarding, when no profile is active yet. A registered profile
+ * (built-in, or an install already loaded this boot) wins; otherwise the
+ * DB-installed row is hydrated on the fly so a *freshly*-installed profile can be
+ * test-read before the restart that would register it. `null` when unknown.
+ */
+export async function resolveProfileById(id: string): Promise<InverterProfile | null> {
+  const registered = tryGetProfile(id);
+  if (registered) return registered;
+  const [row] = await db.select().from(installedProfiles).where(eq(installedProfiles.id, id));
+  if (!row) return null;
+  return hydrateProfile(parseProfileData(row.data));
+}
+
+/**
  * Active profile id: the saved setting wins, else the `INVERTER_PROFILE` env
  * seed, else `null` when neither is set (a fresh install with no config yet).
  */
@@ -70,30 +87,34 @@ let activeProfile: InverterProfile | null = null;
  * packages have already self-registered (side-effect imports above), then DB
  * profiles are registered, then the active one is selected. Must be awaited in
  * the server's composition root before routes/manifest/topics are built.
+ *
+ * Returns `null` when nothing is configured (a fresh install, or a deploy that
+ * cleared its active profile): the server then boots in a degraded,
+ * onboarding-only mode and the admin picks a profile from the UI, which takes
+ * effect on the next restart.
  */
-export async function initProfiles(): Promise<InverterProfile> {
+export async function initProfiles(): Promise<InverterProfile | null> {
+  await dropLegacyDefaultSource();
   await loadInstalledProfiles();
   const id = await activeProfileId();
-  if (id) {
-    activeProfile = getProfile(id);
-  } else {
-    // No profile configured (via env or UI) yet — boot with the first
-    // registered one (always at least the built-in) so the server comes up and
-    // the profile can be chosen from the UI.
-    const [fallback] = listProfiles();
-    if (!fallback) throw new Error("no inverter profile installed");
+  if (!id) {
     logger.warn(
-      'no active inverter profile configured — defaulting to "{id}" (set INVERTER_PROFILE or choose one in the UI)',
-      { id: fallback.id },
+      "no active inverter profile configured — booting onboarding-only (choose one in the UI, then restart)",
     );
-    activeProfile = fallback;
+    activeProfile = null;
+    return null;
   }
+  activeProfile = getProfile(id);
   return activeProfile;
 }
 
-/** The resolved active profile (throws if {@link initProfiles} hasn't run). */
-export function getActiveProfile(): InverterProfile {
-  if (!activeProfile) throw new Error("profiles not initialized — call initProfiles() at boot");
+/**
+ * The resolved active profile, or `null` when none is configured (degraded
+ * onboarding-only boot). Callers that hold a non-null {@link ProfileContext}
+ * already have the profile; this is for the routes that must tolerate its
+ * absence.
+ */
+export function getActiveProfileOrNull(): InverterProfile | null {
   return activeProfile;
 }
 

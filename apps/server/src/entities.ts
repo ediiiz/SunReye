@@ -77,13 +77,19 @@ async function checkApiKey(request: Request): Promise<{ status: number; error: s
 
 /** Injected transport dependencies (keeps this module free of the singleton). */
 export interface EntitiesApiDeps {
-  /** The active profile context (manifest, catalog), resolved at boot. */
-  ctx: ProfileContext;
+  /**
+   * The active profile context (manifest, catalog), resolved at boot — or `null`
+   * in onboarding-only boot, when there's no profile and thus no entity surface.
+   */
+  ctx: ProfileContext | null;
   write(key: string, value: number): Promise<void>;
 }
 
 /** Mount the generated `/api/v1` integration API onto an Elysia app. */
 export function entitiesApi(deps: EntitiesApiDeps) {
+  // Onboarding-only boot: no active profile, so no entities to generate. Mount an
+  // empty group so the composition root can `.use()` it unconditionally.
+  if (!deps.ctx) return new Elysia({ prefix: "/api/v1", name: "entities" });
   const { profile, manifest, metaByKey } = deps.ctx;
   const app = new Elysia({ prefix: "/api/v1", name: "entities" })
     .onError(({ error, code, set }) => {

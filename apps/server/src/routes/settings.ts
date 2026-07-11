@@ -45,11 +45,17 @@ export const settingsRoutes = new Elysia({ name: "settings-routes" })
     },
     { requireAdmin: true, body: t.Unknown() },
   )
+  // Test a connection against a *chosen* profile (onboarding passes the profile
+  // being set up; the settings page omits it and falls back to the active one).
+  // `profileId` rides alongside the connection config — the config schema strips
+  // it, so it's read from the raw body first.
   .post(
     "/api/settings/inverter/test",
     async ({ body, status }) => {
       try {
-        return await runtime.testInverter(inverterConfigSchema.parse(body));
+        const raw = body as { profileId?: unknown };
+        const profileId = typeof raw?.profileId === "string" ? raw.profileId : null;
+        return await runtime.testInverter(profileId, inverterConfigSchema.parse(body));
       } catch (error) {
         return status(400, { error: error instanceof Error ? error.message : "Invalid config" });
       }

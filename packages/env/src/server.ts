@@ -6,11 +6,39 @@ export const env = createEnv({
   server: {
     DATABASE_URL: z.string().min(1),
     BETTER_AUTH_SECRET: z.string().min(32),
-    BETTER_AUTH_URL: z.url(),
-    CORS_ORIGIN: z.url(),
+    // Base URL Better Auth advertises. Only meaningful for split-origin
+    // deployments; same-origin (reverse-proxied) setups can leave it unset.
+    BETTER_AUTH_URL: z.url().default("http://localhost:3000"),
+    // Origin of a *split-origin* web app (plain docker-compose: web on :3001,
+    // server on :3000). Unset = same-origin deployment (dev Vite proxy, the
+    // Home Assistant addon's reverse proxy): CORS stays disabled and browsers
+    // enforce same-origin, which is the safe default.
+    CORS_ORIGIN: z.url().optional(),
+    // Extra origins Better Auth's CSRF/origin check should trust, e.g. an
+    // HTTPS reverse proxy in front of a direct-port deployment. Comma-separated.
+    TRUSTED_ORIGINS: z
+      .string()
+      .default("")
+      .transform((v) =>
+        v
+          .split(",")
+          .map((o) => o.trim())
+          .filter(Boolean),
+      ),
+    // Mark auth cookies `Secure`. Off by default so plain-HTTP LAN access
+    // (direct addon port, compose without TLS) keeps working; HTTPS-only
+    // deployments should turn it on.
+    AUTH_SECURE_COOKIES: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((v) => v === "true"),
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
     // HTTP port the core engine listens on.
     PORT: z.coerce.number().int().positive().default(3000),
+    // Interface the core engine binds. The Home Assistant addon sets 127.0.0.1
+    // so only its reverse proxy can reach the API; containers default to all
+    // interfaces.
+    HOST: z.string().min(1).default("0.0.0.0"),
 
     // Lowest LogTape severity that reaches the console sink. Unset defaults to
     // "debug" in development and "info" otherwise (resolved in the logging setup).

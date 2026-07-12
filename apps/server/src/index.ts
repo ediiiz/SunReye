@@ -6,7 +6,7 @@ import { db } from "@SunReye/db";
 import { metricsRaw } from "@SunReye/db/schema/metrics";
 import { user } from "@SunReye/db/schema/auth";
 import { env } from "@SunReye/env/server";
-import { and, count, desc, eq, gte } from "drizzle-orm";
+import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 import { Elysia, t } from "elysia";
 import { type CostBucket, computeCost, computeCostSeries, resolveRange } from "./cost";
 import { energySeries } from "./energy";
@@ -34,6 +34,19 @@ const seriesArgs = (q: { from: string; to: string; bucket: CostBucket; inverterI
   bucket: q.bucket,
   inverterId: q.inverterId,
 });
+
+// Container healthcheck self-probe: the runtime image is distroless (no shell,
+// no curl), so orchestrators exec the server binary itself with --healthcheck.
+// It probes the sibling server process over HTTP and exits 0/1 before any of
+// the boot work below runs.
+if (process.argv.includes("--healthcheck")) {
+  try {
+    const res = await fetch(`http://127.0.0.1:${env.PORT}/healthz`);
+    process.exit(res.ok ? 0 : 1);
+  } catch {
+    process.exit(1);
+  }
+}
 
 // Wire LogTape before anything logs (Elysia's request logger and the app
 // loggers below both flow through the sinks configured here).
@@ -83,16 +96,21 @@ const METRICS_TOPIC = "metrics";
 const app = new Elysia()
   // Structured HTTP request logging (category ["elysia"]). Health/liveness
   // probes are noisy and uninteresting, so skip them.
-  .use(elysiaLogger({ skip: (ctx) => ctx.path === "/" }))
+  .use(elysiaLogger({ skip: (ctx) => ctx.path === "/" || ctx.path === "/healthz" }))
   .use(
     cors({
       // In dev the web app may be served on any localhost port (Vite fallback,
       // VS Code port forwarding), so reflect any localhost origin. Production
-      // pins to the configured origin.
+      // pins to the configured origin; with CORS_ORIGIN unset (same-origin
+      // deployments behind a reverse proxy) no origin is allowed and browsers
+      // enforce plain same-origin — the safe default.
       origin:
         env.NODE_ENV === "production"
-          ? env.CORS_ORIGIN
-          : [/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/, env.CORS_ORIGIN],
+          ? (env.CORS_ORIGIN ?? [])
+          : [
+              /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/,
+              ...(env.CORS_ORIGIN ? [env.CORS_ORIGIN] : []),
+            ],
       methods: ["GET", "POST", "PUT", "OPTIONS"],
       allowedHeaders: ["Content-Type", "Authorization"],
       credentials: true,
@@ -143,6 +161,18 @@ const app = new Elysia()
     { parse: "none" },
   )
   .get("/", () => "OK")
+  // Readiness: proves the process is up *and* the database answers. Target of
+  // the --healthcheck self-probe, compose healthchecks, and the Home Assistant
+  // addon watchdog. Onboarding state doesn't matter here — a booted
+  // onboarding-only server is healthy.
+  .get("/healthz", async ({ status }) => {
+    try {
+      await db.execute(sql`SELECT 1`);
+      return { ok: true, profile: profile?.id ?? null };
+    } catch {
+      return status(503, { ok: false });
+    }
+  })
   // First-run gate for the web app: true until the instance has its first
   // (admin) account. Public — the onboarding flow can't be authenticated yet.
   .get("/api/setup-status", async () => {
@@ -331,7 +361,7 @@ const app = new Elysia()
   .use(profileRoutes)
   // Admin-only maintenance: data reset + API-key administration.
   .use(adminRoutes)
-  .listen(env.PORT, () => {
+  .listen({ port: env.PORT, hostname: env.HOST }, () => {
     serverLog.info("server running on http://localhost:{port} — profile {profile}", {
       port: env.PORT,
       profile: profile?.id ?? "(onboarding-only)",

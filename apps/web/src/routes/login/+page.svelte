@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import * as Card from '$lib/components/ui/card';
 	import { needsSetup } from '$lib/setup';
 	import AuthForm from '../../components/AuthForm.svelte';
@@ -9,7 +10,7 @@
 	// is otherwise closed (invite-only), so this page is sign-in only.
 	$effect(() => {
 		needsSetup().then((setup) => {
-			if (setup) goto('/onboarding');
+			if (setup) goto(resolve('/onboarding'));
 		});
 	});
 </script>

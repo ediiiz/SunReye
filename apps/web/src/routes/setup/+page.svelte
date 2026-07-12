@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import { api } from '$lib/api';
@@ -18,13 +19,13 @@
 	// `/login`; no admin yet → `/onboarding`; already configured → `/`. Only a
 	// logged-in, admin-created, profile-less instance stays here.
 	$effect(() => {
-		if (!$sessionQuery.isPending && !$sessionQuery.data) goto('/login');
+		if (!$sessionQuery.isPending && !$sessionQuery.data) goto(resolve('/login'));
 	});
 	$effect(() => {
 		if ($sessionQuery.isPending || !$sessionQuery.data) return;
 		firstRunGate().then((g) => {
-			if (g === 'setup-account') goto('/onboarding');
-			else if (g === 'ready') goto('/');
+			if (g === 'setup-account') goto(resolve('/onboarding'));
+			else if (g === 'ready') goto(resolve('/'));
 		});
 	});
 

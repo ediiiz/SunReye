@@ -2,6 +2,7 @@
 	import { z } from 'zod';
 	import { authClient } from '$lib/auth-client';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { Button } from '$lib/components/ui/button';
 	import AuthField from './AuthField.svelte';
 
@@ -39,7 +40,7 @@
 		errors = {};
 		submitting = true;
 		const opts = {
-			onSuccess: () => goto('/'),
+			onSuccess: () => goto(resolve('/')),
 			onError: (error: { error: { message?: string } }) => {
 				formError = error.error.message || 'Something went wrong. Please try again.';
 			}

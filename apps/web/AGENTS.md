@@ -65,3 +65,17 @@ Generates a Svelte Playground link with the provided code.
 After completing the code, ask the user if they want a playground link. Only call this tool after user confirmation and NEVER if code was written to files in their project.
 
 <!-- Svelte-MCP:END -->
+
+## Hash router constraint
+
+This app uses SvelteKit's hash router (`router.type: 'hash'` in
+svelte.config.js) so one build works behind path-prefixed reverse proxies
+(Home Assistant ingress). Consequences:
+
+- **Internal navigation must go through `resolve()` from `$app/paths`**:
+  `goto(resolve('/login'))`, `<a href={resolve('/history')}>`. A raw
+  `goto('/login')` or `href="/login"` triggers a full-page navigation that
+  escapes the ingress prefix and 404s.
+- No `+page.server.ts` / `+layout.server.ts` / per-page options — SSR is off.
+- Reading `page.url.pathname` still yields the route path ('/history') and
+  needs no changes.

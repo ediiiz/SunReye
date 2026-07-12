@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import * as Card from '$lib/components/ui/card';
 	import { needsSetup } from '$lib/setup';
 	import ShieldIcon from 'phosphor-svelte/lib/ShieldCheck';
@@ -9,7 +10,7 @@
 	// First-run only: once an account exists, registration is closed.
 	$effect(() => {
 		needsSetup().then((setup) => {
-			if (!setup) goto('/login');
+			if (!setup) goto(resolve('/login'));
 		});
 	});
 </script>

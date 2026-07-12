@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { fade } from 'svelte/transition';
 	import { MediaQuery } from 'svelte/reactivity';
@@ -20,7 +21,7 @@
 
 	// Client-side guard (matches the existing app auth pattern).
 	$effect(() => {
-		if (!$sessionQuery.isPending && !$sessionQuery.data) goto('/login');
+		if (!$sessionQuery.isPending && !$sessionQuery.data) goto(resolve('/login'));
 	});
 
 	// First-run gate, in precedence order: no admin yet → `/onboarding`; admin but
@@ -32,8 +33,8 @@
 		if ($sessionQuery.isPending || !$sessionQuery.data || gate) return;
 		firstRunGate().then((g) => {
 			gate = g;
-			if (g === 'setup-account') goto('/onboarding');
-			else if (g === 'setup-profile') goto('/setup');
+			if (g === 'setup-account') goto(resolve('/onboarding'));
+			else if (g === 'setup-profile') goto(resolve('/setup'));
 		});
 	});
 
@@ -44,7 +45,7 @@
 	$effect(() => {
 		if ($sessionQuery.isPending || !$sessionQuery.data) return;
 		if ($sessionQuery.data.user?.role !== 'admin' && ADMIN_ONLY.includes(page.url.pathname)) {
-			goto('/');
+			goto(resolve('/'));
 		}
 	});
 

@@ -1,6 +1,0 @@
-#!/usr/bin/with-contenv bashio
-# SvelteKit dashboard (adapter-node) on 127.0.0.1:3001. PUBLIC_SERVER_URL stays
-# unset: the client resolves its API base from the document URL, which keeps
-# the ingress path prefix intact.
-export PORT=3001
-exec s6-setuidgid sunreye node /opt/sunreye/web/index.js

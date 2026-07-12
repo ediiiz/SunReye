@@ -26,12 +26,12 @@ HA ingress (sidebar)          optional direct port 8100
         │                             │
         └────────────► nginx ◄────────┘        one origin, no CORS
                     /api /ws /openapi → server (bun binary, 127.0.0.1:3000)
-                    everything else   → web (adapter-node, 127.0.0.1:3001)
+                    everything else   → static web build, served by nginx
                                         TimescaleDB (127.0.0.1, /data/postgres)
 ```
 
 Startup is a supervised chain: postgres → readiness → `ALTER EXTENSION timescaledb UPDATE`
-→ pre-upgrade backup → migration runner → server/web/nginx. Any failure stops the addon
+→ pre-upgrade backup → migration runner → server/nginx. Any failure stops the addon
 with the cause as the last log lines — the server never runs against a half-migrated
 database.
 

@@ -5,7 +5,7 @@
 #
 #   nginx (ingress port 8099 + optional direct port 8100)
 #     ├── /api, /ws, /openapi, /healthz → server (bun binary, 127.0.0.1:3000)
-#     └── everything else              → web (adapter-node, 127.0.0.1:3001)
+#     └── everything else              → static web build, served by nginx
 #   postgres/timescaledb (127.0.0.1:5432, datadir /data/postgres)
 #   migrate (compiled runner, gates server start)
 #
@@ -38,8 +38,9 @@ RUN case "$TARGETARCH" in \
     bun build --compile --minify --external serialport --target="$BUN_TARGET" apps/server/src/index.ts --outfile /out/server && \
     bun build --compile --minify --target="$BUN_TARGET" packages/db/src/migrate.ts --outfile /out/migrate
 
-# adapter-node output is architecture-independent JS.
-RUN cd apps/web && bun run build
+# Static SPA build (hash router, no server routes) — nginx serves the files
+# directly, no Node runtime in the image. Architecture-independent.
+RUN cd apps/web && bun run build:static
 
 # ─── Runtime stage: HA debian base (s6-overlay v3 + bashio, glibc) ───────────
 FROM $BUILD_FROM
@@ -65,14 +66,11 @@ RUN apt-get update \
        | gpg --dearmor -o /usr/share/keyrings/timescaledb.gpg \
     && echo "deb [signed-by=/usr/share/keyrings/timescaledb.gpg] https://packagecloud.io/timescale/timescaledb/debian bookworm main" \
        > /etc/apt/sources.list.d/timescaledb.list \
-    # Node for the SvelteKit adapter-node build output.
-    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
        "postgresql-${PG_MAJOR}" \
        "timescaledb-2-postgresql-${PG_MAJOR}=${TIMESCALEDB_VERSION}.*" \
        "timescaledb-2-loader-postgresql-${PG_MAJOR}=${TIMESCALEDB_VERSION}.*" \
-       nodejs \
     && apt-get clean && rm -rf /var/lib/apt/lists/* \
     && useradd --system --no-create-home --shell /usr/sbin/nologin sunreye \
     # Debian's postgres tooling isn't on PATH by default.

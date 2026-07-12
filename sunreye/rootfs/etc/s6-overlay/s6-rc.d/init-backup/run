@@ -1,0 +1,13 @@
+#!/usr/bin/with-contenv bashio
+# Automatic pre-upgrade backup: when the installed addon version differs from
+# the version that last ran against this database, dump before migrating.
+# /data/sunreye-version is written by init-migrate after a successful run.
+set -euo pipefail
+
+previous="$(cat /data/sunreye-version 2>/dev/null || true)"
+if [ -z "${previous}" ] || [ "${previous}" = "${SUNREYE_ADDON_VERSION}" ]; then
+    exit 0
+fi
+
+bashio::log.info "Upgrade ${previous} → ${SUNREYE_ADDON_VERSION}: taking a pre-upgrade database backup"
+/usr/lib/sunreye/dump.sh "pre-upgrade-${previous}-$(date +%Y%m%d%H%M%S)"

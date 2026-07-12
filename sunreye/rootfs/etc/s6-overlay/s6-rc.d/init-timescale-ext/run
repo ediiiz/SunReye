@@ -1,0 +1,19 @@
+#!/usr/bin/with-contenv bashio
+# Bring the timescaledb extension up to the version shipped in this image.
+# TimescaleDB requires ALTER EXTENSION ... UPDATE to be the first command in a
+# fresh session that has touched nothing timescale-related — hence a dedicated
+# `psql -X -c` invocation, ordered before any other connection (migrate runner,
+# server) opens. Embedded only: an external database owns its own extension.
+set -euo pipefail
+
+if [ "${DB_EMBEDDED}" != "true" ]; then
+    exit 0
+fi
+
+# Fresh databases don't have the extension yet — the migrate runner's
+# bootstrap creates it at the shipped version.
+if s6-setuidgid postgres psql -X -d sunreye -tAc \
+    "SELECT 1 FROM pg_extension WHERE extname = 'timescaledb'" | grep -q 1; then
+    s6-setuidgid postgres psql -X -d sunreye -c "ALTER EXTENSION timescaledb UPDATE;"
+    bashio::log.info "timescaledb extension is at $(s6-setuidgid postgres psql -X -d sunreye -tAc "SELECT extversion FROM pg_extension WHERE extname = 'timescaledb'")"
+fi

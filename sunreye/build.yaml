@@ -1,0 +1,6 @@
+# Per-arch base images for the addon build (consumed by
+# .github/workflows/docker-addon.yml, and by `ha addons build` /
+# home-assistant/builder for local development builds).
+build_from:
+  amd64: ghcr.io/home-assistant/amd64-base-debian:bookworm
+  aarch64: ghcr.io/home-assistant/aarch64-base-debian:bookworm

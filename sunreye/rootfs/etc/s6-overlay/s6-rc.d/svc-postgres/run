@@ -1,0 +1,7 @@
+#!/usr/bin/with-contenv bashio
+# Embedded TimescaleDB, loopback only. With an external database this longrun
+# idles so the service tree shape stays identical in both modes.
+if [ "${DB_EMBEDDED}" != "true" ]; then
+    exec sleep infinity
+fi
+exec s6-setuidgid postgres postgres -D /data/postgres

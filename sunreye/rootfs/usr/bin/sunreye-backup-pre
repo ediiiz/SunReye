@@ -1,0 +1,7 @@
+#!/usr/bin/with-contenv bashio
+# Runs inside the container right before the Supervisor snapshots /data
+# (config.yaml `backup_pre`). A live datadir copy is not reliably restorable,
+# so this logical dump — included in the HA backup because it lands in
+# /data/backups — is the actual restore path.
+set -euo pipefail
+/usr/lib/sunreye/dump.sh "ha-backup-$(date +%Y%m%d%H%M%S)"

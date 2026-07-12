@@ -21,6 +21,8 @@ jobs:
       server_tag: ${{ steps.release.outputs.tag_name }}
       web_released: ${{ steps.release.outputs['apps/web--release_created'] }}
       web_tag: ${{ steps.release.outputs['apps/web--tag_name'] }}
+      addon_released: ${{ steps.release.outputs['sunreye--release_created'] }}
+      addon_tag: ${{ steps.release.outputs['sunreye--tag_name'] }}
     steps:
       - name: Run release-please
         id: release
@@ -32,7 +34,7 @@ jobs:
   build-images:
     name: Dispatch Docker builds
     needs: release-please
-    if: needs.release-please.outputs.server_released == 'true' || needs.release-please.outputs.web_released == 'true'
+    if: needs.release-please.outputs.server_released == 'true' || needs.release-please.outputs.web_released == 'true' || needs.release-please.outputs.addon_released == 'true'
     runs-on: ubuntu-latest
     permissions:
       actions: write
@@ -47,6 +49,9 @@ jobs:
       - name: Web image
         if: needs.release-please.outputs.web_released == 'true'
         run: gh workflow run docker-web.yml --repo "$GITHUB_REPOSITORY" --ref "${{ needs.release-please.outputs.web_tag }}"
+      - name: Addon images
+        if: needs.release-please.outputs.addon_released == 'true'
+        run: gh workflow run docker-addon.yml --repo "$GITHUB_REPOSITORY" --ref "${{ needs.release-please.outputs.addon_tag }}"
 
   publish-sdk:
     name: Publish profile-sdk to npm

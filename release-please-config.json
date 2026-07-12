@@ -1,11 +1,18 @@
 {
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
   "include-component-in-tag": true,
+  "plugins": [
+    {
+      "type": "linked-versions",
+      "groupName": "sunreye-stack",
+      "components": ["server", "web", "addon"]
+    }
+  ],
   "packages": {
     ".": {
       "component": "server",
       "release-type": "node",
-      "exclude-paths": ["apps/web", "apps/docs", "packages/profile-sdk"]
+      "exclude-paths": ["apps/web", "apps/docs", "packages/profile-sdk", "sunreye"]
     },
     "apps/web": {
       "component": "web",
@@ -14,6 +21,16 @@
     "packages/profile-sdk": {
       "component": "profile-sdk",
       "release-type": "node"
+    },
+    "sunreye": {
+      "component": "addon",
+      "release-type": "simple",
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "config.yaml"
+        }
+      ]
     }
   }
 }

@@ -1,0 +1,69 @@
+#!/usr/bin/with-contenv bashio
+# Translate addon options (/data/options.json) into the env vars the SunReye
+# processes read, via s6's container_environment (picked up by every service
+# started with with-contenv).
+set -euo pipefail
+
+ENVDIR=/run/s6/container_environment
+set_env() { printf '%s' "$2" > "${ENVDIR}/$1"; }
+
+# ── Core ─────────────────────────────────────────────────────────────────────
+set_env NODE_ENV production
+# Loopback only: nginx on the ingress/direct ports is the sole front door.
+set_env HOST 127.0.0.1
+set_env LOG_LEVEL "$(bashio::config 'log_level' 'info')"
+set_env POLL_INTERVAL_MS "$(bashio::config 'poll_interval_ms' '1000')"
+
+# ── Auth secret: generated once, persisted across upgrades ──────────────────
+if [ ! -s /data/auth_secret ]; then
+    bashio::log.info "Generating Better Auth secret"
+    (umask 077 && openssl rand -hex 32 > /data/auth_secret)
+fi
+set_env BETTER_AUTH_SECRET "$(cat /data/auth_secret)"
+if bashio::config.true 'secure_cookies'; then
+    set_env AUTH_SECURE_COOKIES true
+fi
+
+# ── Database: embedded TimescaleDB unless an external URL is configured ─────
+if bashio::config.has_value 'external_database_url'; then
+    set_env DB_EMBEDDED false
+    set_env DATABASE_URL "$(bashio::config 'external_database_url')"
+else
+    set_env DB_EMBEDDED true
+    set_env DATABASE_URL "postgresql://postgres@127.0.0.1:5432/sunreye"
+fi
+set_env MIGRATIONS_DIR /opt/sunreye/db/migrations
+set_env TIMESCALE_DIR /opt/sunreye/db/timescale
+
+# ── Inverter seed config (only used until the UI config exists) ─────────────
+bashio::config.has_value 'inverter_profile' && set_env INVERTER_PROFILE "$(bashio::config 'inverter_profile')"
+bashio::config.has_value 'inverter_host' && set_env INVERTER_HOST "$(bashio::config 'inverter_host')"
+bashio::config.has_value 'inverter_port' && set_env INVERTER_PORT "$(bashio::config 'inverter_port')"
+bashio::config.has_value 'inverter_unit_id' && set_env INVERTER_UNIT_ID "$(bashio::config 'inverter_unit_id')"
+bashio::config.has_value 'inverter_transport' && set_env INVERTER_TRANSPORT "$(bashio::config 'inverter_transport')"
+if bashio::config.true 'inverter_simulate'; then
+    set_env INVERTER_SIMULATE true
+fi
+
+# ── Third-party API keys ─────────────────────────────────────────────────────
+bashio::config.has_value 'api_keys' && set_env API_KEYS "$(bashio::config 'api_keys')"
+
+# ── MQTT: explicit option wins, else auto-wire the HA broker service ────────
+if bashio::config.has_value 'mqtt_broker_url'; then
+    set_env MQTT_ENABLED true
+    set_env MQTT_BROKER_URL "$(bashio::config 'mqtt_broker_url')"
+    bashio::config.has_value 'mqtt_username' && set_env MQTT_USERNAME "$(bashio::config 'mqtt_username')"
+    bashio::config.has_value 'mqtt_password' && set_env MQTT_PASSWORD "$(bashio::config 'mqtt_password')"
+elif bashio::services.available 'mqtt'; then
+    bashio::log.info "MQTT broker provided by Home Assistant ($(bashio::services 'mqtt' 'host'))"
+    set_env MQTT_ENABLED true
+    set_env MQTT_BROKER_URL "mqtt://$(bashio::services 'mqtt' 'host'):$(bashio::services 'mqtt' 'port')"
+    set_env MQTT_USERNAME "$(bashio::services 'mqtt' 'username')"
+    set_env MQTT_PASSWORD "$(bashio::services 'mqtt' 'password')"
+fi
+bashio::config.has_value 'mqtt_topic_prefix' && set_env MQTT_TOPIC_PREFIX "$(bashio::config 'mqtt_topic_prefix')"
+if bashio::config.true 'ha_discovery'; then
+    set_env HA_DISCOVERY_ENABLED true
+fi
+
+true

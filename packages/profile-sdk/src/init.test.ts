@@ -46,12 +46,15 @@ describe("scaffoldProject", () => {
     expect(pkg.scripts.build).not.toContain("--maintainer");
   });
 
-  test("starter module is a valid, id-derived export using the SDK", () => {
+  test("starter module is a valid, id-derived family export using the SDK", () => {
     const src = files["src/profiles.ts"]!;
     expect(src).toContain('from "@sunreye/profile-sdk"');
-    expect(src).toContain("export const acmeHybrid = defineProfile({");
+    expect(src).toContain("export const acmeHybrid = defineFamily({");
     expect(src).toContain('id: "acme-hybrid"');
     expect(src).toContain('manufacturer: "Acme"');
+    // The starter demonstrates a keyed-overlay model (patch + wildcard remove).
+    expect(src).toContain('"acme-hybrid-lite"');
+    expect(src).toContain('"dc.pv2.power": null');
   });
 });
 

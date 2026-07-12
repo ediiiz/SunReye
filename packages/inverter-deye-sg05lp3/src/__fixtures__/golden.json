@@ -1,7 +1,7 @@
 {
   "manifest": {
     "id": "deye-sg05lp3",
-    "name": "Deye SG05LP3",
+    "name": "SG05LP3",
     "manufacturer": "Deye",
     "capabilities": {
       "battery": true,
@@ -705,7 +705,11 @@
         "group": "settings",
         "kind": "setting",
         "writable": true,
-        "role": "setting.battery.max_charge_current"
+        "role": "setting.battery.max_charge_current",
+        "range": {
+          "min": 0,
+          "max": 350
+        }
       },
       {
         "key": "settings.battery.maximum_discharge_current",
@@ -715,7 +719,11 @@
         "group": "settings",
         "kind": "setting",
         "writable": true,
-        "role": "setting.battery.max_discharge_current"
+        "role": "setting.battery.max_discharge_current",
+        "range": {
+          "min": 0,
+          "max": 350
+        }
       },
       {
         "key": "settings.battery.maximum_grid_charge_current",
@@ -2117,7 +2125,11 @@
       ],
       "scale": 1,
       "access": "rw",
-      "role": "setting.battery.max_charge_current"
+      "role": "setting.battery.max_charge_current",
+      "range": {
+        "min": 0,
+        "max": 350
+      }
     },
     {
       "key": "settings.battery.maximum_discharge_current",
@@ -2131,7 +2143,11 @@
       ],
       "scale": 1,
       "access": "rw",
-      "role": "setting.battery.max_discharge_current"
+      "role": "setting.battery.max_discharge_current",
+      "range": {
+        "min": 0,
+        "max": 350
+      }
     },
     {
       "key": "settings.battery.maximum_grid_charge_current",

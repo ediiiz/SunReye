@@ -16,8 +16,8 @@ export type { EntityConstraint, EntityValueType } from "./entities";
 // Profile authoring SDK + serializable data model + validator.
 export { ROLE_CATALOG, ROLE_NAMES } from "./roles";
 export type { CanonicalRole, RoleSpec } from "./roles";
-export { control, defineProfile, metric } from "./define";
-export type { MetricOpts } from "./define";
+export { control, defineFamily, defineProfile, defineVariant, metric } from "./define";
+export type { MetricAdd, MetricOpts, MetricPatch, MetricsOverlay, ModelOverrides } from "./define";
 export { compileComputeExpr, hydrateProfile } from "./profile-data";
 export type {
   ComputeExpr,

@@ -7,6 +7,20 @@ score, and exercise it — all offline, no hardware required.
 A profile is **pure data**. It can fail validation or produce an empty manifest, but it can
 never execute code inside SunReye.
 
+## Quick start
+
+Scaffold a ready-to-build authoring project in one command — no install needed, works in an
+empty directory:
+
+```sh
+bunx @sunreye/profile-sdk init my-profiles
+```
+
+It writes the project layout (`package.json`, `tsconfig.json`, `src/profiles.ts` with a
+starter profile, `README.md`, `.gitignore`) and optionally runs `bun install` + `git init`,
+leaving you one `bun run build` away from an installable repo. See
+[Start a new profile project](#start-a-new-profile-project) for flags.
+
 ## Install
 
 ```sh
@@ -39,6 +53,56 @@ export const acme = defineProfile({
 Picking a role forces you to supply exactly what that role needs, or the code won't
 compile — profiles are **correct by construction**.
 
+## Families & model variants
+
+One repo can hold **hundreds of profiles** (`index.json` + one `profiles/<id>.json` per
+model). When several models share a register map and differ only in a few limits or PV
+inputs, author them as a **family** instead of copying the map. `defineFamily` takes the
+shared base plus a `models` record keyed by profile id, and returns `[base, ...models]` —
+each a self-contained profile that shows up in SunReye's model picker:
+
+```ts
+import { defineFamily, metric } from "@sunreye/profile-sdk";
+
+export const acme = defineFamily({
+  id: "acme-hybrid",
+  name: "Acme Hybrid",
+  manufacturer: "Acme",
+  version: "1.0.0",
+  metrics: [ /* the shared register map — 2 PV strings, a writable discharge limit, … */ ],
+  models: {
+    "acme-hybrid-5k": {
+      name: "Acme Hybrid 5K",
+      metrics: {
+        "dc.pv2.*": null,                                            // one MPPT → capabilities show 1
+        "settings.battery.maximum_discharge_current": { max: 120 },  // 0–120 A slider + write clamp
+      },
+    },
+    "acme-hybrid-15k": {
+      name: "Acme Hybrid 15K",
+      metrics: { "settings.battery.maximum_discharge_current": { max: 280 } },
+    },
+  },
+});
+```
+
+The `models[id].metrics` overlay is keyed by canonical metric key with one rule per entry:
+
+| Entry | Effect |
+| --- | --- |
+| `"key": { max: 280 }` (or `min`/any `metric()` field) | **patch** — merge into that metric; `min`/`max` set its `range` |
+| `"key": null` | **remove** that metric |
+| `"prefix.*": null` | **remove** every metric under the prefix (e.g. a PV string) |
+| `"new.key": { …full definition… }` | **add** a new metric (topic derived from the key) |
+
+Keys **autocomplete** from the base map; a mistyped patch/remove target throws at build
+time (`profile build` validates every profile). Because capabilities are *derived* — string
+count, phases, genset presence — removing metrics reshapes the
+manifest and UI automatically, and a `range` on a writable setting becomes a capped slider
+that also rejects out-of-range writes server-side. No schema, hydrate, or server change is
+involved. `defineVariant(base, { id, … })` is the low-level primitive for specializing a
+single imported/third-party `ProfileData`.
+
 ## Validate and exercise
 
 ```ts
@@ -54,22 +118,24 @@ const { manifest, capabilities, sample } = await exerciseProfile(acme);
 ## Start a new profile project
 
 ```sh
-bunx profile init my-profiles    # interactive: package + first profile stub, then optional install + git init
+bunx @sunreye/profile-sdk init my-profiles    # interactive: package + first profile stub, then optional install + git init
 ```
 
 `init` scaffolds a ready-to-build authoring project (`package.json`, `tsconfig.json`,
 `src/profiles.ts` with a starter profile, `README.md`, `.gitignore`), asks whether to run
 `bun install` and `git init`, and leaves you one `bun run build` away from an installable
-repo. Pass flags to skip prompts, or `--yes` to accept every default:
+repo. Run it via the package name (`bunx @sunreye/profile-sdk`) so it works in an empty
+directory before anything is installed; inside the scaffolded project the `profile` bin is
+on the path. Pass flags to skip prompts, or `--yes` to accept every default:
 
 ```sh
-bunx profile init my-profiles --id acme-hybrid --manufacturer Acme --repo-name "Acme Profiles" --yes
+bunx @sunreye/profile-sdk init my-profiles --id acme-hybrid --manufacturer Acme --repo-name "Acme Profiles" --yes
 ```
 
 ## The `profile` CLI
 
 ```sh
-bunx profile init ./my-profiles                # scaffold a new authoring project
+bunx @sunreye/profile-sdk init ./my-profiles   # scaffold a new authoring project (empty dir; no install needed)
 bunx profile validate ./profiles/acme.json     # strict validation + lints, non-zero exit on failure
 bunx profile coverage ./profiles/acme.json     # role coverage report
 bunx profile scaffold ./registers.csv --id acme-hybrid --name "Acme Hybrid" --manufacturer Acme

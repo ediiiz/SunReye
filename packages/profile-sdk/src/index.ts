@@ -1,7 +1,19 @@
 // Authoring API re-exported from @SunReye/inverter-core (private, bundled into
 // the published package) so npm consumers get defineProfile & friends from here.
-export { control, defineProfile, metric } from "@SunReye/inverter-core";
-export type { MetricOpts } from "@SunReye/inverter-core";
+export {
+  control,
+  defineFamily,
+  defineProfile,
+  defineVariant,
+  metric,
+} from "@SunReye/inverter-core";
+export type {
+  MetricAdd,
+  MetricOpts,
+  MetricPatch,
+  MetricsOverlay,
+  ModelOverrides,
+} from "@SunReye/inverter-core";
 export { parseProfileData, profileDataSchema, safeParseProfileData } from "@SunReye/inverter-core";
 export type {
   CanonicalRole,

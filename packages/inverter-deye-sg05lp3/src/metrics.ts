@@ -1,5 +1,5 @@
 import { control, metric } from "@SunReye/inverter-core";
-import type { MetricDataDef } from "@SunReye/inverter-core";
+import type { MetricDataDef, ModelOverrides } from "@SunReye/inverter-core";
 
 /**
  * Deye / Sunsynk hybrid holding-register map, transcribed from the vendor
@@ -548,6 +548,8 @@ const settings = [
     addr: 108,
     access: "rw",
     role: "setting.battery.max_charge_current",
+    // Generic family envelope (largest SKU); individual SKUs tighten it in `models`.
+    range: { min: 0, max: 350 },
   }),
   metric("settings/battery/maximum_discharge_current", {
     label: "Max battery discharge current",
@@ -556,6 +558,7 @@ const settings = [
     addr: 109,
     access: "rw",
     role: "setting.battery.max_discharge_current",
+    range: { min: 0, max: 350 },
   }),
   metric("settings/battery/maximum_grid_charge_current", {
     label: "Max battery grid-charge current",
@@ -758,6 +761,50 @@ type DeyeKey =
   | (typeof settings)[number]["key"]
   | (typeof system)[number]["key"]
   | (typeof load)[number]["key"];
+
+/**
+ * SG05LP3-EU-SM2 three-phase hybrid SKUs, keyed by profile id. They share the
+ * whole register map above and differ only in the battery charge/discharge
+ * current ceiling (equal per model), from the vendor datasheet. Typed against
+ * {@link DeyeKey} so the overlay keys autocomplete and a typo won't compile.
+ */
+export const models: Record<string, ModelOverrides<DeyeKey>> = {
+  "deye-sun14k-sg05lp3": {
+    name: "SUN-14K-SG05LP3-EU-SM2",
+    metrics: {
+      "settings.battery.maximum_charge_current": { max: 260 },
+      "settings.battery.maximum_discharge_current": { max: 260 },
+    },
+  },
+  "deye-sun15k-sg05lp3": {
+    name: "SUN-15K-SG05LP3-EU-SM2",
+    metrics: {
+      "settings.battery.maximum_charge_current": { max: 280 },
+      "settings.battery.maximum_discharge_current": { max: 280 },
+    },
+  },
+  "deye-sun16k-sg05lp3": {
+    name: "SUN-16K-SG05LP3-EU-SM2",
+    metrics: {
+      "settings.battery.maximum_charge_current": { max: 300 },
+      "settings.battery.maximum_discharge_current": { max: 300 },
+    },
+  },
+  "deye-sun18k-sg05lp3": {
+    name: "SUN-18K-SG05LP3-EU-SM2",
+    metrics: {
+      "settings.battery.maximum_charge_current": { max: 330 },
+      "settings.battery.maximum_discharge_current": { max: 330 },
+    },
+  },
+  "deye-sun20k-sg05lp3": {
+    name: "SUN-20K-SG05LP3-EU-SM2",
+    metrics: {
+      "settings.battery.maximum_charge_current": { max: 350 },
+      "settings.battery.maximum_discharge_current": { max: 350 },
+    },
+  },
+};
 
 /**
  * Table 8 — composite controls (no registers of their own). Battery discharge

@@ -3,7 +3,7 @@
 # builds locally. `version` must match a pushed image tag — release-please
 # keeps it in sync via the annotation below.
 name: SunReye
-version: 0.3.0 # x-release-please-version
+version: 0.4.0 # x-release-please-version
 slug: sunreye
 description: >-
   Self-hosted solar / hybrid inverter monitoring, control, and integration —

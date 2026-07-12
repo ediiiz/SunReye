@@ -11,7 +11,10 @@ set_env() { printf '%s' "$2" > "${ENVDIR}/$1"; }
 set_env NODE_ENV production
 # Loopback only: nginx on the ingress/direct ports is the sole front door.
 set_env HOST 127.0.0.1
-set_env LOG_LEVEL "$(bashio::config 'log_level' 'info')"
+# Deliberately NOT exported as LOG_LEVEL: bashio interprets a LOG_LEVEL env
+# var as its own logging setting and breaks under `set -u` when it holds the
+# app's string value. svc-server/run maps this back to LOG_LEVEL for the app.
+set_env SUNREYE_LOG_LEVEL "$(bashio::config 'log_level' 'info')"
 set_env POLL_INTERVAL_MS "$(bashio::config 'poll_interval_ms' '1000')"
 
 # ── Auth secret: generated once, persisted across upgrades ──────────────────
@@ -54,7 +57,7 @@ if bashio::config.has_value 'mqtt_broker_url'; then
     set_env MQTT_BROKER_URL "$(bashio::config 'mqtt_broker_url')"
     bashio::config.has_value 'mqtt_username' && set_env MQTT_USERNAME "$(bashio::config 'mqtt_username')"
     bashio::config.has_value 'mqtt_password' && set_env MQTT_PASSWORD "$(bashio::config 'mqtt_password')"
-elif bashio::services.available 'mqtt'; then
+elif bashio::services.available 'mqtt' 2>/dev/null; then
     bashio::log.info "MQTT broker provided by Home Assistant ($(bashio::services 'mqtt' 'host'))"
     set_env MQTT_ENABLED true
     set_env MQTT_BROKER_URL "mqtt://$(bashio::services 'mqtt' 'host'):$(bashio::services 'mqtt' 'port')"

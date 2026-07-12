@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/ediiiz/SunReye/compare/web-v0.1.0...web-v0.2.0) (2026-07-12)
+
+
+### Features
+
+* **web:** runtime API base and hash routing for reverse-proxy prefixes ([1aa8661](https://github.com/ediiiz/SunReye/commit/1aa8661b1b5ca0fac7932d12a92c419941c53b1e))
+
 ## [0.1.0](https://github.com/ediiiz/SunReye/compare/web-v0.0.1...web-v0.1.0) (2026-07-11)
 
 

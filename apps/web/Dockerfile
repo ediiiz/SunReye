@@ -6,16 +6,16 @@
 # build once on the build platform even for multi-arch images. adapter-node
 # bundles every dependency into build/, so the runtime needs no node_modules.
 # ─────────────────────────────────────────────────────────────────────────────
-FROM --platform=$BUILDPLATFORM oven/bun:1 AS build
+FROM --platform=$BUILDPLATFORM oven/bun:1.3 AS build
 WORKDIR /app
 ENV HUSKY=0 SKIP_ENV_VALIDATION=1 NODE_ENV=production
 
 COPY . .
 RUN --mount=type=cache,target=/root/.bun/install/cache bun install --frozen-lockfile
 
-# PUBLIC_* vars are inlined into the client bundle at build time.
-ARG PUBLIC_SERVER_URL=http://localhost:3000
-ENV PUBLIC_SERVER_URL=${PUBLIC_SERVER_URL}
+# PUBLIC_SERVER_URL is read at *runtime* via $env/dynamic/public (see
+# apps/web/src/lib/server-url.ts) — nothing is baked into the bundle, so one
+# image serves every deployment topology.
 RUN cd apps/web && bun run build
 
 # ─────────────────────────────────────────────────────────────────────────────

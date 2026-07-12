@@ -5,11 +5,22 @@ import { defineConfig } from "vite";
 export default defineConfig({
   plugins: [tailwindcss(), sveltekit()],
   // Expose PUBLIC_ vars on `import.meta.env` (Vite only exposes VITE_ by
-  // default) so the shared `@SunReye/env/web` schema can read them.
+  // default) for any future build-time vars in the `@SunReye/env/web` schema.
+  // Runtime vars (PUBLIC_SERVER_URL) go through $env/dynamic/public instead.
   envPrefix: ["VITE_", "PUBLIC_"],
   // LayerChart ships raw .svelte files; bundle it for SSR so Node doesn't try
   // to import .svelte directly (ERR_UNKNOWN_FILE_EXTENSION).
   ssr: {
     noExternal: ["layerchart"],
+  },
+  // Dev is same-origin like production deployments: the client resolves its
+  // API base from the document URL (see src/lib/server-url.ts), so proxy the
+  // engine surface to the core server instead of hitting it cross-origin.
+  server: {
+    proxy: {
+      "/api": "http://localhost:3000",
+      "/openapi": "http://localhost:3000",
+      "/ws": { target: "ws://localhost:3000", ws: true },
+    },
   },
 });

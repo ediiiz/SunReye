@@ -17,12 +17,24 @@ if [ ! -s /data/postgres/PG_VERSION ]; then
     bashio::log.info "Initializing PostgreSQL ${PG_MAJOR} data directory (first start)"
     s6-setuidgid postgres initdb -D /data/postgres -U postgres \
         --encoding=UTF8 --auth-local=peer --auth-host=trust
-    {
-        echo "listen_addresses = '127.0.0.1'"
-        echo "shared_preload_libraries = 'timescaledb'"
-        echo "timescaledb.telemetry_level = off"
-    } >> /data/postgres/postgresql.conf
 fi
+
+# Managed settings live in their own include, rewritten on every start so
+# upgrades can retune existing data directories (settings appended by earlier
+# addon versions are overridden — the include comes last, and last wins).
+cat > /data/postgres/sunreye.conf <<'EOF'
+listen_addresses = '127.0.0.1'
+shared_preload_libraries = 'timescaledb'
+timescaledb.telemetry_level = off
+# Headroom for the TimescaleDB job scheduler (cagg refresh x3, compression,
+# retention): the stock max_worker_processes=8 makes job launches fail with
+# "failed to start a background worker".
+max_worker_processes = 16
+timescaledb.max_background_workers = 8
+EOF
+chown postgres:postgres /data/postgres/sunreye.conf
+grep -q "include = 'sunreye.conf'" /data/postgres/postgresql.conf \
+    || echo "include = 'sunreye.conf'" >> /data/postgres/postgresql.conf
 
 # Base-image updates can shift uids; make sure postgres still owns its datadir.
 if [ "$(stat -c %U /data/postgres)" != "postgres" ]; then

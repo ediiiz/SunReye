@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/ediiiz/SunReye/compare/web-v0.2.0...web-v0.2.1) (2026-07-12)
+
+
+### Miscellaneous Chores
+
+* **web:** Synchronize sunreye-stack versions
+
 ## [0.2.0](https://github.com/ediiiz/SunReye/compare/web-v0.1.0...web-v0.2.0) (2026-07-12)
 
 

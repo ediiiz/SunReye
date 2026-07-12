@@ -7,7 +7,7 @@
 # fully self-contained binary — all npm deps are bundled in, so the runtime
 # image needs no node_modules and no JS runtime.
 # ─────────────────────────────────────────────────────────────────────────────
-FROM --platform=$BUILDPLATFORM oven/bun:1 AS build
+FROM --platform=$BUILDPLATFORM oven/bun:1.3 AS build
 WORKDIR /app
 ENV HUSKY=0 SKIP_ENV_VALIDATION=1 NODE_ENV=production
 
@@ -21,7 +21,11 @@ RUN case "$TARGETARCH" in \
       *) echo "unsupported TARGETARCH: $TARGETARCH" >&2; exit 1 ;; \
     esac && \
     cd apps/server && \
-    bun build --compile --minify --target="$BUN_TARGET" ./src/index.ts --outfile /app/server
+    # --external serialport: modbus-serial only requires it inside its
+    # RTU-over-serial connectors (never used — SunReye speaks TCP), and bun's
+    # bundler emits a syntax error into the bundled @serialport/bindings-cpp
+    # wrapper that breaks parsing of the whole binary at startup.
+    bun build --compile --minify --external serialport --target="$BUN_TARGET" ./src/index.ts --outfile /app/server
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Runtime stage

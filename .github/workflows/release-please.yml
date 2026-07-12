@@ -17,10 +17,36 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       sdk_released: ${{ steps.release.outputs['packages/profile-sdk--release_created'] }}
+      server_released: ${{ steps.release.outputs.release_created }}
+      server_tag: ${{ steps.release.outputs.tag_name }}
+      web_released: ${{ steps.release.outputs['apps/web--release_created'] }}
+      web_tag: ${{ steps.release.outputs['apps/web--tag_name'] }}
     steps:
       - name: Run release-please
         id: release
         uses: googleapis/release-please-action@v4
+
+  # Tags created with GITHUB_TOKEN never trigger `on: push: tags` workflows
+  # (GitHub suppresses runs for events made by that token), so the Docker
+  # builds are dispatched explicitly at the release tag's ref.
+  build-images:
+    name: Dispatch Docker builds
+    needs: release-please
+    if: needs.release-please.outputs.server_released == 'true' || needs.release-please.outputs.web_released == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Server + migrate images
+        if: needs.release-please.outputs.server_released == 'true'
+        run: |
+          gh workflow run docker-server.yml --repo "$GITHUB_REPOSITORY" --ref "${{ needs.release-please.outputs.server_tag }}"
+          gh workflow run docker-migrate.yml --repo "$GITHUB_REPOSITORY" --ref "${{ needs.release-please.outputs.server_tag }}"
+      - name: Web image
+        if: needs.release-please.outputs.web_released == 'true'
+        run: gh workflow run docker-web.yml --repo "$GITHUB_REPOSITORY" --ref "${{ needs.release-please.outputs.web_tag }}"
 
   publish-sdk:
     name: Publish profile-sdk to npm

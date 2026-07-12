@@ -1,17 +1,9 @@
 name: Docker · web
 
+# Built only when release-please cuts a web release (or manually).
 on:
   push:
-    branches: [master]
-    tags: ["v*", "web-v*"]
-    paths:
-      - "apps/web/**"
-      - "packages/**"
-      - "package.json"
-      - "bun.lock"
-      - "bunfig.toml"
-      - "patches/**"
-      - ".github/workflows/docker-web.yml"
+    tags: ["web-v*"]
   workflow_dispatch:
 
 permissions:
@@ -52,13 +44,10 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
             type=match,pattern=web-v(\d+\.\d+\.\d+),group=1
             type=match,pattern=web-v(\d+\.\d+)\.,group=1
             type=sha,format=short
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/web-v') }}
 
       - name: Build & push
         uses: docker/build-push-action@v6

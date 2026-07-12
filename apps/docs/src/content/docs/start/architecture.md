@@ -19,7 +19,7 @@ Inverter (Modbus TCP)  ──►  Core engine (Elysia)  ──►  TimescaleDB (
 
 ## The flow
 
-1. The **core engine** ([`apps/server`](https://github.com/ediiiz/SunReye/tree/master/apps/server))
+1. The **core engine** ([`apps/server`](https://github.com/SunReye/SunReye/tree/master/apps/server))
    polls the inverter over Modbus TCP once a second (the "God loop"). No inverter? A
    [built-in simulator](/start/quick-start/) generates coherent fake metrics.
 2. Each sample is **broadcast** to browsers over a WebSocket (`/ws/metrics`) and
@@ -32,12 +32,12 @@ Inverter (Modbus TCP)  ──►  Core engine (Elysia)  ──►  TimescaleDB (
 
 | Package | Role |
 | --- | --- |
-| [`packages/inverter-core`](https://github.com/ediiiz/SunReye/tree/master/packages/inverter-core) | The engine: Modbus codec/driver, the profile registry, capability derivation, and transport-neutral entity descriptors (constraints, bounds, enums) that every transport generates from. |
-| [`packages/inverter-deye-sg05lp3`](https://github.com/ediiiz/SunReye/tree/master/packages/inverter-deye-sg05lp3) | A first-party profile package. Self-registers on import. |
-| [`packages/profile-sdk`](https://github.com/ediiiz/SunReye/tree/master/packages/profile-sdk) | Tooling to author, validate, and score inverter profiles. |
-| [`apps/server`](https://github.com/ediiiz/SunReye/tree/master/apps/server) | The core engine (Elysia + Bun): poll loop, WebSocket stream, REST API, MQTT bridge, history endpoints. |
-| [`apps/web`](https://github.com/ediiiz/SunReye/tree/master/apps/web) | The SvelteKit dashboard. Builds itself from the profile manifest. |
-| [`packages/db`](https://github.com/ediiiz/SunReye/tree/master/packages/db) | Drizzle schema + TimescaleDB setup. Metrics are stored *narrow*, so a new inverter needs no migration. Also home to DB-backed runtime settings. |
+| [`packages/inverter-core`](https://github.com/SunReye/SunReye/tree/master/packages/inverter-core) | The engine: Modbus codec/driver, the profile registry, capability derivation, and transport-neutral entity descriptors (constraints, bounds, enums) that every transport generates from. |
+| [`packages/inverter-deye-sg05lp3`](https://github.com/SunReye/SunReye/tree/master/packages/inverter-deye-sg05lp3) | A first-party profile package. Self-registers on import. |
+| [`packages/profile-sdk`](https://github.com/SunReye/SunReye/tree/master/packages/profile-sdk) | Tooling to author, validate, and score inverter profiles. |
+| [`apps/server`](https://github.com/SunReye/SunReye/tree/master/apps/server) | The core engine (Elysia + Bun): poll loop, WebSocket stream, REST API, MQTT bridge, history endpoints. |
+| [`apps/web`](https://github.com/SunReye/SunReye/tree/master/apps/web) | The SvelteKit dashboard. Builds itself from the profile manifest. |
+| [`packages/db`](https://github.com/SunReye/SunReye/tree/master/packages/db) | Drizzle schema + TimescaleDB setup. Metrics are stored *narrow*, so a new inverter needs no migration. Also home to DB-backed runtime settings. |
 | `packages/env` / `packages/auth` / `packages/config` | Shared env schema (single source of truth), auth, and tooling. |
 
 ## Why narrow storage matters

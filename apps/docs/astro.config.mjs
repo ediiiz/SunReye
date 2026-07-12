@@ -5,12 +5,12 @@ import { fileURLToPath } from "node:url";
 // @ts-check
 import { defineConfig } from "astro/config";
 
-const github = "https://github.com/ediiiz/SunReye";
+const github = "https://github.com/SunReye/SunReye";
 
-// GitHub Pages project site: https://ediiiz.github.io/SunReye/
+// GitHub Pages project site: https://sunreye.github.io/SunReye/
 // If a custom domain is ever configured, set `base: "/"` (or drop it) and point
 // `site` at the domain.
-const site = "https://ediiiz.github.io";
+const site = "https://sunreye.github.io";
 const base = "/SunReye";
 const prefix = base.replace(/\/$/, "");
 

@@ -1,6 +1,6 @@
 # @sunreye/profile-sdk
 
-Authoring SDK + CLI for [SunReye](https://github.com/ediiiz/SunReye) inverter profiles:
+Authoring SDK + CLI for [SunReye](https://github.com/SunReye/SunReye) inverter profiles:
 define a profile as typed code, compile it to serializable `ProfileData`, then validate,
 score, and exercise it — all offline, no hardware required.
 
@@ -89,9 +89,9 @@ const { ok, issues, files } = buildRepo(
 // files: { "index.json": "...", "profiles/acme-hybrid.json": "...", ... }
 ```
 
-See the [authoring guide](https://ediiiz.github.io/SunReye/profiles/authoring/) and
-[distribution guide](https://ediiiz.github.io/SunReye/profiles/distribution/).
+See the [authoring guide](https://sunreye.github.io/SunReye/profiles/authoring/) and
+[distribution guide](https://sunreye.github.io/SunReye/profiles/distribution/).
 
 ## License
 
-[AGPL-3.0-only](https://github.com/ediiiz/SunReye/blob/master/LICENSE)
+[AGPL-3.0-only](https://github.com/SunReye/SunReye/blob/master/LICENSE)

@@ -9,11 +9,11 @@ description: >-
   Self-hosted solar / hybrid inverter monitoring, control, and integration —
   Modbus polling, TimescaleDB history, live dashboard, REST API, and MQTT with
   HA discovery.
-url: https://github.com/ediiiz/SunReye
+url: https://github.com/SunReye/SunReye
 arch:
   - amd64
   - aarch64
-image: ghcr.io/ediiiz/sunreye-addon-{arch}
+image: ghcr.io/sunreye/sunreye-addon-{arch}
 # s6-overlay v3 ships its own init.
 init: false
 startup: services

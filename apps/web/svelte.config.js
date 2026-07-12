@@ -1,5 +1,18 @@
-import adapter from "@sveltejs/adapter-node";
+import adapterNode from "@sveltejs/adapter-node";
+import adapterStatic from "@sveltejs/adapter-static";
 import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
+
+// The app is a pure SPA (hash router, SSR off, no server routes), so it can
+// ship as static files. Default stays adapter-node (the compose web image
+// runs it with Node and reads PUBLIC_SERVER_URL at runtime); the Home
+// Assistant addon builds with SVELTEKIT_ADAPTER=static and serves the files
+// straight from nginx — there PUBLIC_SERVER_URL must stay unset at build
+// time (a static build bakes dynamic public env in) and the client derives
+// its API base from the document URL.
+const adapter =
+  process.env.SVELTEKIT_ADAPTER === "static"
+    ? adapterStatic({ fallback: "index.html" })
+    : adapterNode();
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
@@ -8,8 +21,7 @@ const config = {
   preprocess: vitePreprocess(),
 
   kit: {
-    // adapter-node builds a standalone Node server (run with `node build/index.js`).
-    adapter: adapter(),
+    adapter,
     // Hash-based routing keeps the document URL pinned to wherever the app was
     // served from, so the same build works at `/`, behind a direct port, and
     // behind a path-prefixed reverse proxy (Home Assistant ingress serves the

@@ -53,13 +53,14 @@ screen.
 ## 4. Apply the schema and TimescaleDB objects
 
 ```bash
-bun run db:push
-bun run db:timescale
+bun run db:migrate
 ```
 
-- `db:push` applies the Drizzle schema.
-- `db:timescale` creates the hypertable and the continuous-aggregate rollups (per-minute /
-  hourly / daily).
+Runs the journaled migration runner: the Drizzle schema plus the TimescaleDB pipeline
+(hypertable, continuous-aggregate rollups, policies) — the same thing production
+deployments run before starting the server. For quick local schema prototyping,
+`bun run db:push` + `bun run db:timescale` still work, but anything that ships must be a
+generated migration (`bun run db:generate`, see `packages/db/AGENTS.md`).
 
 ## 5. Start the dev servers
 

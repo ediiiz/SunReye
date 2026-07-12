@@ -89,6 +89,7 @@ export default defineConfig({
             { label: "Requirements", slug: "deploy/requirements" },
             { label: "Manual Setup", slug: "deploy/manual-setup" },
             { label: "Docker Compose", slug: "deploy/docker" },
+            { label: "Home Assistant Addon", slug: "deploy/home-assistant" },
           ],
         },
         {

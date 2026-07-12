@@ -30,10 +30,10 @@ across the workspace.
 | `bun run db:start` | Start the local TimescaleDB container. |
 | `bun run db:watch` | Tail the DB container logs. |
 | `bun run db:stop` / `db:down` | Stop / remove the DB container. |
-| `bun run db:push` | Push the Drizzle schema to the database. |
-| `bun run db:timescale` | Create the TimescaleDB hypertable + continuous aggregates. |
-| `bun run db:generate` | Generate Drizzle migration files. |
-| `bun run db:migrate` | Run Drizzle migrations. |
+| `bun run db:push` | Push the Drizzle schema to the database (local prototyping only — releases ship migrations). |
+| `bun run db:timescale` | Apply the TimescaleDB pipeline (journaled structural files + policies). |
+| `bun run db:generate` | Generate a Drizzle migration from schema changes — required before a schema change ships. |
+| `bun run db:migrate` | Run the full migration runner (downgrade guard, baseline stamping, drizzle migrations, TimescaleDB pipeline) — what production runs. |
 | `bun run db:studio` | Open Drizzle Studio. |
 
 ## Docker

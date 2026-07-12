@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/SunReye/SunReye/compare/profile-sdk-v1.2.0...profile-sdk-v1.2.1) (2026-07-12)
+
+
+### Reverts
+
+* **docs:** publish the docs site under /SunReye again ([bee80d8](https://github.com/SunReye/SunReye/commit/bee80d8b863fcce2f8e3234b1cc0f431a84631c8))
+
 ## [1.2.0](https://github.com/SunReye/SunReye/compare/profile-sdk-v1.1.0...profile-sdk-v1.2.0) (2026-07-12)
 
 

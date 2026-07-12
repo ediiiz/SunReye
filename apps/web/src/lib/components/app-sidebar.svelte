@@ -1,7 +1,9 @@
 <script lang="ts">
 	import type { Component } from 'svelte';
+	import type { Pathname } from '$app/types';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import * as Sidebar from '$lib/components/ui/sidebar';
 	import Logo from '$lib/components/logo.svelte';
 	import { authClient } from '$lib/auth-client';
@@ -22,16 +24,16 @@
 	// non-admins so they never see areas they can't use.
 	const isAdmin = $derived($sessionQuery.data?.user?.role === 'admin');
 
-	type NavItem = { href: string; label: string; icon: Component };
+	type NavItem = { href: Pathname; label: string; icon: Component };
 
 	const items = $derived<NavItem[]>([
 		{ href: '/', label: 'Overview', icon: GaugeIcon },
 		{ href: '/history', label: 'History', icon: ChartLineIcon },
 		{ href: '/costs', label: 'Costs', icon: CoinsIcon },
 		...(isAdmin && (inverter.capabilities?.controls.length ?? 0) > 0
-			? [{ href: '/controls', label: 'Controls', icon: SlidersIcon }]
+			? ([{ href: '/controls', label: 'Controls', icon: SlidersIcon }] satisfies NavItem[])
 			: []),
-		...(isAdmin ? [{ href: '/settings', label: 'Settings', icon: GearIcon }] : [])
+		...(isAdmin ? ([{ href: '/settings', label: 'Settings', icon: GearIcon }] satisfies NavItem[]) : [])
 	]);
 
 	const userName = $derived(
@@ -41,7 +43,7 @@
 	);
 
 	async function signOut() {
-		await authClient.signOut({ fetchOptions: { onSuccess: () => goto('/login') } });
+		await authClient.signOut({ fetchOptions: { onSuccess: () => goto(resolve('/login')) } });
 	}
 </script>
 
@@ -70,7 +72,7 @@
 						<Sidebar.MenuItem>
 							<Sidebar.MenuButton isActive={page.url.pathname === item.href}>
 								{#snippet child({ props })}
-									<a href={item.href} {...props}>
+									<a href={resolve(item.href)} {...props}>
 										<Icon class="size-4" />
 										<span>{item.label}</span>
 									</a>

@@ -1,0 +1,13 @@
+#!/usr/bin/with-contenv bashio
+# Bring the schema to this release: downgrade guard → baseline stamping →
+# journaled drizzle migrations → TimescaleDB pipeline (packages/db/src/migrate.ts,
+# compiled). A failure stops the boot chain — the server never starts against a
+# half-migrated database and the runner's message is the last thing in the log.
+set -euo pipefail
+
+# The runner only needs DATABASE_URL (+ the *_DIR paths from init-env); skip
+# the full server env schema.
+export SKIP_ENV_VALIDATION=1
+/opt/sunreye/migrate
+
+printf '%s' "${SUNREYE_ADDON_VERSION}" > /data/sunreye-version

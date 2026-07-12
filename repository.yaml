@@ -1,0 +1,6 @@
+# Home Assistant addon repository manifest: add this repo's GitHub URL in
+# Settings → Add-ons → Add-on store → ⋮ → Repositories to install the addon
+# from sunreye/.
+name: SunReye Add-ons
+url: https://github.com/ediiiz/SunReye
+maintainer: Ediz T.

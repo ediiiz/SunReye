@@ -1,0 +1,41 @@
+#!/usr/bin/with-contenv bashio
+# Prepare the embedded PostgreSQL datadir under /data (persisted by the
+# Supervisor across upgrades and included in HA backups). Skipped entirely
+# when an external database is configured.
+set -euo pipefail
+
+if [ "${DB_EMBEDDED}" != "true" ]; then
+    bashio::log.info "External database configured — embedded PostgreSQL disabled"
+    exit 0
+fi
+
+mkdir -p /data/backups
+install -d -o postgres -g postgres -m 700 /data/postgres
+install -d -o postgres -g postgres /var/run/postgresql
+
+if [ ! -s /data/postgres/PG_VERSION ]; then
+    bashio::log.info "Initializing PostgreSQL ${PG_MAJOR} data directory (first start)"
+    s6-setuidgid postgres initdb -D /data/postgres -U postgres \
+        --encoding=UTF8 --auth-local=peer --auth-host=trust
+    {
+        echo "listen_addresses = '127.0.0.1'"
+        echo "shared_preload_libraries = 'timescaledb'"
+        echo "timescaledb.telemetry_level = off"
+    } >> /data/postgres/postgresql.conf
+fi
+
+# Base-image updates can shift uids; make sure postgres still owns its datadir.
+if [ "$(stat -c %U /data/postgres)" != "postgres" ]; then
+    chown -R postgres:postgres /data/postgres
+fi
+
+# Hard guard: a datadir is only readable by the pg major that created it.
+# Refuse to boot instead of letting postgres scribble error loops — the addon
+# shows up as stopped with this message as the last log lines.
+datadir_major="$(cat /data/postgres/PG_VERSION)"
+if [ "${datadir_major}" != "${PG_MAJOR}" ]; then
+    bashio::log.fatal "Data directory is PostgreSQL ${datadir_major}, this addon ships PostgreSQL ${PG_MAJOR}."
+    bashio::log.fatal "A migration between PostgreSQL majors requires a dedicated transition release —"
+    bashio::log.fatal "do not downgrade the addon; check the SunReye release notes for the upgrade path."
+    exit 1
+fi

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/ediiiz/SunReye/compare/web-v0.2.1...web-v0.2.2) (2026-07-12)
+
+
+### Bug Fixes
+
+* **web:** route internal navigation through resolve() for the hash router ([1615518](https://github.com/ediiiz/SunReye/commit/1615518dbc735d21871ea93c9e8dc0dc57bd7efc))
+
 ## [0.2.1](https://github.com/ediiiz/SunReye/compare/web-v0.2.0...web-v0.2.1) (2026-07-12)
 
 

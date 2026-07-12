@@ -73,6 +73,14 @@ export function createAuth() {
         httpOnly: true,
       },
       useSecureCookies: env.AUTH_SECURE_COOKIES,
+      // Behind a reverse proxy (HA ingress → nginx) the socket peer is the
+      // proxy, so rate limiting falls back to one shared bucket for everyone.
+      // Resolve the client from X-Forwarded-For instead — set by our nginx
+      // and by HA ingress. Spoofable only on a directly exposed server, where
+      // the alternative (a single shared bucket) is strictly worse anyway.
+      ipAddress: {
+        ipAddressHeaders: ["x-forwarded-for"],
+      },
     },
     databaseHooks: {
       user: {

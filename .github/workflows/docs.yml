@@ -9,11 +9,11 @@ on:
       - ".github/workflows/docs.yml"
   workflow_dispatch:
 
-# The site lives at the org root (https://sunreye.github.io/), which GitHub
-# only serves from the SunReye/SunReye.github.io repo — so the built site is
-# pushed there over a deploy key instead of this repo's Pages OIDC flow.
+# Allow the deploy job to publish to Pages via OIDC.
 permissions:
   contents: read
+  pages: write
+  id-token: write
 
 # One in-flight Pages deploy at a time; don't cancel a running publish.
 concurrency:
@@ -21,8 +21,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build-deploy:
-    name: Build & Deploy
+  build:
+    name: Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,12 +37,19 @@ jobs:
       - name: Build docs
         run: bun run --filter docs build
 
-      - name: Publish to SunReye/SunReye.github.io
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          # Private half of the write deploy key configured on the
-          # SunReye.github.io repo (Settings → Deploy keys).
-          deploy_key: ${{ secrets.DOCS_DEPLOY_KEY }}
-          external_repository: SunReye/SunReye.github.io
-          publish_branch: main
-          publish_dir: apps/docs/dist
+          path: apps/docs/dist
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

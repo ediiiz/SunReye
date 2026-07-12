@@ -7,13 +7,11 @@ import { defineConfig } from "astro/config";
 
 const github = "https://github.com/SunReye/SunReye";
 
-// GitHub Pages organization site: https://sunreye.github.io/ — the built site
-// is pushed to the SunReye/SunReye.github.io repo by .github/workflows/docs.yml.
-// If this ever moves back under a path prefix (project site, subdirectory of a
-// custom domain), set `base` to that prefix; the link-rewrite pass below
-// re-activates automatically.
+// GitHub Pages project site: https://sunreye.github.io/SunReye/
+// If a custom domain is ever configured, set `base: "/"` (or drop it) and point
+// `site` at the domain.
 const site = "https://sunreye.github.io";
-const base = "/";
+const base = "/SunReye";
 const prefix = base.replace(/\/$/, "");
 
 // Astro base-prefixes the links Starlight generates (nav, sidebar, assets), but
@@ -61,9 +59,7 @@ export default defineConfig({
   site,
   base,
   integrations: [
-    // Root-absolute links only need rewriting when the site lives under a
-    // path prefix; at the domain root the pass would be a no-op.
-    ...(prefix ? [baseAbsoluteLinks()] : []),
+    baseAbsoluteLinks(),
     starlight({
       title: "SunReye",
       description:

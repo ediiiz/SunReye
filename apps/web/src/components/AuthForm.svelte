@@ -2,7 +2,7 @@
 	import { z } from 'zod';
 	import { authClient } from '$lib/auth-client';
 	import { goto } from '$app/navigation';
-	import { resolve } from '$app/paths';
+	import { resolve } from '$lib/resolve';
 	import { Button } from '$lib/components/ui/button';
 	import AuthField from './AuthField.svelte';
 

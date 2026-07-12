@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { resolve } from '$app/paths';
+	import { resolve } from '$lib/resolve';
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import { api } from '$lib/api';

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { resolve } from '$app/paths';
+	import { resolve } from '$lib/resolve';
 	import { page } from '$app/state';
 	import { fade } from 'svelte/transition';
 	import { MediaQuery } from 'svelte/reactivity';

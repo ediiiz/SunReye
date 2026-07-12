@@ -3,7 +3,7 @@
 	import type { Pathname } from '$app/types';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { resolve } from '$app/paths';
+	import { resolve } from '$lib/resolve';
 	import * as Sidebar from '$lib/components/ui/sidebar';
 	import Logo from '$lib/components/logo.svelte';
 	import { authClient } from '$lib/auth-client';

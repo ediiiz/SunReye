@@ -73,7 +73,24 @@ RUN apt-get update \
        "postgresql-${PG_MAJOR}" \
        "timescaledb-2-postgresql-${PG_MAJOR}=${TIMESCALEDB_VERSION}.*" \
        "timescaledb-2-loader-postgresql-${PG_MAJOR}=${TIMESCALEDB_VERSION}.*" \
+    # gnupg was only needed to dearmor the repo keys above.
+    && apt-get purge -y gnupg && apt-get autoremove -y --purge \
     && apt-get clean && rm -rf /var/lib/apt/lists/* \
+    # The timescaledb deb ships a versioned .so for every release since 2.17
+    # (~420 MB) so *any* old datadir can load. Our embedded datadirs only ever
+    # exist at versions this addon shipped, so keep just the current minor.
+    # RULE for future TIMESCALEDB_VERSION bumps: also keep the minor shipped
+    # by the previous addon release — the loader needs the old .so to open the
+    # datadir before init-timescale-ext runs ALTER EXTENSION UPDATE.
+    && find "/usr/lib/postgresql/${PG_MAJOR}/lib" -name 'timescaledb-*.so' \
+       ! -name "timescaledb-${TIMESCALEDB_VERSION}.*" \
+       ! -name "timescaledb-tsl-${TIMESCALEDB_VERSION}.*" -delete \
+    # PGDG's postgresql hard-depends on LLVM for JIT (~150 MB with bitcode).
+    # Our workload (1 Hz inserts + rollup reads) never benefits from JIT —
+    # init-postgres pins `jit = off`, so the machinery can go entirely.
+    && dpkg --purge --force-depends $(dpkg-query -W -f '${Package} ' 'libllvm*') \
+    && rm -rf "/usr/lib/postgresql/${PG_MAJOR}/lib/bitcode" \
+       "/usr/lib/postgresql/${PG_MAJOR}/lib/llvmjit"* \
     && useradd --system --no-create-home --shell /usr/sbin/nologin sunreye \
     # Debian's postgres tooling isn't on PATH by default.
     && ln -s "/usr/lib/postgresql/${PG_MAJOR}/bin/"* /usr/local/bin/

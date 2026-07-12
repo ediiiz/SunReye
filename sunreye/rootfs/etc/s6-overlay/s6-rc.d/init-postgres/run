@@ -31,6 +31,9 @@ timescaledb.telemetry_level = off
 # "failed to start a background worker".
 max_worker_processes = 16
 timescaledb.max_background_workers = 8
+# The image ships without LLVM (JIT machinery pruned for size); this must
+# stay off or planner attempts to JIT would fail to load llvmjit.so.
+jit = off
 EOF
 chown postgres:postgres /data/postgres/sunreye.conf
 grep -q "include = 'sunreye.conf'" /data/postgres/postgresql.conf \

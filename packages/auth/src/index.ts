@@ -8,6 +8,23 @@ import { APIError, createAuthMiddleware } from "better-auth/api";
 import { admin } from "better-auth/plugins/admin";
 import { apiKey } from "@better-auth/api-key";
 
+/** Origins trusted regardless of the request: configured + dev localhost globs. */
+function staticTrustedOrigins(): string[] {
+  const origins = env.CORS_ORIGIN ? [env.CORS_ORIGIN] : [];
+  origins.push(...env.TRUSTED_ORIGINS);
+  if (env.NODE_ENV !== "production") {
+    origins.push("*://localhost:*", "*://127.0.0.1:*");
+  }
+  return origins;
+}
+
+/** The request's own Origin, but only when it came through our reverse proxy. */
+function proxiedRequestOrigin(request: Request | undefined): string[] {
+  if (!request?.headers.get("x-sunreye-proxied")) return [];
+  const origin = request.headers.get("origin");
+  return origin ? [origin] : [];
+}
+
 export function createAuth() {
   const db = createDb();
 
@@ -25,26 +42,37 @@ export function createAuth() {
     }),
     // Origin allow-list for Better Auth's CSRF/origin check. Mirrors the server
     // CORS policy (apps/server/src/index.ts): production pins to the configured
-    // origin; dev also trusts any localhost/127.0.0.1 origin on any port, since
-    // the web app may be served on a random port (Vite fallback, VS Code port
-    // forwarding). Better Auth glob-matches these patterns per URL segment, so
-    // `:*` matches only the port and never crosses into another host (e.g.
-    // `localhostfake.com` and cross-origin hosts are still rejected).
-    trustedOrigins:
-      env.NODE_ENV === "production"
-        ? [env.CORS_ORIGIN]
-        : [env.CORS_ORIGIN, "*://localhost:*", "*://127.0.0.1:*"],
+    // split-origin web app (CORS_ORIGIN) plus any TRUSTED_ORIGINS; dev also
+    // trusts any localhost/127.0.0.1 origin on any port, since the web app may
+    // be served on a random port (Vite fallback, VS Code port forwarding).
+    // Better Auth glob-matches these patterns per URL segment, so `:*` matches
+    // only the port and never crosses into another host (e.g. `localhostfake.com`
+    // and cross-origin hosts are still rejected).
+    //
+    // Same-origin reverse-proxy deployments (Home Assistant ingress, the
+    // addon's direct-port vhost) can't enumerate their origin up front — the
+    // browser's Origin is the HA host or an arbitrary LAN address. The proxy
+    // strips any client-sent `x-sunreye-proxied` and sets it itself, so a
+    // request carrying that header provably came through our own front door
+    // and its Origin can be trusted.
+    trustedOrigins: (request) => [...staticTrustedOrigins(), ...proxiedRequestOrigin(request)],
     emailAndPassword: {
       enabled: true,
     },
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
     advanced: {
+      // `lax` fits every supported topology: same-origin reverse proxy (HA
+      // ingress iframes are same-origin with the HA frontend) and top-level
+      // navigation on split-origin setups. `Secure` is opt-in because direct
+      // LAN access is commonly plain HTTP — a hardcoded `secure: true` would
+      // silently drop the session cookie there.
       defaultCookieAttributes: {
-        sameSite: "none",
-        secure: true,
+        sameSite: "lax",
+        secure: env.AUTH_SECURE_COOKIES,
         httpOnly: true,
       },
+      useSecureCookies: env.AUTH_SECURE_COOKIES,
     },
     databaseHooks: {
       user: {

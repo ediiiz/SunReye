@@ -7,7 +7,7 @@
 #     ├── /api, /ws, /openapi, /healthz → server (bun binary, 127.0.0.1:3000)
 #     └── everything else              → static web build, served by nginx
 #   postgres/timescaledb (127.0.0.1:5432, datadir /data/postgres)
-#   migrate (compiled runner, gates server start)
+#   migrate (same binary as the server, `sunreye migrate`, gates server start)
 #
 # Supervised by the HA base image's s6-overlay v3 — see rootfs/etc/s6-overlay.
 # Built per-arch (amd64/aarch64) by .github/workflows/docker-addon.yml with the
@@ -33,10 +33,12 @@ RUN case "$TARGETARCH" in \
       *) echo "unsupported TARGETARCH: $TARGETARCH" >&2; exit 1 ;; \
     esac && \
     mkdir -p /out && \
+    # One binary for server + migrate (main.ts dispatches on argv) — each
+    # compiled output embeds the ~90 MB bun runtime, so shipping two doubles
+    # that cost for nothing.
     # --external serialport: see apps/server/Dockerfile — bun's bundler breaks
     # on @serialport/bindings-cpp, and the serial path is never used.
-    bun build --compile --minify --external serialport --target="$BUN_TARGET" apps/server/src/index.ts --outfile /out/server && \
-    bun build --compile --minify --target="$BUN_TARGET" packages/db/src/migrate.ts --outfile /out/migrate
+    bun build --compile --minify --external serialport --target="$BUN_TARGET" apps/server/src/main.ts --outfile /out/sunreye
 
 # Static SPA build (hash router, no server routes) — nginx serves the files
 # directly, no Node runtime in the image. Architecture-independent.
@@ -76,8 +78,7 @@ RUN apt-get update \
     # Debian's postgres tooling isn't on PATH by default.
     && ln -s "/usr/lib/postgresql/${PG_MAJOR}/bin/"* /usr/local/bin/
 
-COPY --from=build /out/server /opt/sunreye/server
-COPY --from=build /out/migrate /opt/sunreye/migrate
+COPY --from=build /out/sunreye /opt/sunreye/sunreye
 COPY --from=build /app/apps/web/build /opt/sunreye/web
 # The compiled migrate binary reads the SQL as plain files (MIGRATIONS_DIR /
 # TIMESCALE_DIR are set by init-env).

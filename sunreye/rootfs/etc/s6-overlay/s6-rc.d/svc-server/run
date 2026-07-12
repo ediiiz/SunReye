@@ -4,4 +4,4 @@ export PORT=3000
 # Mapped here instead of globally: a global LOG_LEVEL env var breaks bashio
 # (it reads it as its own setting) — see init-env.
 export LOG_LEVEL="${SUNREYE_LOG_LEVEL:-info}"
-exec s6-setuidgid sunreye /opt/sunreye/server
+exec s6-setuidgid sunreye /opt/sunreye/sunreye

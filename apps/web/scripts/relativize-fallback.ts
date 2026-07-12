@@ -13,6 +13,9 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
+// Runtime path into the build output, not a module import; the file only
+// exists after `vite build`.
+// fallow-ignore-next-line unresolved-import
 const page = fileURLToPath(new URL("../build/index.html", import.meta.url));
 
 const html = readFileSync(page, "utf8")

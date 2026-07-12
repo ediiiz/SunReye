@@ -15,7 +15,8 @@
     "phosphor-svelte",
     "sharp",
     "clsx",
-    "tailwind-merge"
+    "tailwind-merge",
+    "zod"
   ],
   "dynamicallyLoaded": ["apps/docs/src/styles/theme.css"],
   "usedClassMembers": [{ "implements": "InverterSource", "members": ["read"] }],

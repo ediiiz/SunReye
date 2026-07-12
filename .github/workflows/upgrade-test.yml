@@ -52,36 +52,29 @@ jobs:
           INVERTER_SIMULATE=true
           EOF
 
-      - name: Start the last published release
+      # Only postgres + the published migrate image run here: the old
+      # `migrate` (db:push + timescale.sql) is what shapes a real pre-upgrade
+      # database. The old *server* is deliberately never started — its
+      # healthchecks predate the compose file, and known-broken old binaries
+      # (e.g. the serialport bundling regression) must not be able to fail the
+      # upgrade test. Data is seeded directly instead of via the poll loop.
+      - name: Shape a database with the last published release
         run: |
-          # The checked-out compose file carries healthchecks (`/app/server
-          # --healthcheck`, /healthz) that images from before that release
-          # don't implement — relax them for the old stack only. The upgraded
-          # stack in later steps runs the real healthchecks.
-          cat > compose.compat.yml <<'EOF'
-          services:
-            server:
-              healthcheck:
-                test: ["NONE"]
-            web:
-              depends_on:
-                server:
-                  condition: service_started
-          EOF
-          SUNREYE_TAG=latest docker compose -f docker-compose.yml -f compose.compat.yml up -d --quiet-pull
+          SUNREYE_TAG=latest docker compose up -d --quiet-pull migrate
           for i in $(seq 1 60); do
-            curl -fsS http://localhost:3000/ >/dev/null 2>&1 && break
+            state=$(docker inspect -f '{{.State.Status}}' "$(docker compose ps -aq migrate)")
+            [ "$state" = "exited" ] && break
             sleep 2
           done
-          curl -fsS http://localhost:3000/ >/dev/null
+          docker compose logs migrate
+          [ "$(docker inspect -f '{{.State.ExitCode}}' "$(docker compose ps -aq migrate)")" = "0" ]
 
-      - name: Wait for simulated metrics
+      - name: Seed metrics on the old schema
         run: |
-          for i in $(seq 1 60); do
-            n=$(docker compose exec -T postgres psql -U postgres -d SunReye -tAc "SELECT count(*) FROM metrics_raw" || echo 0)
-            [ "${n:-0}" -gt 0 ] && break
-            sleep 2
-          done
+          docker compose exec -T postgres psql -U postgres -d SunReye -c \
+            "INSERT INTO metrics_raw (time, inverter_id, metric, value)
+             SELECT now() - (i || ' seconds')::interval, 'inv1', 'pv_power', random()*5000
+             FROM generate_series(1, 500) i"
           docker compose exec -T postgres psql -U postgres -d SunReye -tAc "SELECT count(*) FROM metrics_raw" | tee /tmp/rows-before
           [ "$(cat /tmp/rows-before)" -gt 0 ]
 
@@ -93,10 +86,9 @@ jobs:
 
       - name: Upgrade in place
         run: |
-          docker compose stop server migrate
+          docker compose rm -f -s migrate
           SUNREYE_TAG=latest docker compose up -d --no-recreate postgres
           # Re-point server + migrate at the PR images without touching the volume.
-          docker compose rm -f server migrate
           cat > docker-compose.override.yml <<'EOF'
           services:
             migrate:

@@ -54,7 +54,21 @@ jobs:
 
       - name: Start the last published release
         run: |
-          SUNREYE_TAG=latest docker compose up -d --quiet-pull
+          # The checked-out compose file carries healthchecks (`/app/server
+          # --healthcheck`, /healthz) that images from before that release
+          # don't implement — relax them for the old stack only. The upgraded
+          # stack in later steps runs the real healthchecks.
+          cat > compose.compat.yml <<'EOF'
+          services:
+            server:
+              healthcheck:
+                test: ["NONE"]
+            web:
+              depends_on:
+                server:
+                  condition: service_started
+          EOF
+          SUNREYE_TAG=latest docker compose -f docker-compose.yml -f compose.compat.yml up -d --quiet-pull
           for i in $(seq 1 60); do
             curl -fsS http://localhost:3000/ >/dev/null 2>&1 && break
             sleep 2

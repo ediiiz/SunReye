@@ -59,9 +59,8 @@
     },
     "apps/web": {
       "name": "web",
-      "version": "0.0.1",
+      "version": "0.1.0",
       "dependencies": {
-        "@SunReye/env": "workspace:*",
         "@SunReye/inverter-core": "workspace:*",
         "@elysiajs/eden": "^1.4.1",
         "better-auth": "catalog:",
@@ -177,7 +176,7 @@
     },
     "packages/profile-sdk": {
       "name": "@sunreye/profile-sdk",
-      "version": "0.0.0",
+      "version": "1.0.0",
       "bin": {
         "profile": "./dist/cli.mjs",
       },

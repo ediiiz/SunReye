@@ -14,7 +14,6 @@
     "test": "bun test src"
   },
   "dependencies": {
-    "@SunReye/env": "workspace:*",
     "@SunReye/inverter-core": "workspace:*",
     "@elysiajs/eden": "^1.4.1",
     "better-auth": "catalog:",

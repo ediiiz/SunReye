@@ -1,6 +1,6 @@
-import { env } from "@SunReye/env/web";
 import { treaty } from "@elysiajs/eden";
 import type { App } from "server";
+import { serverUrl } from "./server-url";
 
 /**
  * End-to-end type-safe client for the ElysiaJS core engine.
@@ -12,7 +12,7 @@ import type { App } from "server";
  *        const ws = api.ws.metrics.subscribe()
  *        ws.subscribe((msg) => { console.log(msg.data) })
  */
-export const api = treaty<App>(env.PUBLIC_SERVER_URL, {
+export const api = treaty<App>(serverUrl, {
   // Send the Better Auth session cookie so the server can enforce admin-only
   // mutations (see the `requireAdmin` macro in apps/server/src/index.ts).
   fetch: { credentials: "include" },

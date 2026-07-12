@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0](https://github.com/ediiiz/SunReye/compare/web-v0.2.2...web-v0.3.0) (2026-07-12)
+
+
+### Features
+
+* **web:** add adapter-static build mode for prefix-agnostic deployments ([727fa3c](https://github.com/ediiiz/SunReye/commit/727fa3c6924c8878d88f60171915139233feca0f))
+
+
+### Bug Fixes
+
+* **web:** anchor hash navigation to the document URL under ingress ([5a22b1e](https://github.com/ediiiz/SunReye/commit/5a22b1ec425069f46dbb0d458774ab58e9de27f6))
+
 ## [0.2.2](https://github.com/ediiiz/SunReye/compare/web-v0.2.1...web-v0.2.2) (2026-07-12)
 
 

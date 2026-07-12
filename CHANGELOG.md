@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0](https://github.com/ediiiz/SunReye/compare/server-v0.2.2...server-v0.3.0) (2026-07-12)
+
+
+### Features
+
+* **addon:** ship server and migrate as one compiled binary ([68fd0db](https://github.com/ediiiz/SunReye/commit/68fd0db4db22a42f6253032363eb4ba3f9940bba))
+* **web:** add adapter-static build mode for prefix-agnostic deployments ([727fa3c](https://github.com/ediiiz/SunReye/commit/727fa3c6924c8878d88f60171915139233feca0f))
+
 ## [0.2.2](https://github.com/ediiiz/SunReye/compare/server-v0.2.1...server-v0.2.2) (2026-07-12)
 
 

@@ -6,7 +6,7 @@
  * type-level guarantees regress. Each `@ts-expect-error` MUST error; tsc flags
  * an unused directive if the guard silently stops working.
  */
-import { metric } from "./define";
+import { defineFamily, metric } from "./define";
 
 // Indexed role requires `index`.
 // @ts-expect-error - pv.string.power is indexed; missing `index`
@@ -59,3 +59,32 @@ metric("foo/bar", { label: "F", group: "x", addr: 1, role: "not.a.real.role" });
 
 // A plain, unmapped metric is fine.
 metric("ac/relay_status", { label: "Relays", group: "inverter", addr: 552 });
+
+// --- defineFamily overlay value shapes are type-checked ---
+defineFamily({
+  id: "fam",
+  name: "Fam",
+  manufacturer: "M",
+  version: "1.0.0",
+  metrics: [
+    metric("dc/pv1/power", {
+      label: "PV1",
+      group: "g",
+      addr: 1,
+      role: "pv.string.power",
+      index: 1,
+    }),
+  ],
+  models: {
+    ok: {
+      metrics: {
+        "dc.pv1.power": { max: 100 }, // numeric bound patch — fine
+        "dc.pv1.power ": null, // any string key allowed (wildcards/adds need it)
+      },
+    },
+    // @ts-expect-error - `max` must be a number
+    badBound: { metrics: { "dc.pv1.power": { max: "lots" } } },
+    // @ts-expect-error - `role` must be a CanonicalRole
+    badRole: { metrics: { "dc.pv1.power": { role: "not.a.role" } } },
+  },
+});

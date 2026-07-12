@@ -80,6 +80,70 @@ Derived metrics use a small **closed** set — never arbitrary code:
 Referenced keys are resolved from the live sample at compute time; a **missing key reads as
 0**. A computed metric may only reference metrics defined **earlier** (no forward references).
 
+## Families & model variants
+
+A single repo holds **as many profiles as you like** — hundreds is fine (`index.json` plus
+one `profiles/<id>.json` per model). When a manufacturer ships several models on the same
+register map that differ only in a few limits or PV inputs — e.g. the Deye SG05LP3-EU-SM2
+line, whose SUN-14K…SUN-20K SKUs share everything but their battery current ceiling — don't
+copy the whole map. Author them as a **family**: one shared base plus a `models` record
+keyed by profile id.
+
+```ts
+import { defineFamily, metric } from "@sunreye/profile-sdk";
+
+export const acme = defineFamily({
+  id: "acme-hybrid",           // the generic base profile, emitted first
+  name: "Acme Hybrid",
+  manufacturer: "Acme",
+  version: "1.0.0",
+  metrics: [ /* the shared register map: 2 PV strings, a writable discharge limit, … */ ],
+  models: {
+    "acme-hybrid-5k": {
+      name: "Acme Hybrid 5K",
+      metrics: {
+        "dc.pv2.*": null,                                            // one MPPT
+        "settings.battery.maximum_discharge_current": { max: 120 },
+      },
+    },
+    "acme-hybrid-15k": {
+      name: "Acme Hybrid 15K",
+      metrics: { "settings.battery.maximum_discharge_current": { max: 280 } },
+    },
+  },
+});
+```
+
+`defineFamily` returns `[base, ...models]` — the generic base first (still selectable), then
+one **self-contained** `ProfileData` per model. Export it and `profile build` picks up every
+profile at once; each appears in SunReye's model picker, so a user selects their exact model
+and its limits follow.
+
+### The overlay: one rule per entry
+
+Each `models[id].metrics` is a record keyed by canonical metric key that overlays the base:
+
+| Entry | Effect |
+| --- | --- |
+| `"key": { max: 280 }` (or `min`, or any `metric()` field like `addr`/`scale`) | **patch** — merge those fields into that metric; `min`/`max` set its `range` |
+| `"key": null` | **remove** that metric |
+| `"prefix.*": null` | **remove** every metric under the prefix (e.g. a whole PV string) |
+| `"new.key": { …full definition… }` | **add** a new metric (topic derived from the key, `.` → `/`) |
+
+Keys **autocomplete** from the base map (the base's key union is threaded through the model
+types). Because wildcards and adds are also arbitrary strings, a typo can't be told apart
+from an add by the compiler — instead it's caught at build/load time: patching or removing a
+key that isn't in the base throws, as does a wildcard that matches nothing.
+
+Because [capabilities are *derived*](/profiles/concept/), not declared, these edits reshape
+the manifest automatically: dropping `dc.pv2.*` makes the UI report one PV string, and a
+`range` on a writable setting renders a capped slider that also **rejects out-of-range
+writes** server-side (that's how "SUN15 = max 280 A discharge" is enforced end to end). No
+schema, hydrate, or server change is involved — the whole feature is authoring-side data.
+
+To specialize a single imported or third-party `ProfileData` instead of a co-located base,
+use the low-level primitive `defineVariant(base, { id, name?, metrics? })`.
+
 ## Validation
 
 A single Zod schema is the gate for **every** ingested profile — at author time, at

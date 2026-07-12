@@ -32,6 +32,12 @@ A "repo" is a **public git repository** containing:
 2. One committed **`ProfileData` JSON file** per entry, at the `path` given in the index —
    exactly what [`defineProfile`](/profiles/authoring/) emits, serialized.
 
+**One repo can offer many profiles — hundreds is fine.** The index lists every profile and
+each has its own `profiles/<id>.json`, so a single repo can cover a manufacturer's whole
+line-up. Authoring a [family](/profiles/authoring/#families--model-variants) is the tidy way
+to do this: `defineFamily` emits the base plus one profile per model, and `profile build`
+writes all of them into the same repo.
+
 You don't have to write this layout by hand: `bunx profile build ./src/profiles.ts --out .`
 [generates it](/profiles/authoring/#profile-build-entries---out-dir) from code-defined
 profiles — validate, emit, commit, push.

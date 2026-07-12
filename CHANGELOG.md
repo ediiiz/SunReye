@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/ediiiz/SunReye/compare/server-v0.2.1...server-v0.2.2) (2026-07-12)
+
+
+### Bug Fixes
+
+* **auth:** resolve rate-limit client IP from x-forwarded-for ([f16c1b1](https://github.com/ediiiz/SunReye/commit/f16c1b1e7299b0b6a6147dd668e410a8c0fddb78))
+
 ## [0.2.1](https://github.com/ediiiz/SunReye/compare/server-v0.2.0...server-v0.2.1) (2026-07-12)
 
 

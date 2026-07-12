@@ -6,10 +6,10 @@
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ediiiz/SunReye.git",
+    "url": "git+https://github.com/SunReye/SunReye.git",
     "directory": "packages/profile-sdk"
   },
-  "homepage": "https://github.com/ediiiz/SunReye",
+  "homepage": "https://github.com/SunReye/SunReye",
   "publishConfig": {
     "access": "public",
     "provenance": true

@@ -8,7 +8,7 @@ name: sunreye
 
 services:
   web:
-    image: ghcr.io/ediiiz/sunreye-web:${SUNREYE_TAG:-latest}
+    image: ghcr.io/sunreye/sunreye-web:${SUNREYE_TAG:-latest}
     init: true
     ports:
       - "${WEB_PORT:-3001}:3001"
@@ -40,7 +40,7 @@ services:
   # brings the schema forward on version upgrades. The server waits for this to
   # finish successfully before starting.
   migrate:
-    image: ghcr.io/ediiiz/sunreye-migrate:${SUNREYE_TAG:-latest}
+    image: ghcr.io/sunreye/sunreye-migrate:${SUNREYE_TAG:-latest}
     env_file:
       - path: .env
         required: false
@@ -55,7 +55,7 @@ services:
     restart: "no"
 
   server:
-    image: ghcr.io/ediiiz/sunreye-server:${SUNREYE_TAG:-latest}
+    image: ghcr.io/sunreye/sunreye-server:${SUNREYE_TAG:-latest}
     init: true
     ports:
       - "${SERVER_PORT:-3000}:3000"

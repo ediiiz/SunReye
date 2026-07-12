@@ -5,9 +5,9 @@ pipelines. No source checkout or local build required — just Docker.
 
 Images:
 
-- `ghcr.io/ediiiz/sunreye-server` — core engine / API (Elysia, ~60 MB)
-- `ghcr.io/ediiiz/sunreye-web` — SvelteKit dashboard (~130 MB)
-- `ghcr.io/ediiiz/sunreye-migrate` — run-once schema initializer (bun + drizzle-kit)
+- `ghcr.io/sunreye/sunreye-server` — core engine / API (Elysia, ~60 MB)
+- `ghcr.io/sunreye/sunreye-web` — SvelteKit dashboard (~130 MB)
+- `ghcr.io/sunreye/sunreye-migrate` — run-once schema initializer (bun + drizzle-kit)
 
 All are multi-arch (`linux/amd64`, `linux/arm64`).
 
@@ -43,7 +43,7 @@ SUNREYE_TAG=v1.2.3 docker compose up -d
 ## Database schema
 
 Handled automatically. A one-shot **`migrate`** service
-(`ghcr.io/ediiiz/sunreye-migrate`) runs the journaled migration runner against
+(`ghcr.io/sunreye/sunreye-migrate`) runs the journaled migration runner against
 the database, and the `server` waits for it to finish
 (`service_completed_successfully`) before starting. No repo checkout or manual
 step needed.

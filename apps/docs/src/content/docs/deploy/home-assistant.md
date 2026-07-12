@@ -10,13 +10,13 @@ sidebar via ingress, and `/data` (including the database) is covered by HA backu
 ## Install
 
 1. **Settings → Add-ons → Add-on store → ⋮ → Repositories** and add
-   `https://github.com/ediiiz/SunReye`.
+   `https://github.com/SunReye/SunReye`.
 2. Install **SunReye** and start it. First boot initializes the database and runs
    migrations — give it a minute.
 3. Open the sidebar panel. The first registered account becomes the admin; registration
    closes afterwards.
 
-The addon manifest and full option reference live in [`sunreye/`](https://github.com/ediiiz/SunReye/tree/master/sunreye)
+The addon manifest and full option reference live in [`sunreye/`](https://github.com/SunReye/SunReye/tree/master/sunreye)
 (`config.yaml`, `DOCS.md`).
 
 ## Architecture

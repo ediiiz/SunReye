@@ -3,7 +3,7 @@
 ## Installation
 
 1. Settings → Add-ons → Add-on store → ⋮ → **Repositories** → add
-   `https://github.com/ediiiz/SunReye`.
+   `https://github.com/SunReye/SunReye`.
 2. Install **SunReye** and start it. The first boot initializes the embedded
    database and runs schema migrations — give it a minute.
 3. Open the sidebar panel. The first account you register becomes the admin;

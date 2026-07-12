@@ -10,4 +10,4 @@ addon's `/data` and covered by Home Assistant backups. Point it at an external
 PostgreSQL+TimescaleDB instead via the `external_database_url` option.
 
 See DOCS (the Documentation tab) for setup, options, backups, and the upgrade
-story. Full project documentation: <https://github.com/ediiiz/SunReye>.
+story. Full project documentation: <https://github.com/SunReye/SunReye>.

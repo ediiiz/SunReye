@@ -34,6 +34,12 @@ the `INVERTER_HOST` / `INVERTER_PORT` / `INVERTER_UNIT_ID` values.
 SUNREYE_TAG=v1.2.3 docker compose up -d
 ```
 
+> Keep the compose file and the image tag from the same era. This compose file
+> healthchecks the server with `/app/server --healthcheck` (added together with
+> the `/healthz` endpoint); images from releases *older* than that flag fail
+> the probe and `web` will refuse to start with "server is unhealthy". Either
+> upgrade the tag or check out the matching older compose file.
+
 ## Database schema
 
 Handled automatically. A one-shot **`migrate`** service

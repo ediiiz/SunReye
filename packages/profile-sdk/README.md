@@ -51,11 +51,27 @@ const report = coverage(acme); // which canonical roles are mapped
 const { manifest, capabilities, sample } = await exerciseProfile(acme);
 ```
 
+## Start a new profile project
+
+```sh
+bunx profile init my-profiles    # interactive: package + first profile stub, then optional install + git init
+```
+
+`init` scaffolds a ready-to-build authoring project (`package.json`, `tsconfig.json`,
+`src/profiles.ts` with a starter profile, `README.md`, `.gitignore`), asks whether to run
+`bun install` and `git init`, and leaves you one `bun run build` away from an installable
+repo. Pass flags to skip prompts, or `--yes` to accept every default:
+
+```sh
+bunx profile init my-profiles --id acme-hybrid --manufacturer Acme --repo-name "Acme Profiles" --yes
+```
+
 ## The `profile` CLI
 
 ```sh
-bunx profile validate ./profiles/acme.json    # strict validation + lints, non-zero exit on failure
-bunx profile coverage ./profiles/acme.json    # role coverage report
+bunx profile init ./my-profiles                # scaffold a new authoring project
+bunx profile validate ./profiles/acme.json     # strict validation + lints, non-zero exit on failure
+bunx profile coverage ./profiles/acme.json     # role coverage report
 bunx profile scaffold ./registers.csv --id acme-hybrid --name "Acme Hybrid" --manufacturer Acme
 bunx profile build ./src/profiles.ts --out . --name "My Profiles"   # emit installable repo
 ```

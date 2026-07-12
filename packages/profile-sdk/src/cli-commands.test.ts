@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { deyeSg05lp3Data } from "@SunReye/inverter-deye-sg05lp3";
 
-import { cmdBuild, cmdCoverage, cmdScaffold, cmdValidate, flags } from "./cli-commands";
+import { cmdBuild, cmdCoverage, cmdInit, cmdScaffold, cmdValidate, flags } from "./cli-commands";
 
 const dir = mkdtempSync(join(tmpdir(), "profile-cli-"));
 
@@ -184,5 +184,85 @@ describe("cmdBuild", () => {
     const empty = writeFixture("no-profiles.ts", "export const x = 1;");
     await expect(cmdBuild([empty], { out: join(dir, "empty-out") })).rejects.toThrow("exit 1");
     expect(io.err.join("\n")).toContain("no profiles exported");
+  });
+});
+
+describe("cmdInit", () => {
+  // Non-interactive deps: never touch stdin, record any spawned commands.
+  const silent = () => {
+    const commands: string[][] = [];
+    return {
+      commands,
+      deps: {
+        prompt: () => "",
+        confirm: () => false,
+        run: async (command: string[]) => {
+          commands.push(command);
+          return true;
+        },
+        sdkVersion: "9.9.9",
+      },
+    };
+  };
+
+  test("scaffolds the project layout from flags without prompting", async () => {
+    io = captureIo();
+    const out = join(dir, "init-flags");
+    const { commands, deps } = silent();
+    await cmdInit(
+      out,
+      {
+        pkg: "my-profiles",
+        id: "acme-hybrid",
+        manufacturer: "Acme",
+        install: "false",
+        git: "false",
+      },
+      deps,
+    );
+
+    for (const rel of ["package.json", "tsconfig.json", "src/profiles.ts", ".gitignore"]) {
+      expect(existsSync(join(out, rel))).toBe(true);
+    }
+    const pkg = JSON.parse(await Bun.file(join(out, "package.json")).text()) as {
+      name: string;
+      devDependencies: Record<string, string>;
+    };
+    expect(pkg.name).toBe("my-profiles");
+    expect(pkg.devDependencies["@sunreye/profile-sdk"]).toBe("^9.9.9");
+    expect(commands).toEqual([]); // install/git disabled
+    expect(io.out.join("\n")).toContain("scaffolded profile project");
+  });
+
+  test("runs bun install and git init when confirmed", async () => {
+    io = captureIo();
+    const out = join(dir, "init-confirm");
+    const commands: string[][] = [];
+    await cmdInit(
+      out,
+      { id: "x", manufacturer: "X" },
+      {
+        prompt: () => "",
+        confirm: () => true,
+        run: async (command: string[]) => {
+          commands.push(command);
+          return true;
+        },
+        sdkVersion: "1.0.0",
+      },
+    );
+    expect(commands).toEqual([
+      ["bun", "install"],
+      ["git", "init"],
+    ]);
+  });
+
+  test("refuses to overwrite an existing package.json", async () => {
+    io = captureIo();
+    const out = join(dir, "init-existing");
+    await Bun.write(join(out, "package.json"), "{}");
+    const { deps } = silent();
+    await expect(cmdInit(out, { id: "x", manufacturer: "X" }, deps)).rejects.toThrow("exit 1");
+    expect(io.err.join("\n")).toContain("refusing to overwrite");
   });
 });

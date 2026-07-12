@@ -22,6 +22,8 @@ export { coverage, groupByPrefix, isIndexedRole } from "./coverage";
 export type { CoverageReport } from "./coverage";
 export { scaffoldFromCsv } from "./scaffold";
 export type { ScaffoldMeta } from "./scaffold";
+export { scaffoldProject } from "./init";
+export type { InitOptions } from "./init";
 export { exerciseProfile } from "./harness";
 export type { HarnessResult } from "./harness";
 export { buildRepo } from "./repo";

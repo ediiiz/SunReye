@@ -2,6 +2,7 @@
 /**
  * `profile` — authoring CLI for SunReye inverter profiles.
  *
+ *   profile init [dir] [--pkg n] [--id i] [--manufacturer m] [--yes]
  *   profile validate <file>            strict validation + semantic lints
  *   profile coverage <file>            which renderable roles are mapped
  *   profile scaffold <csv> --id <id> --name <n> --manufacturer <m> [--version v]
@@ -12,11 +13,17 @@
  * argv and dispatches.
  */
 
-import { cmdBuild, cmdCoverage, cmdScaffold, cmdValidate, flags } from "./cli-commands";
+import { cmdBuild, cmdCoverage, cmdInit, cmdScaffold, cmdValidate, flags } from "./cli-commands";
 
 const [command, ...rest] = process.argv.slice(2);
 
 switch (command) {
+  case "init": {
+    // First positional is the target dir unless it's a flag.
+    const hasDir = rest[0] !== undefined && !rest[0].startsWith("--");
+    await cmdInit(hasDir ? rest[0] : undefined, flags(hasDir ? rest.slice(1) : rest));
+    break;
+  }
   case "validate":
     await cmdValidate(rest[0]);
     break;
@@ -34,6 +41,6 @@ switch (command) {
     break;
   }
   default:
-    console.error("usage: profile <validate|coverage|scaffold|build> <file...> [options]");
+    console.error("usage: profile <init|validate|coverage|scaffold|build> [file...] [options]");
     process.exit(1);
 }

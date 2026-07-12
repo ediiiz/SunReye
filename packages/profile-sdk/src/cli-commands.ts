@@ -5,13 +5,16 @@
  * always had; tests stub `process.exit`.
  */
 
-import { join, resolve } from "node:path";
+import { existsSync } from "node:fs";
+import { basename, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { coverage, groupByPrefix, isIndexedRole } from "./coverage";
+import { scaffoldProject, titleFromId, type InitOptions } from "./init";
 import { buildRepo, type RepoEntryInput } from "./repo";
 import { scaffoldFromCsv } from "./scaffold";
 import { validateProfile } from "./validate";
+import pkg from "../package.json";
 import type { ProfileData } from "@SunReye/inverter-core";
 
 async function readJson(path: string): Promise<unknown> {
@@ -165,4 +168,137 @@ export async function cmdBuild(paths: string[], opts: Record<string, string>): P
   for (const entry of result.index.profiles) {
     console.log(`  • ${entry.id}@${entry.version} → ${entry.path}`);
   }
+}
+
+/** Interactive I/O for `cmdInit`, injectable so the command body stays testable. */
+export interface InitDeps {
+  /** Ask a free-text question; return the default when the answer is blank. */
+  prompt?: (message: string, def?: string) => string;
+  /** Ask a yes/no question with a default when the answer is blank. */
+  confirm?: (message: string, def: boolean) => boolean;
+  /** Run a child process in `cwd`; resolve to whether it exited 0. */
+  run?: (command: string[], cwd: string) => Promise<boolean>;
+  /** SDK version to depend on (defaults to this package's version). */
+  sdkVersion?: string;
+}
+
+const defaultPrompt = (message: string, def?: string): string => {
+  const answer = prompt(def ? `${message} (${def})` : message);
+  return (answer ?? "").trim() || (def ?? "");
+};
+
+const defaultConfirm = (message: string, def: boolean): boolean => {
+  const answer = (prompt(`${message} (${def ? "Y/n" : "y/N"})`) ?? "").trim().toLowerCase();
+  if (answer === "") return def;
+  return answer === "y" || answer === "yes";
+};
+
+const defaultRun = async (command: string[], cwd: string): Promise<boolean> => {
+  const proc = Bun.spawn(command, { cwd, stdout: "inherit", stderr: "inherit" });
+  return (await proc.exited) === 0;
+};
+
+/**
+ * Gather {@link InitOptions} from `--flags`, falling back to interactive prompts
+ * (or, under `--yes`, to the shown defaults without asking).
+ */
+function gatherInitOptions(
+  targetDir: string,
+  opts: Record<string, string>,
+  ask: NonNullable<InitDeps["prompt"]>,
+  sdkVersion: string,
+): InitOptions {
+  const yes = "yes" in opts;
+  const field = (flag: string, message: string, def: string): string => {
+    if (opts[flag]) return opts[flag]!;
+    return yes ? def : ask(message, def) || def;
+  };
+
+  const packageName = field("pkg", "Package name", basename(targetDir) || "sunreye-profiles");
+  const id = field("id", "First profile id", "my-inverter");
+  return {
+    packageName,
+    repoName: field("repo-name", "Profile repo display name", packageName),
+    maintainer: (opts.maintainer ?? (yes ? "" : ask("Maintainer (optional)", ""))) || undefined,
+    profile: {
+      id,
+      name: field("profile-name", "First profile display name", titleFromId(id)),
+      manufacturer: field("manufacturer", "Manufacturer", "Acme"),
+    },
+    sdkVersion,
+  };
+}
+
+/** Run one optional post-scaffold step (`bun install` / `git init`), logging the outcome. */
+async function runStep(
+  enabled: boolean,
+  command: string[],
+  cwd: string,
+  run: NonNullable<InitDeps["run"]>,
+  { start, ok, fail: failMsg }: { start: string; ok: string; fail: string },
+): Promise<void> {
+  if (!enabled) return;
+  console.log(start);
+  console.log((await run(command, cwd)) ? ok : failMsg);
+}
+
+/**
+ * Scaffold a new profile-authoring project. Values come from `--flags` when
+ * given, otherwise from interactive prompts; then it optionally runs
+ * `bun install` and `git init`. Non-interactive when `--yes` is set (missing
+ * values fall back to defaults and the install/git prompts are skipped unless
+ * their flags force them on).
+ */
+export async function cmdInit(
+  dir: string | undefined,
+  opts: Record<string, string>,
+  deps: InitDeps = {},
+): Promise<void> {
+  const ask = deps.prompt ?? defaultPrompt;
+  const confirmFn = deps.confirm ?? defaultConfirm;
+  const run = deps.run ?? defaultRun;
+
+  const targetDir = resolve(dir ?? ".");
+  if (existsSync(join(targetDir, "package.json"))) {
+    fail(`${targetDir} already contains a package.json — refusing to overwrite`);
+  }
+
+  const files = scaffoldProject(
+    gatherInitOptions(targetDir, opts, ask, deps.sdkVersion ?? pkg.version),
+  );
+  for (const [rel, contents] of Object.entries(files)) {
+    await Bun.write(join(targetDir, rel), contents);
+  }
+  console.log(`✓ scaffolded profile project in ${targetDir}`);
+  for (const rel of Object.keys(files).sort()) console.log(`  • ${rel}`);
+
+  // `--install`/`--git` force the choice (any value but "false"); else prompt
+  // (default yes), or skip under `--yes`.
+  const decide = (flag: string, message: string): boolean =>
+    flag in opts ? opts[flag] !== "false" : "yes" in opts ? false : confirmFn(message, true);
+
+  await runStep(
+    decide("install", "Install dependencies with bun now?"),
+    ["bun", "install"],
+    targetDir,
+    run,
+    {
+      start: "\nInstalling dependencies (bun install)…",
+      ok: "✓ dependencies installed",
+      fail: "⚠ bun install failed — run it yourself",
+    },
+  );
+
+  const wantGit = decide("git", "Initialize a git repository?");
+  if (wantGit && existsSync(join(targetDir, ".git"))) {
+    console.log("• git repository already initialized — skipping");
+  } else {
+    await runStep(wantGit, ["git", "init"], targetDir, run, {
+      start: "\nInitializing git repository (git init)…",
+      ok: "✓ git repository initialized",
+      fail: "⚠ git init failed",
+    });
+  }
+
+  console.log(`\nNext: cd ${dir ?? "."} && bun run build`);
 }

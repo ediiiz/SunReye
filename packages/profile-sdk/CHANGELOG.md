@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.3.0](https://github.com/SunReye/SunReye/compare/profile-sdk-v1.2.0...profile-sdk-v1.3.0) (2026-07-12)
+
+
+### Features
+
+* **profile-sdk:** add init command to scaffold authoring projects ([61b934d](https://github.com/SunReye/SunReye/commit/61b934dbda75662f5506f42e241821fcbcfe3157))
+* **profiles:** add profile families & per-model variants ([ee0879d](https://github.com/SunReye/SunReye/commit/ee0879dd9dace727780dfa3b4bb596a37d21c06b))
+
+
+### Reverts
+
+* **docs:** publish the docs site under /SunReye again ([bee80d8](https://github.com/SunReye/SunReye/commit/bee80d8b863fcce2f8e3234b1cc0f431a84631c8))
+
 ## [1.2.0](https://github.com/SunReye/SunReye/compare/profile-sdk-v1.1.0...profile-sdk-v1.2.0) (2026-07-12)
 
 

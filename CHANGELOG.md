@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.0](https://github.com/SunReye/SunReye/compare/server-v0.4.0...server-v0.5.0) (2026-07-12)
+
+
+### Features
+
+* **profiles:** add profile families & per-model variants ([ee0879d](https://github.com/SunReye/SunReye/commit/ee0879dd9dace727780dfa3b4bb596a37d21c06b))
+
+
+### Reverts
+
+* **docs:** publish the docs site under /SunReye again ([bee80d8](https://github.com/SunReye/SunReye/commit/bee80d8b863fcce2f8e3234b1cc0f431a84631c8))
+
 ## [0.4.0](https://github.com/SunReye/SunReye/compare/server-v0.3.0...server-v0.4.0) (2026-07-12)
 
 

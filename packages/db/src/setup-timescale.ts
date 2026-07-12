@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import { Client } from "pg";
@@ -8,27 +6,21 @@ import { Client } from "pg";
 // run via turbo (CWD = packages/db) the same way `drizzle.config.ts` does.
 dotenv.config({ path: fileURLToPath(new URL("../../../apps/server/.env", import.meta.url)) });
 const { env } = await import("@SunReye/env/server");
+const { applyTimescale } = await import("./migrate");
 
 /**
- * Applies the TimescaleDB DDL (hypertable + continuous aggregates + policies)
- * that drizzle-kit cannot generate. Run once after `db:push`:
+ * Applies only the TimescaleDB pipeline (journaled structural files from
+ * `timescale/` + the always-reapplied `timescale/policies.sql`) — the same
+ * code path `bun run db:migrate` runs after the relational migrations.
+ * Standalone entry for local development after a `db:push`:
  *
  *   bun run db:timescale
  */
 async function main() {
-  const sqlPath = join(dirname(fileURLToPath(import.meta.url)), "timescale.sql");
-  const statements = readFileSync(sqlPath, "utf8")
-    .split("--> statement-breakpoint")
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0 && !s.split("\n").every((line) => line.trim().startsWith("--")));
-
   const client = new Client({ connectionString: env.DATABASE_URL });
   await client.connect();
   try {
-    for (const statement of statements) {
-      await client.query(statement);
-    }
-    console.log(`Applied ${statements.length} TimescaleDB statement(s).`);
+    await applyTimescale(client);
   } finally {
     await client.end();
   }

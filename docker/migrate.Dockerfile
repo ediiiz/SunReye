@@ -1,27 +1,27 @@
 # syntax=docker/dockerfile:1
 
 # ─────────────────────────────────────────────────────────────────────────────
-# One-shot schema initializer.
+# One-shot schema migrator.
 #
-# Applies the drizzle schema (`db:push`) and the TimescaleDB DDL that drizzle
-# cannot express — hypertable, continuous aggregates, compression + retention
-# policies (`db:timescale`) — against DATABASE_URL, then exits.
+# Runs the journaled migration runner (packages/db/src/migrate.ts) against
+# DATABASE_URL, then exits: downgrade guard → baseline stamping for databases
+# from the pre-journal `db:push` era → pending drizzle migrations
+# (transactional) → journaled TimescaleDB structural files → re-applied
+# policies. Non-interactive by construction — unlike the old `db:push`
+# entrypoint, nothing can prompt and hang a TTY-less container.
 #
-# Both steps are idempotent: `db:push` is a no-op when the schema already
-# matches, and `timescale.sql` is entirely `IF NOT EXISTS` / remove+add. So this
-# runs safely on every `docker compose up` and doubles as the upgrade path when
-# a new release adds tables (e.g. the `apikey` table).
+# Safe to run on every `docker compose up`: applied migrations are skipped via
+# the journal tables, and the server only starts after this exits 0.
 #
-# Unlike the distroless server image, this needs the full bun toolchain,
-# drizzle-kit, and the schema TS files — hence a separate, run-once image.
+# Unlike the distroless server image, this needs the bun toolchain and the
+# migration SQL files — hence a separate, run-once image.
 # ─────────────────────────────────────────────────────────────────────────────
-FROM oven/bun:1
+FROM oven/bun:1.3
 WORKDIR /app
 ENV HUSKY=0 SKIP_ENV_VALIDATION=1 NODE_ENV=production
 
 COPY . .
-# Default (non --production) install so drizzle-kit (a devDependency) is present.
 RUN --mount=type=cache,target=/root/.bun/install/cache bun install --frozen-lockfile
 
 WORKDIR /app/packages/db
-ENTRYPOINT ["sh", "-c", "bun run db:push && bun run db:timescale"]
+ENTRYPOINT ["bun", "run", "db:migrate"]

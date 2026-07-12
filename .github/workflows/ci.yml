@@ -45,10 +45,23 @@ jobs:
       - name: Type check
         run: bun run check-types
 
+      # Production schema changes ship as committed, journaled migrations
+      # (packages/db/src/migrations). Fail when the drizzle schema drifted from
+      # the journal — i.e. someone changed src/schema without running
+      # `bun run db:generate` — or when parallel branches collided in the journal.
+      - name: Migration drift gate
+        working-directory: packages/db
+        run: |
+          bunx drizzle-kit check
+          bunx drizzle-kit generate
+          if [ -n "$(git status --porcelain src/migrations)" ]; then
+            echo "::error::Schema changed without a committed migration — run 'bun run db:generate' in packages/db and commit the result."
+            git status --porcelain src/migrations
+            exit 1
+          fi
+
       - name: Build
         run: bun run build
-        env:
-          PUBLIC_SERVER_URL: http://localhost:3000
 
   test:
     name: Test & coverage

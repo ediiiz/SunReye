@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.2.0](https://github.com/ediiiz/SunReye/compare/server-v0.1.0...server-v0.2.0) (2026-07-12)
+
+
+### Features
+
+* **addon:** home assistant addon with embedded timescaledb ([f22b52a](https://github.com/ediiiz/SunReye/commit/f22b52a039adbb10374357afcd5a299323727f5c))
+* **db:** journaled migrations with baseline stamping and downgrade guard ([3514089](https://github.com/ediiiz/SunReye/commit/3514089b3c741daeee86670411d6487f9711e67a))
+* **server:** same-origin auth model, /healthz, and host binding ([3d9e9b1](https://github.com/ediiiz/SunReye/commit/3d9e9b1e95fecc0c863f1f783ea8048542df802b))
+* **web:** runtime API base and hash routing for reverse-proxy prefixes ([1aa8661](https://github.com/ediiiz/SunReye/commit/1aa8661b1b5ca0fac7932d12a92c419941c53b1e))
+
+
+### Bug Fixes
+
+* **server:** exclude serialport from compiled binary, pin bun builders ([1115a38](https://github.com/ediiiz/SunReye/commit/1115a386ff4b10f45d2ee2f1c442f87400cb3171))
+
 ## [0.1.0](https://github.com/ediiiz/SunReye/compare/server-v0.0.1...server-v0.1.0) (2026-07-11)
 
 

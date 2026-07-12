@@ -37,27 +37,25 @@ SUNREYE_TAG=v1.2.3 docker compose up -d
 ## Database schema
 
 Handled automatically. A one-shot **`migrate`** service
-(`ghcr.io/ediiiz/sunreye-migrate`) applies the schema (`db:push`) and the
-TimescaleDB objects (`db:timescale`) against the empty database, and the
-`server` waits for it to finish (`service_completed_successfully`) before
-starting. No repo checkout or manual `db:push` needed.
+(`ghcr.io/ediiiz/sunreye-migrate`) runs the journaled migration runner against
+the database, and the `server` waits for it to finish
+(`service_completed_successfully`) before starting. No repo checkout or manual
+step needed.
 
-It is idempotent — it re-runs on every `docker compose up` and is a no-op when
-the schema already matches, so it also applies new tables when you bump
-`SUNREYE_TAG` to a newer release. Data persists in the `sunreye_pg` volume
-across restarts.
-
-> Destructive schema changes (dropping a column/table) can make `db:push`
-> prompt interactively, which will hang the non-TTY migrate container. Those are
-> rare on upgrades (releases add, not remove); if you hit one, run `db:push`
-> manually from a checkout and review the change.
+It re-runs safely on every `docker compose up` (applied migrations are skipped
+via the journal), so bumping `SUNREYE_TAG` to a newer release brings the schema
+forward automatically. Databases created by older releases (the pre-journal
+`db:push` era) are baselined in place on the first run. The runner refuses to
+run an older release against a database migrated by a newer one — restore a
+backup to downgrade. A failed migration exits non-zero with the cause in
+`docker compose logs migrate`, and the server never starts. Data persists in
+the `sunreye_pg` volume across restarts.
 
 ## Notes
 
-- **`PUBLIC_SERVER_URL` is baked into the web image at build time.** It can't be
-  changed in this compose file. Set the `PUBLIC_SERVER_URL` repository variable
-  before the `docker-web` pipeline runs so the built image points at the URL your
-  browser will reach the server on.
+- **`PUBLIC_SERVER_URL` is read at runtime** (container start). It tells the
+  browser where to reach the API; override it in `.env` or the environment when
+  that isn't `http://localhost:3000`.
 - The server image is distroless (no shell/curl), so there is no in-container
   healthcheck. Dependents use `service_started`; add a TCP/HTTP probe at your
   orchestrator/reverse-proxy layer in production.

@@ -52,8 +52,7 @@ adding data — not touching the engine.
 ```bash
 bun install
 bun run db:start        # local TimescaleDB via Docker
-bun run db:push         # apply schema
-bun run db:timescale    # hypertable + rollups
+bun run db:migrate      # schema migrations + hypertable/rollups
 bun run dev             # start everything
 ```
 

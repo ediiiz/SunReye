@@ -7,10 +7,10 @@ All environment variables are declared and validated in a single place — `pack
 (`server.ts` for the server, `web.ts` for the browser bundle) — using `@t3-oss/env-core`
 + Zod at import time. No other package parses `process.env` directly.
 
-:::note[Only five are truly required]
-`DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, and `CORS_ORIGIN` (server) plus
-`PUBLIC_SERVER_URL` (web) are the only variables without a default. Everything else is
-optional.
+:::note[Only two are truly required]
+`DATABASE_URL` and `BETTER_AUTH_SECRET` are the only variables without a default.
+Everything else is optional — same-origin deployments (dev, the Home Assistant addon)
+don't even need `CORS_ORIGIN` or `PUBLIC_SERVER_URL`.
 :::
 
 ## Runtime config has moved into the UI
@@ -33,6 +33,7 @@ Variables below are marked:
 | `DATABASE_URL` | string | — | ✅ | PostgreSQL / TimescaleDB connection string. |
 | `NODE_ENV` | `development` \| `production` \| `test` | `development` | | Runtime environment. |
 | `PORT` | number | `3000` | | HTTP port the core engine listens on. |
+| `HOST` | string | `0.0.0.0` | | Interface the core engine binds (the HA addon sets `127.0.0.1` behind its proxy). |
 | `LOG_LEVEL` | `trace` … `fatal` | `debug` (dev) / `info` | | Lowest LogTape severity written to the console. |
 
 ## Auth
@@ -40,8 +41,10 @@ Variables below are marked:
 | Variable | Type | Default | Required | Purpose |
 | --- | --- | --- | --- | --- |
 | `BETTER_AUTH_SECRET` | string (≥32) | — | ✅ | Better Auth signing secret. |
-| `BETTER_AUTH_URL` | url | — | ✅ | Better Auth base URL. |
-| `CORS_ORIGIN` | url | — | ✅ | Allowed CORS origin (the dashboard's URL). |
+| `BETTER_AUTH_URL` | url | `http://localhost:3000` | | Better Auth base URL (split-origin deployments only). |
+| `CORS_ORIGIN` | url | — | | Allowed CORS origin for a *split-origin* dashboard. Unset = CORS disabled (same-origin deployments — the safe default). |
+| `TRUSTED_ORIGINS` | comma-separated urls | `""` | | Extra origins Better Auth's CSRF check trusts (e.g. an HTTPS reverse proxy in front of a direct port). |
+| `AUTH_SECURE_COOKIES` | boolean | `false` | | Mark session cookies `Secure`. Enable only on HTTPS-only deployments — over plain HTTP the browser drops the session. |
 
 ## Inverter / Modbus connection
 
@@ -84,7 +87,7 @@ Two connection fields are DB-only (no env seed): **transport** (`tcp` / `rtu-ove
 
 | Variable | Type | Default | Required | Purpose |
 | --- | --- | --- | --- | --- |
-| `PUBLIC_SERVER_URL` | url | — | ✅ | Server base URL exposed to the browser. Baked at build time for Docker deployments. |
+| `PUBLIC_SERVER_URL` | url | — (same-origin) | | Where the *browser* reaches the API. Read at **runtime** via `$env/dynamic/public` — nothing is baked into the image. Unset = resolved from the document URL, which keeps reverse-proxy path prefixes (HA ingress) intact; set it only for split-origin deployments like the plain Compose stack. |
 
 ## Meta
 

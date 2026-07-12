@@ -89,8 +89,8 @@ const { ok, issues, files } = buildRepo(
 // files: { "index.json": "...", "profiles/acme-hybrid.json": "...", ... }
 ```
 
-See the [authoring guide](https://sunreye.github.io/SunReye/profiles/authoring/) and
-[distribution guide](https://sunreye.github.io/SunReye/profiles/distribution/).
+See the [authoring guide](https://sunreye.github.io/profiles/authoring/) and
+[distribution guide](https://sunreye.github.io/profiles/distribution/).
 
 ## License
 

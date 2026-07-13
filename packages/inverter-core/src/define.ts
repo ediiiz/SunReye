@@ -1,6 +1,8 @@
 import type { CanonicalRole } from "./roles";
 import { ROLE_CATALOG } from "./roles";
 import type {
+  AggregateExpr,
+  AggregateMatch,
   ComputeExpr,
   ControlExpr,
   MetricDataDef,
@@ -30,8 +32,12 @@ interface BaseMetricOpts {
   /** Post-scale additive offset (`raw * scale + offset`), e.g. `-100` for +1000-encoded temps. */
   offset?: number;
   access?: MetricAccess;
-  /** Declarative derived value (replaces a code `compute`). */
-  computeExpr?: ComputeExpr;
+  /**
+   * Declarative derived value (replaces a code `compute`). Either a concrete
+   * {@link ComputeExpr} or a deferred {@link sumOf} aggregate, which resolves to
+   * a concrete expr against the final metric set at build time.
+   */
+  computeExpr?: ComputeExpr | AggregateExpr;
   kind?: MetricKind;
   range?: MetricRange;
   flow?: MetricFlow;
@@ -62,6 +68,36 @@ type UnroledMetricOpts = BaseMetricOpts & {
 
 export type MetricOpts = RoledMetricOpts | UnroledMetricOpts;
 
+/** True when a `computeExpr` opt is a deferred {@link sumOf} aggregate. */
+function isAggregate(expr: ComputeExpr | AggregateExpr | undefined): expr is AggregateExpr {
+  return expr !== undefined && "__aggregate" in expr;
+}
+
+/**
+ * Sort a `computeExpr` opt into the two mutually-exclusive slots a metric
+ * carries: a concrete {@link ComputeExpr} stays in `computeExpr`, a deferred
+ * aggregate goes to `computeAggregate` (resolved at build time). Setting either
+ * clears the other, so restating one via a patch never leaves a stale token.
+ */
+function splitCompute(expr: ComputeExpr | AggregateExpr | undefined): {
+  computeExpr?: ComputeExpr;
+  computeAggregate?: AggregateExpr;
+} {
+  if (expr === undefined) return {};
+  return isAggregate(expr) ? { computeAggregate: expr } : { computeExpr: expr };
+}
+
+/**
+ * Declare a deferred aggregate: "sum every metric matching `match`", resolved
+ * against the *final* metric set at build time rather than a hand-listed key
+ * set. Write the intent once on the base — `sumOf({ role: "pv.string.power" })`
+ * — and every variant that adds or drops a string re-derives the correct sum
+ * automatically, no per-model patch. Fail-loud: zero matches is a build error.
+ */
+export function sumOf(match: AggregateMatch): AggregateExpr {
+  return { __aggregate: { op: "sum", match } };
+}
+
 /**
  * Build one metric. The canonical `key` is the topic with `/` → `.`. Generic on
  * the topic literal so the returned `key` is a literal type ({@link TopicToKey}):
@@ -86,7 +122,7 @@ export function metric<const T extends string>(
     scale: opts.scale ?? 1,
     offset: opts.offset,
     access: opts.access ?? "r",
-    computeExpr: opts.computeExpr,
+    ...splitCompute(opts.computeExpr),
     role: opts.role,
     index: opts.index,
     kind: opts.kind,
@@ -139,7 +175,8 @@ export function control<const K extends string>(
   };
 }
 
-/** Assemble a {@link ProfileData} from identity + a metric list. */
+/** Assemble a {@link ProfileData} from identity + a metric list, resolving any
+ *  deferred {@link sumOf} aggregates against the given metrics. */
 export function defineProfile(input: {
   id: string;
   name: string;
@@ -147,7 +184,14 @@ export function defineProfile(input: {
   version: string;
   metrics: MetricDataDef[];
 }): ProfileData {
-  return { schemaVersion: 1, ...input };
+  return {
+    schemaVersion: 1,
+    ...input,
+    metrics: resolveAggregates(
+      input.metrics.map((m) => ({ ...m })),
+      input.id,
+    ),
+  };
 }
 
 /**
@@ -199,13 +243,20 @@ function normalizeAddr(addr: number | number[]): number[] {
 
 /** Merge one {@link MetricPatch} into a clone of `base` (never mutates `base`). */
 function applyPatch(base: MetricDataDef, patch: MetricPatch): MetricDataDef {
-  const { addr, min, max, range, ...rest } = patch;
+  const { addr, min, max, range, computeExpr, ...rest } = patch;
   const next: MetricDataDef = { ...base, ...rest };
   if (addr !== undefined) next.addresses = normalizeAddr(addr);
   if (range !== undefined) next.range = { ...range };
   if (min !== undefined || max !== undefined) {
     const cur = next.range ?? { min: 0, max: 0 };
     next.range = { min: min ?? cur.min, max: max ?? cur.max };
+  }
+  if (computeExpr !== undefined) {
+    // A restated compute (concrete or deferred) fully replaces the base's — drop
+    // both slots first so a base aggregate can't survive next to a new concrete.
+    delete next.computeExpr;
+    delete next.computeAggregate;
+    Object.assign(next, splitCompute(computeExpr));
   }
   return next;
 }
@@ -250,6 +301,120 @@ function resolveUpsert(
   return metric(rawKey.replaceAll(".", "/"), value as MetricOpts);
 }
 
+/** Every target metric key a {@link ControlExpr} writes to. */
+function controlRefs(expr: ControlExpr): string[] {
+  return "snapshotToggle" in expr
+    ? [expr.snapshotToggle.target]
+    : expr.preset.writes.map((w) => w.target);
+}
+
+/**
+ * Rewrite one concrete {@link ComputeExpr} with `removed` keys dropped. A
+ * removed key in a *variadic* list (`sum`, `combine.add/sub`, `ratio.num/den`)
+ * is pruned — semantically identical to what the author would hand-type. A
+ * removed key in a *fixed-arity* expr (`diff`, `scale`), or one whose removal
+ * would empty a required list, throws instead: shrinking there would silently
+ * change the number (e.g. an emptied `ratio.den` reads a constant 0), so we
+ * refuse loudly rather than ship a wrong value. Returns a fresh expr when it
+ * changes; the original (base-owned) object is never mutated.
+ */
+function pruneComputeExpr(expr: ComputeExpr, removed: Set<string>, metricKey: string): ComputeExpr {
+  const fail = (ref: string, why: string): never => {
+    throw new Error(
+      `overlay removed "${ref}" but computed metric "${metricKey}" still needs it (${why}); ` +
+        `patch its computeExpr or remove "${metricKey}" too`,
+    );
+  };
+  const shrink = (keys: string[], why: string): string[] => {
+    const kept = keys.filter((k) => !removed.has(k));
+    if (kept.length === 0) fail(keys.find((k) => removed.has(k))!, why);
+    return kept;
+  };
+
+  if ("sum" in expr) {
+    return expr.sum.some((k) => removed.has(k)) ? { sum: shrink(expr.sum, "empties a sum") } : expr;
+  }
+  if ("diff" in expr) {
+    const hit = expr.diff.find((k) => removed.has(k));
+    return hit ? fail(hit, "fixed-arity diff") : expr;
+  }
+  if ("scale" in expr) {
+    return removed.has(expr.scale[0]) ? fail(expr.scale[0], "fixed-arity scale") : expr;
+  }
+  if ("combine" in expr) {
+    const sub = expr.combine.sub ?? [];
+    if (![...expr.combine.add, ...sub].some((k) => removed.has(k))) return expr;
+    const add = shrink(expr.combine.add, "empties combine.add");
+    const keptSub = sub.filter((k) => !removed.has(k));
+    return { combine: keptSub.length ? { add, sub: keptSub } : { add } };
+  }
+  if (![...expr.ratio.num, ...expr.ratio.den].some((k) => removed.has(k))) return expr;
+  const num = shrink(expr.ratio.num, "empties ratio.num");
+  const den = shrink(expr.ratio.den, "empties ratio.den");
+  return {
+    ratio: expr.ratio.scale !== undefined ? { num, den, scale: expr.ratio.scale } : { num, den },
+  };
+}
+
+/**
+ * After an overlay removes metrics, reconcile every survivor that referenced a
+ * removed key: prune variadic compute lists in place, throw on the cases that
+ * can't shrink safely (fixed-arity exprs, emptied required lists, control
+ * targets). Operates on the overlay's own clones, so the base is untouched.
+ */
+function pruneRemovedRefs(metrics: MetricDataDef[], removed: Set<string>): void {
+  if (removed.size === 0) return;
+  for (const m of metrics) {
+    if (m.controlExpr) {
+      const hit = controlRefs(m.controlExpr).find((ref) => removed.has(ref));
+      if (hit !== undefined) {
+        throw new Error(
+          `overlay removed "${hit}" but control "${m.key}" targets it; ` +
+            `patch its controlExpr or remove "${m.key}" too`,
+        );
+      }
+    }
+    if (m.computeExpr) m.computeExpr = pruneComputeExpr(m.computeExpr, removed, m.key);
+  }
+}
+
+/** Does `m` fall in an aggregate's selection (by role, or key-prefix subtree)? */
+function matchesAggregate(m: MetricDataDef, match: AggregateMatch): boolean {
+  if ("role" in match) return m.role === match.role;
+  return m.key === match.keyPrefix || m.key.startsWith(`${match.keyPrefix}.`);
+}
+
+function describeMatch(match: AggregateMatch): string {
+  return "role" in match ? `role "${match.role}"` : `keyPrefix "${match.keyPrefix}"`;
+}
+
+/**
+ * Resolve every deferred {@link sumOf} aggregate against the *final* metric set,
+ * mutating each carrier in place: gather the matching keys (excluding itself),
+ * write a concrete `{ sum }`, and drop the token. An aggregate that matches
+ * nothing throws — a variant never silently ships an empty sum. Mutates the
+ * passed clones only; returns the same array for chaining.
+ */
+function resolveAggregates(metrics: MetricDataDef[], profileId: string): MetricDataDef[] {
+  for (const m of metrics) {
+    const agg = m.computeAggregate;
+    if (!agg) continue;
+    const keys = metrics
+      .filter((x) => x.key !== m.key && matchesAggregate(x, agg.__aggregate.match))
+      .map((x) => x.key);
+    if (keys.length === 0) {
+      throw new Error(
+        `aggregate on "${m.key}" in profile "${profileId}" matched no metrics ` +
+          `(${describeMatch(agg.__aggregate.match)})`,
+      );
+    }
+    delete m.computeAggregate;
+    // Only `sum` exists today; the op is carried for forward compatibility.
+    m.computeExpr = { sum: keys };
+  }
+  return metrics;
+}
+
 /** Apply a keyed overlay over a clone of `baseMetrics`, returning fresh metrics. */
 function deriveMetrics(
   baseMetrics: MetricDataDef[],
@@ -276,7 +441,9 @@ function deriveMetrics(
   const kept = baseMetrics
     .filter((m) => !removed.has(m.key))
     .map((m) => patched.get(m.key) ?? { ...m });
-  return [...kept, ...added];
+  const result = [...kept, ...added];
+  pruneRemovedRefs(result, removed);
+  return result;
 }
 
 /**
@@ -289,15 +456,22 @@ export function defineVariant(
   base: ProfileData,
   overrides: ModelOverrides & { id: string },
 ): ProfileData {
+  // Overlay first (removing metrics + pruning explicit refs), then resolve
+  // deferred aggregates against what survives — so a dropped string re-derives
+  // the correct sum on its own.
+  const metrics = resolveAggregates(
+    overrides.metrics
+      ? deriveMetrics(base.metrics, overrides.metrics, base.id)
+      : base.metrics.map((m) => ({ ...m })),
+    overrides.id,
+  );
   return {
     schemaVersion: 1,
     id: overrides.id,
     name: overrides.name ?? base.name,
     manufacturer: overrides.manufacturer ?? base.manufacturer,
     version: overrides.version ?? base.version,
-    metrics: overrides.metrics
-      ? deriveMetrics(base.metrics, overrides.metrics, base.id)
-      : base.metrics.map((m) => ({ ...m })),
+    metrics,
   };
 }
 
@@ -315,12 +489,21 @@ export function defineFamily<const M extends readonly MetricDataDef[]>(def: {
   metrics: M;
   models: Record<string, ModelOverrides<M[number]["key"]>>;
 }): ProfileData[] {
-  const base = defineProfile({
+  // Keep the base metrics UNRESOLVED (aggregate tokens intact) and derive every
+  // profile — the emitted base included — through defineVariant. Resolving the
+  // base up front (via defineProfile) would bake in the base's own key list, so
+  // a model that drops a string could no longer self-heal its aggregates.
+  const unresolvedBase: ProfileData = {
+    schemaVersion: 1,
     id: def.id,
     name: def.name,
     manufacturer: def.manufacturer,
     version: def.version,
-    metrics: [...def.metrics],
-  });
-  return [base, ...Object.entries(def.models).map(([id, o]) => defineVariant(base, { id, ...o }))];
+    metrics: def.metrics.map((m) => ({ ...m })),
+  };
+  const base = defineVariant(unresolvedBase, { id: def.id });
+  const models = Object.entries(def.models).map(([id, o]) =>
+    defineVariant(unresolvedBase, { id, ...o }),
+  );
+  return [base, ...models];
 }

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { deriveCapabilities } from "./capabilities";
-import { defineFamily, defineProfile, defineVariant, metric } from "./define";
+import { control, defineFamily, defineProfile, defineVariant, metric, sumOf } from "./define";
 import { hydrateProfile, type ProfileData } from "./profile-data";
 import { safeParseProfileData } from "./schema";
 
@@ -237,5 +237,251 @@ describe("defineFamily", () => {
     expect(disMax("acme-hybrid")).toBe(300);
     expect(disMax("acme-5k")).toBe(120);
     expect(disMax("acme-15k")).toBe(280);
+  });
+});
+
+const total = (p: ProfileData) => byKey(p, "dc.total_power");
+
+describe("sumOf — deferred aggregates", () => {
+  test("defineProfile resolves an aggregate to a concrete sum, stripping the token", () => {
+    const p = defineProfile({
+      id: "acme-agg",
+      name: "Acme Agg",
+      manufacturer: "Acme",
+      version: "1.0.0",
+      metrics: [
+        metric("dc/pv1/power", {
+          label: "PV1",
+          unit: "W",
+          group: "solar",
+          addr: 672,
+          role: "pv.string.power",
+          index: 1,
+        }),
+        metric("dc/pv2/power", {
+          label: "PV2",
+          unit: "W",
+          group: "solar",
+          addr: 673,
+          role: "pv.string.power",
+          index: 2,
+        }),
+        metric("dc/total_power", {
+          label: "PV Total",
+          unit: "W",
+          group: "solar",
+          role: "pv.total.power",
+          computeExpr: sumOf({ role: "pv.string.power" }),
+        }),
+      ],
+    });
+    expect(total(p)?.computeExpr).toEqual({ sum: ["dc.pv1.power", "dc.pv2.power"] });
+    expect(total(p)?.computeAggregate).toBeUndefined();
+    expect(safeParseProfileData(p).success).toBe(true);
+  });
+
+  test("keyPrefix match sums the subtree, excluding the carrier itself", () => {
+    const p = defineProfile({
+      id: "acme-prefix",
+      name: "Acme Prefix",
+      manufacturer: "Acme",
+      version: "1.0.0",
+      metrics: [
+        metric("bank/1/current", { label: "B1", unit: "A", group: "battery", addr: 591 }),
+        metric("bank/2/current", { label: "B2", unit: "A", group: "battery", addr: 594 }),
+        metric("bank/current", {
+          label: "Total Current",
+          unit: "A",
+          group: "battery",
+          computeExpr: sumOf({ keyPrefix: "bank" }),
+        }),
+      ],
+    });
+    expect(byKey(p, "bank.current")?.computeExpr).toEqual({
+      sum: ["bank.1.current", "bank.2.current"],
+    });
+  });
+
+  test("an aggregate matching nothing throws (never a silent empty sum)", () => {
+    expect(() =>
+      defineProfile({
+        id: "acme-empty",
+        name: "x",
+        manufacturer: "x",
+        version: "1.0.0",
+        metrics: [
+          metric("dc/total_power", {
+            label: "PV Total",
+            unit: "W",
+            group: "solar",
+            role: "pv.total.power",
+            computeExpr: sumOf({ role: "pv.string.power" }),
+          }),
+        ],
+      }),
+    ).toThrow(/matched no metrics/);
+  });
+
+  test("a family self-heals: dropping a string re-derives each model's sum", () => {
+    const family = defineFamily({
+      id: "acme-solar",
+      name: "Acme Solar",
+      manufacturer: "Acme",
+      version: "1.0.0",
+      metrics: [
+        metric("dc/pv1/power", {
+          label: "PV1",
+          unit: "W",
+          group: "solar",
+          addr: 672,
+          role: "pv.string.power",
+          index: 1,
+        }),
+        metric("dc/pv2/power", {
+          label: "PV2",
+          unit: "W",
+          group: "solar",
+          addr: 673,
+          role: "pv.string.power",
+          index: 2,
+        }),
+        metric("dc/total_power", {
+          label: "PV Total",
+          unit: "W",
+          group: "solar",
+          role: "pv.total.power",
+          // No per-model patch anywhere — the aggregate tracks the survivors.
+          computeExpr: sumOf({ role: "pv.string.power" }),
+        }),
+      ],
+      models: {
+        // 1-string SKU: drop the whole pv2 string.
+        "acme-1s": { name: "Acme 1S", metrics: { "dc.pv2.*": null } },
+        // 3-string SKU: add pv3.
+        "acme-3s": {
+          name: "Acme 3S",
+          metrics: {
+            "dc.pv3.power": {
+              label: "PV3",
+              unit: "W",
+              group: "solar",
+              addr: 674,
+              role: "pv.string.power",
+              index: 3,
+            },
+          },
+        },
+      },
+    });
+    const at = (id: string) => total(family.find((p) => p.id === id)!)?.computeExpr;
+    expect(at("acme-solar")).toEqual({ sum: ["dc.pv1.power", "dc.pv2.power"] });
+    expect(at("acme-1s")).toEqual({ sum: ["dc.pv1.power"] });
+    expect(at("acme-3s")).toEqual({ sum: ["dc.pv1.power", "dc.pv2.power", "dc.pv3.power"] });
+    for (const p of family) expect(safeParseProfileData(p).success).toBe(true);
+  });
+});
+
+describe("defineVariant — dependency-aware removal", () => {
+  test("removing a string prunes an explicit sum survivor (no manual patch)", () => {
+    const v = defineVariant(base(), { id: "acme-1s", metrics: { "dc.pv2.*": null } });
+    expect(total(v)?.computeExpr).toEqual({ sum: ["dc.pv1.power"] });
+  });
+
+  test("removing every summed key throws rather than shipping an empty sum", () => {
+    expect(() =>
+      defineVariant(base(), { id: "x", metrics: { "dc.pv1.*": null, "dc.pv2.*": null } }),
+    ).toThrow(/empties a sum/);
+  });
+
+  function fixedArityBase(): ProfileData {
+    return defineProfile({
+      id: "acme-fixed",
+      name: "x",
+      manufacturer: "x",
+      version: "1.0.0",
+      metrics: [
+        metric("a/x", { label: "A", unit: "W", group: "g", addr: 1 }),
+        metric("b/y", { label: "B", unit: "W", group: "g", addr: 2 }),
+        metric("delta", {
+          label: "Delta",
+          unit: "W",
+          group: "g",
+          computeExpr: { diff: ["a.x", "b.y"] },
+        }),
+      ],
+    });
+  }
+
+  test("removing a key a fixed-arity diff needs throws", () => {
+    expect(() => defineVariant(fixedArityBase(), { id: "x", metrics: { "b.y": null } })).toThrow(
+      /fixed-arity diff/,
+    );
+  });
+
+  test("removing a control's target throws", () => {
+    const withControl = defineProfile({
+      id: "acme-ctl",
+      name: "x",
+      manufacturer: "x",
+      version: "1.0.0",
+      metrics: [
+        metric("settings/battery/maximum_discharge_current", {
+          label: "Max discharge",
+          unit: "A",
+          group: "settings",
+          addr: 109,
+          access: "rw",
+          role: "setting.battery.max_discharge_current",
+          range: { min: 0, max: 300 },
+        }),
+        control("settings/battery/lock", {
+          label: "Lock",
+          group: "settings",
+          enumLabels: { 0: "Unlocked", 1: "Locked" },
+          controlExpr: {
+            snapshotToggle: {
+              target: "settings.battery.maximum_discharge_current",
+              lockedValue: 0,
+            },
+          },
+        }),
+      ],
+    });
+    expect(() =>
+      defineVariant(withControl, {
+        id: "x",
+        metrics: { "settings.battery.maximum_discharge_current": null },
+      }),
+    ).toThrow(/control .* targets it/);
+  });
+
+  test("does not mutate the base's aggregate tokens across a family", () => {
+    const metrics = [
+      metric("dc/pv1/power", {
+        label: "PV1",
+        unit: "W",
+        group: "solar",
+        addr: 672,
+        role: "pv.string.power",
+        index: 1,
+      }),
+      metric("dc/total_power", {
+        label: "PV Total",
+        unit: "W",
+        group: "solar",
+        role: "pv.total.power",
+        computeExpr: sumOf({ role: "pv.string.power" }),
+      }),
+    ];
+    const before = structuredClone(metrics);
+    defineFamily({
+      id: "acme-x",
+      name: "x",
+      manufacturer: "x",
+      version: "1.0.0",
+      metrics,
+      models: { "acme-y": { metrics: {} } },
+    });
+    expect(metrics).toEqual(before);
   });
 });

@@ -6,8 +6,11 @@ export {
   defineProfile,
   defineVariant,
   metric,
+  sumOf,
 } from "@SunReye/inverter-core";
 export type {
+  AggregateExpr,
+  AggregateMatch,
   MetricAdd,
   MetricOpts,
   MetricPatch,
@@ -30,8 +33,8 @@ export type { RepoIndex, RepoProfileEntry } from "@SunReye/inverter-core";
 
 export { validateProfile } from "./validate";
 export type { ValidationResult } from "./validate";
-export { coverage, groupByPrefix, isIndexedRole } from "./coverage";
-export type { CoverageReport } from "./coverage";
+export { coverage, groupByPrefix, isIndexedRole, suggestAggregates } from "./coverage";
+export type { AggregateSuggestion, CoverageReport } from "./coverage";
 export { scaffoldFromCsv } from "./scaffold";
 export type { ScaffoldMeta } from "./scaffold";
 export { scaffoldProject } from "./init";

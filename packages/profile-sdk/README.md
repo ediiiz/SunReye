@@ -103,6 +103,29 @@ that also rejects out-of-range writes server-side. No schema, hydrate, or server
 involved. `defineVariant(base, { id, … })` is the low-level primitive for specializing a
 single imported/third-party `ProfileData`.
 
+### Deferred aggregates + safe removal
+
+Removing a metric another one references is reconciled automatically. A removed key in a
+**variadic** compute list (`sum`, `combine.add`/`sub`, `ratio.num`/`den`) is pruned; a
+removed key in a **fixed-arity** expr (`diff`/`scale`), one that would empty a required
+list, or a **control target**, throws at build time naming both metrics — never a silent
+wrong value. Even better, `sumOf` lets the base declare the intent once instead of a
+hand-listed key set that drifts:
+
+```ts
+import { metric, sumOf } from "@sunreye/profile-sdk";
+
+metric("dc/total_power", {
+  label: "PV Total", group: "solar", unit: "W",
+  role: "pv.total.power",
+  computeExpr: sumOf({ role: "pv.string.power" }), // or sumOf({ keyPrefix: "battery.bank" })
+});
+```
+
+It resolves to a concrete `{ sum: [...] }` against each model's *surviving* metrics at build
+time (matching zero metrics is a build error), so a model that adds or drops a PV string
+re-derives the correct total with no per-model patch.
+
 ## Validate and exercise
 
 ```ts
@@ -136,11 +159,17 @@ bunx @sunreye/profile-sdk init my-profiles --id acme-hybrid --manufacturer Acme 
 
 ```sh
 bunx @sunreye/profile-sdk init ./my-profiles   # scaffold a new authoring project (empty dir; no install needed)
+bunx profile upgrade                            # refresh the AI authoring guide (AGENTS.md + CLAUDE.md) in an existing project
 bunx profile validate ./profiles/acme.json     # strict validation + lints, non-zero exit on failure
-bunx profile coverage ./profiles/acme.json     # role coverage report
+bunx profile coverage ./profiles/acme.json     # role coverage report + sumOf optimization hints
 bunx profile scaffold ./registers.csv --id acme-hybrid --name "Acme Hybrid" --manufacturer Acme
 bunx profile build ./src/profiles.ts --out . --name "My Profiles"   # emit installable repo
 ```
+
+`profile upgrade` re-syncs the AI guide files into a project scaffolded before they existed;
+it keeps any file you've edited (re-run with `--force` to overwrite). `profile coverage`
+also flags hand-listed sums that exactly cover an indexed role group and suggests the
+self-healing [`sumOf`](#deferred-aggregates--safe-removal) form — a non-destructive hint, never a rewrite.
 
 `validate` and `build` exit non-zero on failure, so they work as a CI or pre-commit gate.
 

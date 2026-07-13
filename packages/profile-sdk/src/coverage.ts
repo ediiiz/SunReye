@@ -42,3 +42,51 @@ export function groupByPrefix(roles: CanonicalRole[]): Map<string, CanonicalRole
 /** True when a role is indexed (needs one metric per string/phase). */
 export const isIndexedRole = (role: CanonicalRole): boolean =>
   (ROLE_CATALOG[role] as RoleSpec).indexed === true;
+
+/** A hand-listed `sum` that exactly covers an indexed role group — a `sumOf` candidate. */
+export interface AggregateSuggestion {
+  /** The computed metric whose `computeExpr` could become a `sumOf`. */
+  key: string;
+  /** The indexed role its summed keys exactly cover. */
+  role: CanonicalRole;
+  /** How many metrics are in that role group (= the sum's length). */
+  count: number;
+}
+
+/** The indexed role whose full metric group (excluding `selfKey`) equals `summed`, if any. */
+function indexedRoleCoveredExactly(
+  summed: string[],
+  selfKey: string,
+  byRole: Map<CanonicalRole, string[]>,
+): CanonicalRole | undefined {
+  for (const [role, keys] of byRole) {
+    if (!isIndexedRole(role)) continue;
+    const group = keys.filter((k) => k !== selfKey).sort();
+    if (group.length === summed.length && group.every((k, i) => k === summed[i])) return role;
+  }
+  return undefined;
+}
+
+/**
+ * Non-destructive lint: find computed metrics whose explicit
+ * `computeExpr: { sum: [...] }` lists **exactly** every metric of some indexed
+ * role (PV strings, phases). Those are the drift-prone, per-SKU-varying groups
+ * where `sumOf({ role })` is equivalent *and* self-heals when a variant adds or
+ * drops a member — so we suggest it, but never rewrite. Restricted to indexed
+ * roles to stay precise: a heterogeneous or single-member sum isn't a candidate.
+ */
+export function suggestAggregates(data: ProfileData): AggregateSuggestion[] {
+  const byRole = new Map<CanonicalRole, string[]>();
+  for (const m of data.metrics) {
+    if (m.role) (byRole.get(m.role) ?? byRole.set(m.role, []).get(m.role)!).push(m.key);
+  }
+
+  const suggestions: AggregateSuggestion[] = [];
+  for (const m of data.metrics) {
+    const expr = m.computeExpr;
+    if (!expr || !("sum" in expr) || expr.sum.length < 2) continue;
+    const role = indexedRoleCoveredExactly([...expr.sum].sort(), m.key, byRole);
+    if (role) suggestions.push({ key: m.key, role, count: expr.sum.length });
+  }
+  return suggestions;
+}

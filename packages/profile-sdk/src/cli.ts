@@ -3,6 +3,7 @@
  * `profile` — authoring CLI for SunReye inverter profiles.
  *
  *   profile init [dir] [--pkg n] [--id i] [--manufacturer m] [--yes]
+ *   profile upgrade [dir] [--force]    refresh the AI authoring guide (AGENTS.md + CLAUDE.md)
  *   profile validate <file>            strict validation + semantic lints
  *   profile coverage <file>            which renderable roles are mapped
  *   profile scaffold <csv> --id <id> --name <n> --manufacturer <m> [--version v]
@@ -13,7 +14,15 @@
  * argv and dispatches.
  */
 
-import { cmdBuild, cmdCoverage, cmdInit, cmdScaffold, cmdValidate, flags } from "./cli-commands";
+import {
+  cmdBuild,
+  cmdCoverage,
+  cmdInit,
+  cmdScaffold,
+  cmdUpgrade,
+  cmdValidate,
+  flags,
+} from "./cli-commands";
 
 const [command, ...rest] = process.argv.slice(2);
 
@@ -22,6 +31,11 @@ switch (command) {
     // First positional is the target dir unless it's a flag.
     const hasDir = rest[0] !== undefined && !rest[0].startsWith("--");
     await cmdInit(hasDir ? rest[0] : undefined, flags(hasDir ? rest.slice(1) : rest));
+    break;
+  }
+  case "upgrade": {
+    const hasDir = rest[0] !== undefined && !rest[0].startsWith("--");
+    await cmdUpgrade(hasDir ? rest[0] : undefined, flags(hasDir ? rest.slice(1) : rest));
     break;
   }
   case "validate":
@@ -41,6 +55,8 @@ switch (command) {
     break;
   }
   default:
-    console.error("usage: profile <init|validate|coverage|scaffold|build> [file...] [options]");
+    console.error(
+      "usage: profile <init|upgrade|validate|coverage|scaffold|build> [file...] [options]",
+    );
     process.exit(1);
 }

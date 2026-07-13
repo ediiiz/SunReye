@@ -9,8 +9,15 @@ import { existsSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { coverage, groupByPrefix, isIndexedRole } from "./coverage";
-import { scaffoldProject, titleFromId, type InitOptions } from "./init";
+import { coverage, groupByPrefix, isIndexedRole, suggestAggregates } from "./coverage";
+import {
+  aiGuideFiles,
+  planUpgrade,
+  scaffoldProject,
+  titleFromId,
+  type InitOptions,
+  type UpgradeStatus,
+} from "./init";
 import { buildRepo, type RepoEntryInput } from "./repo";
 import { scaffoldFromCsv } from "./scaffold";
 import { validateProfile } from "./validate";
@@ -63,12 +70,72 @@ export async function cmdCoverage(path: string | undefined): Promise<void> {
   console.log(`Role coverage: ${report.mappedCount}/${report.total} canonical roles mapped\n`);
   if (report.missing.length === 0) {
     console.log("✓ every renderable role is mapped");
-    return;
+  } else {
+    console.log("Unmapped roles (these UI areas render empty):");
+    for (const [prefix, roles] of groupByPrefix(report.missing)) {
+      const list = roles.map((r) => (isIndexedRole(r) ? `${r}[]` : r)).join(", ");
+      console.log(`  ${prefix}: ${list}`);
+    }
   }
-  console.log("Unmapped roles (these UI areas render empty):");
-  for (const [prefix, roles] of groupByPrefix(report.missing)) {
-    const list = roles.map((r) => (isIndexedRole(r) ? `${r}[]` : r)).join(", ");
-    console.log(`  ${prefix}: ${list}`);
+
+  const hints = suggestAggregates(data as ProfileData);
+  if (hints.length > 0) {
+    console.log("\nOptimization hints:");
+    for (const h of hints) {
+      console.log(
+        `  • "${h.key}" sums every ${h.role} (${h.count} metrics) — consider ` +
+          `sumOf({ role: "${h.role}" }) so model variants self-heal.`,
+      );
+    }
+  }
+}
+
+/**
+ * Refresh the cross-tool AI authoring guide ({@link aiGuideFiles}) in an
+ * existing project — the upgrade path for repos scaffolded before it existed.
+ * Managed files with local edits are kept unless `--force`; a `CLAUDE.md` that
+ * lacks the `@AGENTS.md` import is flagged rather than clobbered.
+ */
+export async function cmdUpgrade(
+  dir: string | undefined,
+  opts: Record<string, string>,
+): Promise<void> {
+  const targetDir = resolve(dir ?? ".");
+  if (!existsSync(join(targetDir, "package.json"))) {
+    fail(
+      `${targetDir} has no package.json — run this inside a profile-authoring project ` +
+        `(or 'profile init' to create one)`,
+    );
+  }
+  const force = "force" in opts && opts.force !== "false";
+
+  const existing: Record<string, string | null> = {};
+  for (const f of aiGuideFiles()) {
+    const file = Bun.file(join(targetDir, f.path));
+    existing[f.path] = (await file.exists()) ? await file.text() : null;
+  }
+  const plan = planUpgrade(existing, force);
+  for (const action of plan) {
+    if (action.write !== null) await Bun.write(join(targetDir, action.path), action.write);
+  }
+
+  const mark: Record<UpgradeStatus, string> = {
+    created: "＋ created",
+    updated: "↻ updated",
+    unchanged: "✓ up to date",
+    diverged: "⚠ kept your edited copy",
+    manual: "⚠ needs a manual edit",
+  };
+  console.log(`AI authoring guide in ${targetDir}:`);
+  for (const action of plan) console.log(`  ${mark[action.status]} — ${action.path}`);
+
+  if (plan.some((a) => a.status === "diverged")) {
+    console.log(
+      "\nA managed file has local edits and was left as-is — re-run with --force to overwrite.",
+    );
+  }
+  if (plan.some((a) => a.status === "manual")) {
+    console.log("\nAdd `@AGENTS.md` to the top of your CLAUDE.md so Claude Code reads the guide.");
   }
 }
 

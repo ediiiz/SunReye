@@ -271,6 +271,22 @@ browser), or an array of either gets included. Any invalid profile or duplicate 
 the whole build, so a broken repo never gets published. The same logic is available
 programmatically as `buildRepo(entries, { name, maintainer })`.
 
+### Change-aware versioning
+
+Because SunReye's [update checker](/profiles/distribution/#update-checking) is **semver-aware**,
+a profile only shows an update when its version genuinely increases. `profile build` handles
+this for you: it reads the **previously built** `profiles/*.json` under `--out` and compares
+each profile's *content* (everything but its `version`, order-independent) against it.
+
+- **Unchanged** content keeps the published version — no churn, no false "update available".
+- **Changed** content is **auto-bumped** (default `--bump patch`; `minor` / `major` also
+  accepted) above the last published version.
+- A version you **raised yourself** in source is respected (*bumped by author*).
+- A **new** profile (or a first build with nothing prior) is published as-authored.
+
+The build summary reports the outcome per profile (e.g. `acme-hybrid@1.0.1 (bumped from
+1.0.0)`), so the flow stays *edit → build → commit → push* without hand-editing versions.
+
 ## Testing without hardware
 
 The SDK's test harness (`exerciseProfile`) runs a `ProfileData` end to end offline —

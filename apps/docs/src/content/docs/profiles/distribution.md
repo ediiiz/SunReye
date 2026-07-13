@@ -51,12 +51,27 @@ directly). To pull external profiles, add a repository yourself. Source URLs mus
 
 From [Settings → Profiles](/use/settings/) (admin only) you can:
 
-- **Add / remove / enable repositories** — the "Profile repositories" section.
-- **Browse** all enabled repos to see available profiles, each annotated with **installed**,
-  **update available** (repo version ≠ installed version), or downloadable state.
+- **Add / remove / enable repositories** — the "Profile repositories" section. Edits
+  auto-save.
+- **Browse** all enabled repos to see available profiles, grouped by **manufacturer** and
+  then **family**, each row labelled with its **source repo** and annotated **installed**,
+  **update available** (the repo offers a semver-newer release), or downloadable.
 - **Download** a profile — SunReye fetches its `ProfileData`, validates it, and stores it.
 - **Set active** — choose which installed profile the server runs.
 - **Remove** an installed profile (not the active one).
+
+## Update checking
+
+A **background checker** runs independently of the poll loop: shortly after boot, then every
+few hours, it syncs enabled sources and diffs installed versions against them
+(**semver-aware** — only a genuinely newer release counts). The result is cached behind a
+public `GET /api/profiles/updates` endpoint, so [Settings → Profiles](/use/settings/#profiles)
+can show an **updates banner** with one-click updates without an admin manually browsing. The
+checker stops on graceful shutdown.
+
+An update only reflects a newer version when the author bumped it — see
+[change-aware versioning](/profiles/authoring/#change-aware-versioning) for how `profile build`
+does that automatically.
 
 ## What happens on the server
 

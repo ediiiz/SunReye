@@ -40,6 +40,51 @@ let bridge: MqttBridge | null = null;
 let onSample: SampleListener = () => {};
 let polling = false;
 
+// --- History write buffer --------------------------------------------------
+// The DB is purely the history store — live monitoring is served from
+// `liveState`/WebSocket in memory — so *when* rows land is invisible to every
+// feature. Accumulating many polls into one transaction collapses the
+// commit/fsync/WAL churn that dominates SSD write wear (TBW) at 1 Hz, for zero
+// functional change. Worst case a crash loses the buffered window of *history*
+// (never live data, never corruption) — an acceptable trade for telemetry.
+type MetricRow = typeof metricsRaw.$inferInsert;
+let pending: MetricRow[] = [];
+let flushTimer: ReturnType<typeof setInterval> | null = null;
+let flushing = false;
+// Hard cap so a prolonged DB outage can't grow the buffer without bound; past
+// this the oldest rows are dropped (bounded, predictable memory).
+const MAX_PENDING = 100_000;
+
+/** Queue history rows for the next flush; eager-flush if the buffer is huge. */
+function enqueueRows(rows: MetricRow[]): void {
+  for (const row of rows) pending.push(row);
+  // Guards against a mis-set (very long) flush interval or a stalled flush
+  // producing one enormous transaction; the timer handles the normal path.
+  if (!flushing && pending.length >= MAX_PENDING) void flushPending();
+}
+
+/** Write the buffered history rows in a single transaction. */
+async function flushPending(): Promise<void> {
+  if (flushing || pending.length === 0) return;
+  flushing = true;
+  const batch = pending;
+  pending = [];
+  try {
+    await db.insert(metricsRaw).values(batch);
+  } catch (error) {
+    // Re-queue (oldest first) so a transient DB blip doesn't drop history, but
+    // never past the cap — trim the oldest if we're over.
+    pending = batch.concat(pending);
+    if (pending.length > MAX_PENDING) pending = pending.slice(-MAX_PENDING);
+    logger.error("history flush failed, {count} rows queued: {error}", {
+      count: pending.length,
+      error,
+    });
+  } finally {
+    flushing = false;
+  }
+}
+
 /** The active profile context, set by {@link start} before the loop runs. */
 function context(): ProfileContext {
   if (!ctx) throw new Error("runtime not started");
@@ -75,7 +120,9 @@ async function pollOnce(): Promise<void> {
       metric,
       value,
     }));
-    if (rows.length > 0) await db.insert(metricsRaw).values(rows);
+    // Buffer for a batched flush (see the history write buffer above) rather
+    // than committing one transaction per poll.
+    if (rows.length > 0) enqueueRows(rows);
     onSample(sample);
     bridge?.publishSample(sample);
   } catch (error) {
@@ -113,6 +160,9 @@ export async function write(key: string, value: number): Promise<void> {
 }
 
 async function rebuildInverter(config: InverterConfig): Promise<void> {
+  // Drain buffered rows before swapping sources so a changed inverterId can't
+  // land on rows captured under the previous one.
+  await flushPending();
   const previous = source;
   source = buildSource(context().profile, config);
   // The simulator is always "connected"; a real Modbus source only proves it on
@@ -133,6 +183,9 @@ async function rebuildBridge(config: MqttConfig): Promise<void> {
 export async function start(listener: SampleListener, profileCtx: ProfileContext): Promise<void> {
   ctx = profileCtx;
   onSample = listener;
+  if (!flushTimer) {
+    flushTimer = setInterval(() => void flushPending(), env.HISTORY_FLUSH_INTERVAL_MS);
+  }
   await rebuildInverter(await getInverterConfig());
   await rebuildBridge(await getMqttConfig());
 }
@@ -260,6 +313,10 @@ export function testMqtt(config: MqttConfig): Promise<{ ok: boolean; error?: str
 export async function stop(): Promise<void> {
   if (pollTimer) clearInterval(pollTimer);
   pollTimer = null;
+  if (flushTimer) clearInterval(flushTimer);
+  flushTimer = null;
+  // Persist whatever is buffered so a clean shutdown never drops history.
+  await flushPending();
   await bridge?.close();
   await source?.close();
 }

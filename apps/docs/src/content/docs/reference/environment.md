@@ -56,6 +56,7 @@ Variables below are marked:
 | `INVERTER_UNIT_ID` | number | `1` | seed only | Modbus unit / slave id. |
 | `INVERTER_SIMULATE` | boolean | `true` | **env-only** | Generate synthetic telemetry instead of reading real hardware. Deliberately deploy-level, not in DB config. |
 | `POLL_INTERVAL_MS` | number | `1000` | seed only | Poll cadence in ms (floored at 1000). |
+| `HISTORY_FLUSH_INTERVAL_MS` | number | `5000` | **env-only** | How often buffered history rows are flushed to TimescaleDB in one transaction. Batching cuts SSD write wear (TBW) at 1 Hz; live data is unaffected (served from memory). A crash can lose at most this window of history. Set ≤ poll interval to disable batching. |
 
 Two connection fields are DB-only (no env seed): **transport** (`tcp` / `rtu-over-tcp`) and
 **timeout** (default 2000 ms). Set them from [Settings → Inverter](/use/settings/).

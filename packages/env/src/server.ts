@@ -60,6 +60,14 @@ export const env = createEnv({
     INVERTER_TRANSPORT: z.enum(["tcp", "rtu-over-tcp"]).optional(),
     // Polling cadence for the 1Hz God-loop (milliseconds)
     POLL_INTERVAL_MS: z.coerce.number().int().positive().default(1000),
+    // History rows are buffered in memory and flushed to TimescaleDB in one
+    // transaction every this-many ms, instead of one INSERT per poll. Batching
+    // collapses commit/fsync/WAL churn — the dominant driver of SSD write wear
+    // (TBW) at 1 Hz — with no functional change: live data is served from memory
+    // over WebSocket, not the DB, so *when* rows land is invisible. A crash can
+    // lose at most this window of history (never live data, never corruption).
+    // Set at or below POLL_INTERVAL_MS to effectively disable batching.
+    HISTORY_FLUSH_INTERVAL_MS: z.coerce.number().int().positive().default(5000),
     // When true, generate synthetic metrics instead of talking to hardware
     INVERTER_SIMULATE: z
       .enum(["true", "false"])

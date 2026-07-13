@@ -8,6 +8,7 @@ import {
   setInverterConfig,
   setMqttConfig,
 } from "../config";
+import { getDisplay, setDisplay } from "../display-settings";
 import * as runtime from "../runtime";
 import { getTariff, setTariff } from "../settings";
 import { adminGuard } from "./admin-guard";
@@ -27,6 +28,20 @@ export const settingsRoutes = new Elysia({ name: "settings-routes" })
         return await setTariff(body);
       } catch (error) {
         return status(400, { error: error instanceof Error ? error.message : "Invalid tariff" });
+      }
+    },
+    { requireAdmin: true, body: t.Unknown() },
+  )
+  // Display preferences (clock format + time zone) for the web app. A shared,
+  // instance-wide render setting: any authed user reads it; only admins write.
+  .get("/api/settings/display", () => getDisplay())
+  .put(
+    "/api/settings/display",
+    async ({ body, status }) => {
+      try {
+        return await setDisplay(body);
+      } catch (error) {
+        return status(400, { error: error instanceof Error ? error.message : "Invalid display" });
       }
     },
     { requireAdmin: true, body: t.Unknown() },

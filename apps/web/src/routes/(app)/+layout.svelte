@@ -12,12 +12,17 @@
 	import { useAppSession } from '$lib/session';
 	import { firstRunGate, type FirstRunGate } from '$lib/setup';
 	import { inverter } from '$lib/inverter/store.svelte';
+	import { display } from '$lib/display.svelte';
 	import SunIcon from 'phosphor-svelte/lib/Sun';
 	import MoonIcon from 'phosphor-svelte/lib/Moon';
 
 	const { children } = $props();
 
 	const sessionQuery = useAppSession();
+
+	// The hash router pins `page.url.pathname` to the served document path, so
+	// the active route has to come from the hash (see `routePath`).
+	const current = $derived(routePath(page.url));
 
 	// Client-side guard (matches the existing app auth pattern).
 	$effect(() => {
@@ -52,7 +57,12 @@
 	// Open the manifest + live stream once the instance is fully configured
 	// (skipped in onboarding-only boot, where `/api/profile` has no manifest).
 	$effect(() => {
-		if (gate === 'ready') inverter.start();
+		if (gate === 'ready') {
+			inverter.start();
+			// Load the instance-wide clock/time-zone preference so charts render in
+			// the configured format from first paint.
+			display.load();
+		}
 	});
 
 	const SECTION: Record<string, string> = {
@@ -105,7 +115,7 @@
 				</div>
 			</header>
 			<main class="min-h-0 flex-1 overflow-y-auto">
-				{#key page.url.pathname}
+				{#key current}
 					<div in:fade={contentIn}>
 						{@render children()}
 					</div>

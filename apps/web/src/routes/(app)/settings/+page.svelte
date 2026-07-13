@@ -4,6 +4,7 @@
 	import TariffForm from '$lib/components/settings/tariff-form.svelte';
 	import InverterForm from '$lib/components/settings/inverter-form.svelte';
 	import MqttForm from '$lib/components/settings/mqtt-form.svelte';
+	import DisplayForm from '$lib/components/settings/display-form.svelte';
 	import ProfilesForm from '$lib/components/settings/profiles-form.svelte';
 	import UsersForm from '$lib/components/settings/users-form.svelte';
 	import ApiKeysForm from '$lib/components/settings/api-keys-form.svelte';
@@ -19,6 +20,7 @@
 		{ id: 'inverter', label: 'Inverter' },
 		{ id: 'mqtt', label: 'MQTT & Home Assistant' },
 		{ id: 'tariff', label: 'Tariff' },
+		{ id: 'display', label: 'Date & Time' },
 		...(isAdmin
 			? [
 					{ id: 'profiles', label: 'Profiles' },
@@ -81,6 +83,9 @@
 		</Tabs.Content>
 		<Tabs.Content value="tariff" class="flex flex-col gap-6">
 			<TariffForm />
+		</Tabs.Content>
+		<Tabs.Content value="display" class="flex flex-col gap-6">
+			<DisplayForm />
 		</Tabs.Content>
 		{#if isAdmin}
 			<Tabs.Content value="profiles" class="flex flex-col gap-6">

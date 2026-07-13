@@ -13,6 +13,16 @@ export type RegisteredProfile = {
 
 export type Source = { url: string; label?: string; enabled: boolean };
 
+/** An installed profile with a newer release waiting in its source repo. */
+export type ProfileUpdate = {
+  id: string;
+  name: string;
+  manufacturer: string;
+  source: string;
+  installedVersion: string;
+  latestVersion: string;
+};
+
 export type AvailableProfile = {
   id: string;
   name: string;

@@ -55,8 +55,8 @@
 			<p class="py-2.5 text-sm text-muted-foreground">No repositories configured.</p>
 		{/if}
 	</div>
-	<div class="flex items-end gap-2">
-		<div class="flex flex-1 flex-col gap-1.5">
+	<div class="flex flex-col gap-2 sm:flex-row sm:items-end">
+		<div class="flex min-w-0 flex-1 flex-col gap-1.5">
 			<Label for="new-source">Add repository (https git URL)</Label>
 			<Input
 				id="new-source"
@@ -64,7 +64,7 @@
 				placeholder="https://github.com/org/inverter-profiles.git"
 			/>
 		</div>
-		<Button variant="outline" onclick={add}>Add</Button>
+		<Button variant="outline" class="w-full sm:w-auto" onclick={add}>Add</Button>
 	</div>
 	<div>
 		<Button disabled={saving} onclick={onSave}>

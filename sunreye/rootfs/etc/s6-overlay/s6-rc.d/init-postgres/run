@@ -34,6 +34,16 @@ timescaledb.max_background_workers = 8
 # The image ships without LLVM (JIT machinery pruned for size); this must
 # stay off or planner attempts to JIT would fail to load llvmjit.so.
 jit = off
+# SSD-endurance tuning: cut the writes (TBW) a 1 Hz ingest makes — this addon
+# most often runs on a Pi (SD card / eMMC), where write wear matters most.
+# synchronous_commit=off group-commits WAL (bounded <~0.5s crash-loss window
+# for telemetry — no corruption); wal_compression shrinks full-page images;
+# wider checkpoint spacing means fewer full-page writes. Mirrors the compose
+# deployments' postgres flags.
+synchronous_commit = off
+wal_compression = on
+max_wal_size = 2GB
+checkpoint_timeout = 30min
 EOF
 chown postgres:postgres /data/postgres/sunreye.conf
 grep -q "include = 'sunreye.conf'" /data/postgres/postgresql.conf \

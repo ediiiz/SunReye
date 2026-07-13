@@ -80,6 +80,33 @@ Derived metrics use a small **closed** set — never arbitrary code:
 Referenced keys are resolved from the live sample at compute time; a **missing key reads as
 0**. A computed metric may only reference metrics defined **earlier** (no forward references).
 
+### Deferred aggregates: `sumOf`
+
+A hand-listed `sum` drifts the moment a model adds or drops a member. `sumOf` lets you
+declare the **intent** once — "sum every PV-string power" — and resolves it to a concrete
+`{ sum: [...] }` against the *final* metric set at build time:
+
+```ts
+import { metric, sumOf } from "@sunreye/profile-sdk";
+
+metric("dc/total_power", {
+  label: "PV Total", group: "solar", unit: "W",
+  role: "pv.total.power",
+  computeExpr: sumOf({ role: "pv.string.power" }), // every metric carrying this role
+});
+```
+
+Select members by **`role`** (every metric with that canonical role) or by **`keyPrefix`**
+(the exact key plus every `${prefix}.` descendant, e.g. `sumOf({ keyPrefix: "battery.bank" })`);
+the carrier never sums itself. The token is resolved and **stripped before validation**, so
+an emitted profile still contains only the closed `{ sum: [...] }` form and the runtime
+engine sees nothing new. **Fail-loud:** an aggregate that matches zero metrics is a build
+error, never a silent empty sum.
+
+The payoff shows up in families (below): because it resolves against *each model's*
+surviving metrics, a variant that drops a PV string re-derives the correct total on its own
+— no per-model patch.
+
 ## Families & model variants
 
 A single repo holds **as many profiles as you like** — hundreds is fine (`index.json` plus
@@ -144,6 +171,25 @@ schema, hydrate, or server change is involved — the whole feature is authoring
 To specialize a single imported or third-party `ProfileData` instead of a co-located base,
 use the low-level primitive `defineVariant(base, { id, name?, metrics? })`.
 
+### Removing a metric that others reference
+
+Dropping a metric another one depends on used to fail late and opaquely (a
+`references unknown metric key` error at load). `defineFamily`/`defineVariant` now reconcile
+the survivors as part of applying the overlay:
+
+- a removed key inside a **variadic** compute list (`sum`, `combine.add`/`sub`,
+  `ratio.num`/`den`) is **pruned** from it — the same edit you'd make by hand;
+- a removed key inside a **fixed-arity** expr (`diff`, `scale`), one whose removal would
+  **empty a required list**, or a **control target**, **throws** at build time — naming both
+  metrics — rather than silently changing the value (an emptied `ratio.den`, say, would read
+  a constant `0`).
+
+So removing `dc.pv2.*` from a base whose `dc.total_power` is
+`{ sum: ["dc.pv1.power", "dc.pv2.power"] }` leaves `{ sum: ["dc.pv1.power"] }` with **no
+manual patch**. Author the total as [`sumOf({ role: "pv.string.power" })`](#deferred-aggregates-sumof)
+and the base carries no explicit key list at all — every model's total simply tracks its own
+strings.
+
 ## Validation
 
 A single Zod schema is the gate for **every** ingested profile — at author time, at
@@ -157,6 +203,11 @@ download time, and at server boot. It is strict:
 
 Because a profile is pure data, a bad profile can only fail validation or produce an empty
 manifest — **it can never execute code**.
+
+Within a family the SDK catches dependency breakage a step earlier still: an overlay that
+removes a metric a survivor references throws at `defineFamily`/`defineVariant` time, naming
+both metrics, before the profile ever reaches this schema (see
+[Removing a metric that others reference](#removing-a-metric-that-others-reference)).
 
 ## The `profile` CLI
 

@@ -6,10 +6,12 @@
 	import * as Dialog from "$lib/components/ui/dialog";
 	import ExternalProfilesManager from "./external-profiles-manager.svelte";
 	import InstalledProfilesList from "./installed-profiles-list.svelte";
+	import ProfileUpdatesBanner from "./profile-updates-banner.svelte";
 	import RestartButton from "./restart-button.svelte";
-	import type { RegisteredProfile } from "./profile-types";
+	import type { ProfileUpdate, RegisteredProfile } from "./profile-types";
 
 	let registered = $state<RegisteredProfile[]>([]);
+	let updates = $state<ProfileUpdate[]>([]);
 	let restartRequired = $state(false);
 	let busyId = $state<string | null>(null);
 	/** Profile queued to become active once the server restarts, if any. */
@@ -23,11 +25,34 @@
 		if (data) registered = data as RegisteredProfile[];
 	}
 
-	onMount(loadRegistered);
+	async function loadUpdates() {
+		// Cached result of the server's background update checker (semver-aware).
+		const { data } = await api.api.profiles.updates.get();
+		if (data) updates = data.updates as ProfileUpdate[];
+	}
+
+	onMount(() => {
+		void loadRegistered();
+		void loadUpdates();
+	});
 
 	async function onExternalInstalled() {
 		// A downloaded profile is only registered/selectable after a restart.
 		restartRequired = true;
+		await Promise.all([loadRegistered(), loadUpdates()]);
+	}
+
+	async function updateProfile(u: ProfileUpdate) {
+		busyId = u.id;
+		const { error } = await api.api.profiles.install.post({ source: u.source, id: u.id });
+		busyId = null;
+		if (error) {
+			toast.error(`Update failed: ${String(error.value)}`);
+			return;
+		}
+		toast.success(`Updated ${u.name} to v${u.latestVersion}`);
+		restartRequired = true;
+		updates = updates.filter((x) => x.id !== u.id);
 		await loadRegistered();
 	}
 
@@ -58,6 +83,8 @@
 </script>
 
 <div class="flex flex-col gap-6">
+	<ProfileUpdatesBanner {updates} {busyId} onUpdate={updateProfile} />
+
 	{#if restartRequired && !pendingActiveId}
 		<div
 			class="flex flex-col gap-3 border border-amber-500/50 bg-amber-500/10 p-3 text-sm text-amber-700 sm:flex-row sm:items-center sm:gap-2 dark:text-amber-400"

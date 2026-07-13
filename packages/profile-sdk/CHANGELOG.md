@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/SunReye/SunReye/compare/profile-sdk-v1.3.0...profile-sdk-v1.4.0) (2026-07-13)
+
+
+### Features
+
+* **profile-sdk:** scaffold portable AI authoring guide + add upgrade and sumOf lint ([92fc0f9](https://github.com/SunReye/SunReye/commit/92fc0f9352844e1da98533e5b676347af4de1100))
+
 ## [1.3.0](https://github.com/SunReye/SunReye/compare/profile-sdk-v1.2.0...profile-sdk-v1.3.0) (2026-07-12)
 
 

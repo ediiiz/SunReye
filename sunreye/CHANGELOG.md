@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/SunReye/SunReye/compare/addon-v0.5.0...addon-v0.6.0) (2026-07-13)
+
+
+### Miscellaneous Chores
+
+* **addon:** Synchronize sunreye-stack versions
+
 ## [0.5.0](https://github.com/SunReye/SunReye/compare/addon-v0.4.0...addon-v0.5.0) (2026-07-12)
 
 

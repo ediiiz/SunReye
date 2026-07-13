@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/SunReye/SunReye/compare/server-v0.5.0...server-v0.6.0) (2026-07-13)
+
+
+### Features
+
+* **inverter-core:** add sumOf deferred aggregates + prune dangling overlay refs ([41b413e](https://github.com/SunReye/SunReye/commit/41b413e4c6381a05ed204e4f8a84ef5fb7de4e20))
+
 ## [0.5.0](https://github.com/SunReye/SunReye/compare/server-v0.4.0...server-v0.5.0) (2026-07-12)
 
 

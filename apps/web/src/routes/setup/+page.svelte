@@ -3,6 +3,7 @@
 	import { resolve } from '$lib/resolve';
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
+	import Check from 'phosphor-svelte/lib/Check';
 	import { api } from '$lib/api';
 	import Logo from '$lib/components/logo.svelte';
 	import { Button } from '$lib/components/ui/button';
@@ -62,11 +63,12 @@
 		activated = true;
 	}
 
-	const steps: [Step, string][] = [
-		['profile', '1 · Profile'],
-		['connect', '2 · Connection'],
-		['activate', '3 · Activate']
+	const steps: { key: Step; label: string }[] = [
+		{ key: 'profile', label: 'Profile' },
+		{ key: 'connect', label: 'Connection' },
+		{ key: 'activate', label: 'Activate' }
 	];
+	const currentStep = $derived(steps.findIndex((s) => s.key === step));
 </script>
 
 <div class="relative min-h-svh overflow-y-auto bg-background p-4">
@@ -86,14 +88,47 @@
 			</div>
 		</div>
 
-		<ol class="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-			{#each steps as [key, label] (key)}
-				<li
-					class="border border-border px-2.5 py-1 {step === key
-						? 'bg-primary/10 font-medium text-foreground'
-						: ''}"
-				>
-					{label}
+		<ol class="flex items-start">
+			{#each steps as s, i (s.key)}
+				{@const state = i < currentStep ? 'done' : i === currentStep ? 'current' : 'upcoming'}
+				<li class="flex flex-1 flex-col items-center gap-2">
+					<div class="flex w-full items-center">
+						<span
+							class="h-px flex-1 {i === 0
+								? 'bg-transparent'
+								: i <= currentStep
+									? 'bg-primary'
+									: 'bg-border'}"
+						></span>
+						<span
+							class="flex size-8 shrink-0 items-center justify-center rounded-full border text-sm font-medium transition-colors {state ===
+							'done'
+								? 'border-primary bg-primary text-primary-foreground'
+								: state === 'current'
+									? 'border-primary text-primary'
+									: 'border-border text-muted-foreground'}"
+						>
+							{#if state === 'done'}
+								<Check class="size-4" weight="bold" />
+							{:else}
+								{i + 1}
+							{/if}
+						</span>
+						<span
+							class="h-px flex-1 {i === steps.length - 1
+								? 'bg-transparent'
+								: i < currentStep
+									? 'bg-primary'
+									: 'bg-border'}"
+						></span>
+					</div>
+					<span
+						class="text-center text-xs {state === 'upcoming'
+							? 'text-muted-foreground'
+							: 'font-medium text-foreground'}"
+					>
+						{s.label}
+					</span>
 				</li>
 			{/each}
 		</ol>

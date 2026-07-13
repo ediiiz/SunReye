@@ -203,7 +203,12 @@
 
 		<FormActions {result} {testing} {saving} ontest={test} onsave={save}>
 			{#if hasSnapshot}
-				<Button variant="ghost" size="sm" onclick={() => (snapshotOpen = true)}>
+				<Button
+					variant="ghost"
+					size="sm"
+					class="w-full sm:w-auto"
+					onclick={() => (snapshotOpen = true)}
+				>
 					View snapshot
 				</Button>
 			{/if}

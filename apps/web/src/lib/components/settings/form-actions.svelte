@@ -26,12 +26,14 @@
 	<p class="text-sm {result.ok ? 'text-emerald-500' : 'text-destructive'}">{result.message}</p>
 {/if}
 
-<div class="flex items-center justify-end gap-2">
+<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
 	{#if children}
-		<div class="mr-auto">{@render children()}</div>
+		<div class="sm:mr-auto">{@render children()}</div>
 	{/if}
-	<Button variant="outline" onclick={ontest} disabled={testing}>
+	<Button variant="outline" class="w-full sm:w-auto" onclick={ontest} disabled={testing}>
 		{testing ? 'Testing…' : 'Test connection'}
 	</Button>
-	<Button onclick={onsave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
+	<Button class="w-full sm:w-auto" onclick={onsave} disabled={saving}>
+		{saving ? 'Saving…' : 'Save'}
+	</Button>
 </div>

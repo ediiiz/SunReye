@@ -43,7 +43,7 @@
 			{#each available as p (p.source + p.id)}
 				<div class="flex items-center justify-between gap-4 py-2.5">
 					<div class="flex min-w-0 flex-col">
-						<span class="text-sm font-medium">{p.name}</span>
+						<span class="wrap-break-word text-sm font-medium">{p.name}</span>
 						<span class="truncate text-xs text-muted-foreground">
 							{p.manufacturer} · v{p.version}{p.description ? ` · ${p.description}` : ""}
 						</span>

@@ -82,6 +82,21 @@ services:
     # deliberately with a release, never implicitly.
     image: timescale/timescaledb:2.28.2-pg17
     container_name: SunReye-postgres
+    # SSD-endurance tuning: cut the writes (TBW) a 1 Hz ingest makes.
+    # synchronous_commit=off group-commits WAL (bounded <~0.5s crash-loss window
+    # for telemetry — no corruption); wal_compression shrinks full-page images;
+    # wider checkpoint spacing means fewer full-page writes. Additive `-c`
+    # overrides — timescaledb's own config (shared_preload_libraries) is kept.
+    command:
+      - postgres
+      - -c
+      - synchronous_commit=off
+      - -c
+      - wal_compression=on
+      - -c
+      - max_wal_size=2GB
+      - -c
+      - checkpoint_timeout=30min
     environment:
       POSTGRES_DB: SunReye
       POSTGRES_USER: postgres

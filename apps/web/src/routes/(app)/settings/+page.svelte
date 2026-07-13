@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { api } from '$lib/api';
-	import RangeSwitcher from '$lib/components/inverter/range-switcher.svelte';
+	import * as Tabs from '$lib/components/ui/tabs';
 	import TariffForm from '$lib/components/settings/tariff-form.svelte';
 	import InverterForm from '$lib/components/settings/inverter-form.svelte';
 	import MqttForm from '$lib/components/settings/mqtt-form.svelte';
@@ -28,9 +28,7 @@
 				]
 			: [])
 	] as const);
-	let tab = $state<
-		'inverter' | 'mqtt' | 'tariff' | 'profiles' | 'users' | 'apikeys' | 'danger'
-	>('inverter');
+	let tab = $state('inverter');
 
 	type Status = {
 		inverter: {
@@ -66,37 +64,37 @@
 		<h1 class="text-lg font-semibold">Settings</h1>
 	</header>
 
-	<div class="flex flex-col gap-6">
-		<RangeSwitcher options={TABS} bind:value={tab} />
+	<Tabs.Root bind:value={tab} class="gap-6">
+		<div class="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+			<Tabs.List variant="line" class="w-max">
+				{#each TABS as t (t.id)}
+					<Tabs.Trigger value={t.id}>{t.label}</Tabs.Trigger>
+				{/each}
+			</Tabs.List>
+		</div>
 
-		{#if tab === 'inverter'}
-			<div class="flex flex-col gap-6">
-				<InverterForm status={status?.inverter ?? null} />
-			</div>
-		{:else if tab === 'mqtt'}
-			<div class="flex flex-col gap-6">
-				<MqttForm status={status?.mqtt ?? null} />
-			</div>
-		{:else if tab === 'tariff'}
-			<div class="flex flex-col gap-6">
-				<TariffForm />
-			</div>
-		{:else if tab === 'profiles' && isAdmin}
-			<div class="flex flex-col gap-6">
+		<Tabs.Content value="inverter" class="flex flex-col gap-6">
+			<InverterForm status={status?.inverter ?? null} />
+		</Tabs.Content>
+		<Tabs.Content value="mqtt" class="flex flex-col gap-6">
+			<MqttForm status={status?.mqtt ?? null} />
+		</Tabs.Content>
+		<Tabs.Content value="tariff" class="flex flex-col gap-6">
+			<TariffForm />
+		</Tabs.Content>
+		{#if isAdmin}
+			<Tabs.Content value="profiles" class="flex flex-col gap-6">
 				<ProfilesForm />
-			</div>
-		{:else if tab === 'users' && isAdmin}
-			<div class="flex flex-col gap-6">
+			</Tabs.Content>
+			<Tabs.Content value="users" class="flex flex-col gap-6">
 				<UsersForm />
-			</div>
-		{:else if tab === 'apikeys' && isAdmin}
-			<div class="flex flex-col gap-6">
+			</Tabs.Content>
+			<Tabs.Content value="apikeys" class="flex flex-col gap-6">
 				<ApiKeysForm />
-			</div>
-		{:else if tab === 'danger' && isAdmin}
-			<div class="flex flex-col gap-6">
+			</Tabs.Content>
+			<Tabs.Content value="danger" class="flex flex-col gap-6">
 				<DangerZoneForm />
-			</div>
+			</Tabs.Content>
 		{/if}
-	</div>
+	</Tabs.Root>
 </div>

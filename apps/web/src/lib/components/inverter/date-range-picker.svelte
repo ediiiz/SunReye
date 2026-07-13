@@ -17,17 +17,23 @@
 	const DAY_MS = 86_400_000;
 	const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
-	// The day the stepper points at. Seeded to today; a preset chosen from the
-	// popover doesn't move it, so arrows resume from the last stepped day.
-	let anchor = $state(startOfDay(new Date()));
 	const today = $derived(startOfDay(new Date()));
-	const atToday = $derived(anchor.getTime() >= today.getTime());
+	// The day currently in view, or null when a non-day range (Live / preset) is
+	// active — derived from the range so the arrows always track what's shown.
+	const currentDay = $derived(range.id === 'day' ? startOfDay(range.from) : null);
+	// Forward (towards now) only makes sense on a day strictly before today.
+	const canStepForward = $derived(currentDay !== null && currentDay.getTime() < today.getTime());
 
 	function step(days: number) {
-		const next = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate() + days);
+		// From a non-day range the first step drops into today (the most recent full
+		// day), rather than skipping straight to yesterday.
+		if (currentDay === null) {
+			range = dayRange(today);
+			return;
+		}
+		const next = new Date(currentDay.getFullYear(), currentDay.getMonth(), currentDay.getDate() + days);
 		if (next.getTime() > today.getTime()) return; // never step into the future
-		anchor = next;
-		range = dayRange(anchor);
+		range = dayRange(next);
 	}
 
 	// While a single day is active, show a friendly relative label; otherwise the
@@ -46,5 +52,5 @@
 	onPreset={(id) => (range = resolvePreset(id))}
 	onCustomRange={(start, end) => (range = customRange(start, end))}
 	onStep={step}
-	canStepForward={!atToday}
+	{canStepForward}
 />

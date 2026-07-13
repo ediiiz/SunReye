@@ -1,4 +1,4 @@
-import { control, metric } from "@SunReye/inverter-core";
+import { control, metric, sumOf } from "@SunReye/inverter-core";
 import type { MetricDataDef, ModelOverrides } from "@SunReye/inverter-core";
 
 /**
@@ -306,12 +306,15 @@ const inverter = [
     offset: -100,
     role: "inverter.temperature.ac",
   }),
+  // Declare intent — "sum every PV-string power" — not a hand-listed key set.
+  // Resolved against the final metric set at build time, so a variant that adds
+  // or drops a string re-derives the correct total with no per-model patch.
   metric("dc/total_power", {
     label: "DC Total Power",
     unit: "W",
     group: "inverter",
     role: "pv.total.power",
-    computeExpr: { sum: ["dc.pv1.power", "dc.pv2.power"] },
+    computeExpr: sumOf({ role: "pv.string.power" }),
   }),
   // Power the inverter consumes for itself (conversion losses + standby draw),
   // from the node balance: everything flowing in minus what reaches the load.

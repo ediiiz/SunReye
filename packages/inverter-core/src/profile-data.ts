@@ -50,6 +50,27 @@ export type ComputeExpr =
   | { ratio: { num: string[]; den: string[]; scale?: number } };
 
 /**
+ * Author-time selector for a deferred aggregate ({@link AggregateExpr}). Names
+ * the members to fold in *by intent*, not by hand-listed keys:
+ * - `role`      every metric carrying this {@link CanonicalRole}.
+ * - `keyPrefix` the exact key, plus every `${keyPrefix}.` descendant.
+ */
+export type AggregateMatch = { role: CanonicalRole } | { keyPrefix: string };
+
+/**
+ * A deferred aggregate produced by `sumOf` — the intent "sum every PV-string
+ * power", written once, instead of a hand-copied key list that drifts the
+ * moment a variant drops a string. Resolved against the *final* metric set at
+ * build time ({@link "./define".defineProfile}/`defineVariant`) into a concrete
+ * {@link ComputeExpr}, so an emitted profile only ever carries the closed form —
+ * a profile that still holds one fails validation. Fail-loud: an aggregate that
+ * matches zero metrics is a build error, never a silent empty sum.
+ */
+export interface AggregateExpr {
+  readonly __aggregate: { op: "sum"; match: AggregateMatch };
+}
+
+/**
  * Declarative composite control — the write-side mirror of {@link ComputeExpr}.
  * A metric carrying one has no register of its own; writing to it runs a trusted
  * interpreter (server-side, since it has I/O side effects) that issues writes to
@@ -91,6 +112,12 @@ export interface MetricDataDef {
   access: MetricAccess;
   /** Declarative derived value; mutually exclusive with reading from the wire. */
   computeExpr?: ComputeExpr;
+  /**
+   * Author-time deferred aggregate; resolved into {@link computeExpr} against the
+   * final metric set by `defineProfile`/`defineVariant` and stripped before the
+   * profile is emitted. Never present in a validated profile.
+   */
+  computeAggregate?: AggregateExpr;
   /** Declarative composite control; mutually exclusive with a register + `computeExpr`. */
   controlExpr?: ControlExpr;
   role?: CanonicalRole;
@@ -128,7 +155,9 @@ export function compileComputeExpr(expr: ComputeExpr): (values: MetricValues) =>
 }
 
 function toMetricDef(m: MetricDataDef): MetricDef {
-  const { computeExpr, ...rest } = m;
+  // `computeAggregate` is author-time only; resolution strips it, but drop it
+  // here too so a stray token can never leak into the runtime metric.
+  const { computeExpr, computeAggregate: _computeAggregate, ...rest } = m;
   return computeExpr ? { ...rest, compute: compileComputeExpr(computeExpr) } : rest;
 }
 

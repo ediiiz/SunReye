@@ -31,3 +31,5 @@ export type {
 export { profileDataSchema, parseProfileData, safeParseProfileData } from "./schema";
 export { repoIndexSchema, repoProfileEntrySchema } from "./repo-index";
 export type { RepoIndex, RepoProfileEntry } from "./repo-index";
+export { bumpVersion, compareSemver, isNewerVersion, parseSemver } from "./semver";
+export type { BumpLevel, SemverParts } from "./semver";

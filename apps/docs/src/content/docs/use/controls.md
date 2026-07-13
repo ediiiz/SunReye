@@ -8,7 +8,8 @@ defines. It's **admin-only** and appears in the nav only when the profile has wr
 controls. Changes are pushed to the inverter immediately, through the same validation used by
 the [REST API](/integrations/rest-api/) and [MQTT bridge](/integrations/mqtt/).
 
-![The Controls screen: writable settings rendered as inputs, switches, and selects.](../../../assets/screenshots/controls.png)
+<img class="sr-shot sr-light" src="/SunReye/screenshots/controls-light.png" alt="The Controls screen: writable settings rendered as inputs, switches, and selects." />
+<img class="sr-shot sr-dark" src="/SunReye/screenshots/controls-dark.png" alt="The Controls screen: writable settings rendered as inputs, switches, and selects." />
 
 ## Inverter settings
 

@@ -10,7 +10,8 @@ live status poll keeps the connection badges fresh.
 Tabs: **Inverter**, **MQTT & Home Assistant**, **Tariff** (any admin), plus **Profiles**,
 **Users**, and **API Keys** (admin).
 
-![Settings → Inverter: Modbus connection fields with a live status badge and Test connection.](../../../assets/screenshots/settings.png)
+<img class="sr-shot sr-light" src="/SunReye/screenshots/settings-light.png" alt="Settings → Inverter: Modbus connection fields with a live status badge and Test connection." />
+<img class="sr-shot sr-dark" src="/SunReye/screenshots/settings-dark.png" alt="Settings → Inverter: Modbus connection fields with a live status badge and Test connection." />
 
 ## Inverter
 

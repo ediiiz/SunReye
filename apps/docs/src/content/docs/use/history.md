@@ -8,7 +8,8 @@ entity in one grid. It's backed by TimescaleDB: raw samples for recent windows, 
 continuous-aggregate rollups (per-minute / hourly / daily) for longer spans, so multi-week
 charts stay fast.
 
-![The History grid: every entity charted, grouped by category, with a date-range picker.](../../../assets/screenshots/history.png)
+<img class="sr-shot sr-light" src="/SunReye/screenshots/history-light.png" alt="The History grid: every entity charted, grouped by category, with a date-range picker." />
+<img class="sr-shot sr-dark" src="/SunReye/screenshots/history-dark.png" alt="The History grid: every entity charted, grouped by category, with a date-range picker." />
 
 ## Layout
 

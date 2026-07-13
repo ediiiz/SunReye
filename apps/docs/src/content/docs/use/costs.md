@@ -7,7 +7,8 @@ The **Costs** screen (`/costs`) turns energy flows into money using the tariff y
 in [Settings → Tariff](/use/settings/). It's analysis over telemetry SunReye already stores
 — no extra polling.
 
-![The Costs screen: net cost, import/export, savings, and self-sufficiency tiles above a 12-month energy split.](../../../assets/screenshots/costs.png)
+<img class="sr-shot sr-light" src="/SunReye/screenshots/costs-light.png" alt="The Costs screen: net cost, import/export, savings, and self-sufficiency tiles above a 12-month energy split." />
+<img class="sr-shot sr-dark" src="/SunReye/screenshots/costs-dark.png" alt="The Costs screen: net cost, import/export, savings, and self-sufficiency tiles above a 12-month energy split." />
 
 ## Range and headline tiles
 

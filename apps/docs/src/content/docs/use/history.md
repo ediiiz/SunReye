@@ -27,6 +27,15 @@ last month, last 6 months, last 12 months — plus a custom calendar range. The 
 is chosen automatically from the span: per-minute resolution up to and including the last-week
 (7-day) window, and hourly for anything longer.
 
+### Day stepper
+
+Prev/next **arrows** flank the picker as one segmented control. Stepping drops into a single
+local calendar day — `[00:00, next 00:00)`, DST-correct — and the arrows then walk one civil
+day at a time. From any non-day range (Live or a preset) the first step lands on **today**;
+stepping **forward past today returns to the realtime Live view**. The trigger shows a
+friendly label — *Today*, *Yesterday*, or the date — in the [configured time zone](/use/settings/#date--time).
+The forward arrow is disabled only when Live (or another non-day range) is already showing.
+
 ## Entity cards
 
 Each metric gets a card showing its title and live current value. Cards **lazy-mount as you
@@ -38,6 +47,21 @@ scroll**, so a big grid stays light.
   axes, gridlines, and a formatted tooltip.
 - **Signed** metrics (those with a flow direction, like battery or grid power) use a
   red/green diverging gradient split at zero.
+
+## Custom charts
+
+Above the per-entity grid is a **Custom charts** section where you overlay several metrics on
+one chart — e.g. all PV strings, or battery vs. grid power together.
+
+- **New chart** (admin only) opens an editor: name it and tick **up to 8 metrics** from the
+  same category-grouped, searchable list the grid uses. Edit or delete a chart from its card.
+- Charts follow the page's **date range** (including the day stepper and Live), so all of
+  them move together with the entity grid.
+- An **Area / Line** toggle switches the render style for every custom chart at once. It's a
+  view-only choice — not saved per chart.
+- Saved charts are stored server-side and shared across the instance. Non-admins **see** the
+  charts but can't create or edit them; the section is hidden entirely for non-admins when
+  none exist yet.
 
 ## Retention
 

@@ -7,8 +7,8 @@ The **Settings** screen (`/settings`) is where the deployment is configured at r
 most of it without touching `.env` or restarting. The whole screen is **admin-only**. A
 live status poll keeps the connection badges fresh.
 
-Tabs: **Inverter**, **MQTT & Home Assistant**, **Tariff** (any admin), plus **Profiles**,
-**Users**, and **API Keys** (admin).
+Tabs: **Inverter**, **MQTT & Home Assistant**, **Tariff**, **Date & Time** (any admin), plus
+**Profiles**, **Users**, and **API Keys** (admin).
 
 <img class="sr-shot sr-light" src="/SunReye/screenshots/settings-light.png" alt="Settings → Inverter: Modbus connection fields with a live status badge and Test connection." />
 <img class="sr-shot sr-dark" src="/SunReye/screenshots/settings-dark.png" alt="Settings → Inverter: Modbus connection fields with a live status badge and Test connection." />
@@ -40,14 +40,28 @@ Configure pricing for the [Costs](/use/costs/) screen: currency, standing charge
 rate, a default import price, and **time-of-use bands** (name, price, hour range, weekday
 selection). Add or remove bands and **Save tariff**.
 
+## Date & Time
+
+How timestamps render across the History charts and stepper. Two controls — a **clock
+format** (automatic/locale, 24-hour, or 12-hour) and a **time zone** (automatic, i.e. the
+viewer's, or any IANA zone) — with a **live preview** of "now". The setting is
+**instance-wide**: it applies to everyone using this instance, and only admins can change it.
+
 ## Profiles
 
 Manage inverter [profiles](/profiles/concept/) (admin only), in three sections:
 
 - **Installed profiles** — set active or remove, with built-in vs downloaded and version
   shown. A **Restart required** banner appears after activating or installing.
-- **Profile repositories** — add/remove/enable git repo sources.
-- **Available profiles** — **Browse** enabled repos, then Download / Update per profile.
+- **Profile repositories** — add/remove/enable git repo sources. Sources **auto-save** as you
+  edit, with optimistic updates.
+- **Available profiles** — **Browse** enabled repos. Profiles are grouped by **manufacturer**
+  and, within that, by **family** (collapsible), and each row shows its **source repo**. Per
+  profile: Download, or Update when the repo offers a semver-newer release.
+
+At the top, an **updates banner** surfaces installed profiles with a newer version waiting —
+each with a one-click *Update to vX*. A [background checker](/profiles/distribution/#update-checking)
+refreshes this every few hours, so you see updates without browsing.
 
 See [Distributing Profiles](/profiles/distribution/) for the full flow.
 

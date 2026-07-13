@@ -3,7 +3,7 @@
 	import type { Pathname } from '$app/types';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { resolve } from '$lib/resolve';
+	import { resolve, routePath } from '$lib/resolve';
 	import * as Sidebar from '$lib/components/ui/sidebar';
 	import Logo from '$lib/components/logo.svelte';
 	import { authClient } from '$lib/auth-client';
@@ -19,6 +19,10 @@
 
 	const sessionQuery = useAppSession();
 	const sidebar = Sidebar.useSidebar();
+
+	// The hash router pins `page.url.pathname` to the served document path, so
+	// the active route has to come from the hash (see `routePath`).
+	const current = $derived(routePath(page.url));
 
 	// Controls (live inverter writes) and Settings (config) are admin-only; the
 	// server enforces this on every mutation, and we hide the nav entries for
@@ -78,7 +82,7 @@
 					{#each items as item (item.href)}
 						{@const Icon = item.icon}
 						<Sidebar.MenuItem>
-							<Sidebar.MenuButton isActive={page.url.pathname === item.href}>
+							<Sidebar.MenuButton isActive={current === item.href}>
 								{#snippet child({ props })}
 									<a href={resolve(item.href)} onclick={closeSidebar} {...props}>
 										<Icon class="size-4" />
@@ -97,7 +101,7 @@
 		<Sidebar.Menu>
 			{#if isAdmin}
 				<Sidebar.MenuItem>
-					<Sidebar.MenuButton isActive={page.url.pathname === '/settings'}>
+					<Sidebar.MenuButton isActive={current === '/settings'}>
 						{#snippet child({ props })}
 							<a href={resolve('/settings')} onclick={closeSidebar} {...props}>
 								<GearIcon class="size-4" />

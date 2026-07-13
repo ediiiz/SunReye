@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/SunReye/SunReye/compare/web-v0.7.0...web-v0.7.1) (2026-07-13)
+
+
+### Bug Fixes
+
+* **profiles:** register downloaded profiles immediately, no restart ([7bca64e](https://github.com/SunReye/SunReye/commit/7bca64e994e04de6cd96554fe2623f6645268f60))
+
 ## [0.7.0](https://github.com/SunReye/SunReye/compare/web-v0.6.0...web-v0.7.0) (2026-07-13)
 
 

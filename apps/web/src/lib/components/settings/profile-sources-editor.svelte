@@ -12,22 +12,36 @@
 		saving,
 		onAdd,
 		onRemove,
-		onSave
+		onToggle
 	}: {
 		sources: Source[];
 		saving: boolean;
 		onAdd: (url: string) => void;
 		onRemove: (url: string) => void;
-		onSave: () => void;
+		onToggle: (url: string, enabled: boolean) => void;
 	} = $props();
 
 	let newUrl = $state("");
+
+	// Mirror the server's `gitUrlSchema` so invalid URLs are caught before we
+	// optimistically add + auto-save them (the server would otherwise reject the
+	// whole set with an opaque 400).
+	function validationError(url: string): string | null {
+		if (!url.startsWith("https://")) return "URL must be an https git URL";
+		if (!url.endsWith(".git")) return 'URL should end with ".git"';
+		return null;
+	}
 
 	function add() {
 		const url = newUrl.trim();
 		if (!url) return;
 		if (sources.some((s) => s.url === url)) {
 			toast.error("That source is already added");
+			return;
+		}
+		const error = validationError(url);
+		if (error) {
+			toast.error(error);
 			return;
 		}
 		onAdd(url);
@@ -46,8 +60,15 @@
 					{/if}
 				</div>
 				<div class="flex shrink-0 items-center gap-3">
-					<Switch bind:checked={s.enabled} aria-label="Enabled" />
-					<Button variant="ghost" size="sm" onclick={() => onRemove(s.url)}>Remove</Button>
+					<Switch
+						checked={s.enabled}
+						disabled={saving}
+						onCheckedChange={(checked) => onToggle(s.url, checked)}
+						aria-label="Enabled"
+					/>
+					<Button variant="ghost" size="sm" disabled={saving} onclick={() => onRemove(s.url)}>
+						Remove
+					</Button>
 				</div>
 			</div>
 		{/each}
@@ -61,14 +82,11 @@
 			<Input
 				id="new-source"
 				bind:value={newUrl}
+				disabled={saving}
 				placeholder="https://github.com/org/inverter-profiles.git"
+				onkeydown={(e) => e.key === "Enter" && add()}
 			/>
 		</div>
-		<Button variant="outline" class="w-full sm:w-auto" onclick={add}>Add</Button>
-	</div>
-	<div>
-		<Button disabled={saving} onclick={onSave}>
-			{saving ? "Saving…" : "Save repositories"}
-		</Button>
+		<Button variant="outline" class="w-full sm:w-auto" disabled={saving} onclick={add}>Add</Button>
 	</div>
 </SettingsSection>

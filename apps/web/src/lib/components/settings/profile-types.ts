@@ -35,3 +35,13 @@ export type AvailableProfile = {
   installedVersion?: string;
   updateAvailable: boolean;
 };
+
+/** One inverter family (shared register base + its SKU models) within a manufacturer. */
+export type FamilyGroup = { key: string; label: string; profiles: AvailableProfile[] };
+
+/** Available profiles bucketed by manufacturer, then by family, for the browser UI. */
+export type ManufacturerGroup = {
+  manufacturer: string;
+  families: FamilyGroup[];
+  count: number;
+};

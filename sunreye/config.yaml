@@ -1,9 +1,11 @@
 # Home Assistant addon manifest. The Supervisor pulls the prebuilt per-arch
 # image from GHCR (built by .github/workflows/docker-addon.yml); it never
-# builds locally. `version` must match a pushed image tag — release-please
-# keeps it in sync via the annotation below.
+# builds locally. `version` is what the Supervisor offers as an update, so it
+# must only ever name an image tag that already exists: release-please does NOT
+# touch it — docker-addon.yml bumps it (and rewrites CHANGELOG.md) on master
+# only after every arch image for the release tag has been pushed.
 name: SunReye
-version: 0.6.0 # x-release-please-version
+version: 0.6.0
 slug: sunreye
 description: >-
   Self-hosted solar / hybrid inverter monitoring, control, and integration —

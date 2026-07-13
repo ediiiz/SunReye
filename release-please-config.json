@@ -24,13 +24,7 @@
     },
     "sunreye": {
       "component": "addon",
-      "release-type": "simple",
-      "extra-files": [
-        {
-          "type": "generic",
-          "path": "config.yaml"
-        }
-      ]
+      "release-type": "simple"
     }
   }
 }

@@ -24,6 +24,22 @@ To connect real hardware you need an inverter reachable over **Modbus TCP** (or
 **RTU-over-TCP** via a serial gateway) on your network. Support is profile-driven — see
 [Supported Inverters](/profiles/supported/).
 
+### Recommended hardware
+
+These are devices the maintainer runs and can vouch for — they work really well in practice.
+Nothing here is required; any Modbus-TCP-capable gateway will do.
+
+- **Waveshare Modbus gateway (PoE)** — bridges the inverter's serial Modbus to **Modbus TCP**
+  (or **Modbus RTU over TCP**) on Ethernet, so SunReye can poll it over the network. PoE means
+  a single cable for power and data. [Search on Amazon](https://amzn.to/452b4DC).
+- **DIN-rail-mount gateway** — fits into a DIN rail slot with a little trimming of the window
+  plastic. Available in two variants:
+  - [Non-PoE](https://amzn.to/4eYeVHP)
+  - [PoE](https://amzn.to/4aKZh00)
+
+> The Amazon links above are affiliate links — buying through them supports SunReye at no
+> extra cost to you.
+
 ## Storage
 
 Telemetry is stored in TimescaleDB as narrow rows — **one row per metric per poll**. At the

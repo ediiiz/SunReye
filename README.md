@@ -54,6 +54,22 @@ adding data — not touching the engine.
 
 ---
 
+## Recommended hardware
+
+To connect a real inverter you need a **Modbus TCP** or **Modbus RTU over TCP** gateway on your
+network. These are devices the maintainer runs and can vouch for — they work really well:
+
+- **Waveshare Modbus gateway (PoE)** — serial Modbus → **Modbus TCP / RTU over TCP** on
+  Ethernet, powered over the same cable. [Search on Amazon](https://amzn.to/452b4DC).
+- **DIN-rail-mount gateway** — fits into a DIN rail slot with a little trimming of the window
+  plastic: [Non-PoE](https://amzn.to/4eYeVHP) · [PoE](https://amzn.to/4aKZh00).
+
+_The Amazon links are affiliate links — buying through them supports SunReye at no extra cost
+to you._ None of this is required; any Modbus TCP / RTU-over-TCP gateway works, and the built-in
+simulator needs no hardware at all.
+
+---
+
 ## Quick start
 
 ```bash

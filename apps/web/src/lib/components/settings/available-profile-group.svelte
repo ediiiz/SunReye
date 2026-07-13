@@ -2,14 +2,16 @@
 	import CaretDown from "phosphor-svelte/lib/CaretDown";
 	import * as Collapsible from "$lib/components/ui/collapsible";
 	import AvailableProfileRow from "./available-profile-row.svelte";
-	import type { AvailableProfile, ManufacturerGroup } from "./profile-types";
+	import type { AvailableProfile, ManufacturerGroup, Source } from "./profile-types";
 
 	let {
 		group,
+		sources,
 		busyId,
 		onInstall
 	}: {
 		group: ManufacturerGroup;
+		sources: Source[];
 		busyId: string | null;
 		onInstall: (p: AvailableProfile) => void;
 	} = $props();
@@ -48,7 +50,7 @@
 						<Collapsible.Content>
 							<div class="flex flex-col divide-y divide-border">
 								{#each f.profiles as p (p.source + p.id)}
-									<AvailableProfileRow profile={p} {busyId} {onInstall} />
+									<AvailableProfileRow profile={p} {sources} {busyId} {onInstall} />
 								{/each}
 							</div>
 						</Collapsible.Content>
@@ -56,7 +58,7 @@
 				{:else}
 					<div class="flex flex-col divide-y divide-border">
 						{#each f.profiles as p (p.source + p.id)}
-							<AvailableProfileRow profile={p} {busyId} {onInstall} />
+							<AvailableProfileRow profile={p} {sources} {busyId} {onInstall} />
 						{/each}
 					</div>
 				{/if}

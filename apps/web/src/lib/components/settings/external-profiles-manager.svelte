@@ -98,6 +98,7 @@
 	/>
 	<AvailableProfilesBrowser
 		{available}
+		{sources}
 		errors={browseErrors}
 		{browsing}
 		{busyId}

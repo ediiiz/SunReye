@@ -2,10 +2,11 @@
 	import { Button } from "$lib/components/ui/button";
 	import AvailableProfileGroup from "./available-profile-group.svelte";
 	import SettingsSection from "./settings-section.svelte";
-	import type { AvailableProfile, ManufacturerGroup } from "./profile-types";
+	import type { AvailableProfile, ManufacturerGroup, Source } from "./profile-types";
 
 	let {
 		available,
+		sources,
 		errors,
 		browsing,
 		busyId,
@@ -13,6 +14,7 @@
 		onInstall
 	}: {
 		available: AvailableProfile[] | null;
+		sources: Source[];
 		errors: { source: string; error: string }[];
 		browsing: boolean;
 		busyId: string | null;
@@ -74,7 +76,7 @@
 	{:else}
 		<div class="flex flex-col gap-1">
 			{#each groups as g (g.manufacturer)}
-				<AvailableProfileGroup group={g} {busyId} {onInstall} />
+				<AvailableProfileGroup group={g} {sources} {busyId} {onInstall} />
 			{/each}
 		</div>
 	{/if}

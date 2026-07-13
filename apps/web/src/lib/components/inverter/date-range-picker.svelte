@@ -21,8 +21,10 @@
 	// The day currently in view, or null when a non-day range (Live / preset) is
 	// active — derived from the range so the arrows always track what's shown.
 	const currentDay = $derived(range.id === 'day' ? startOfDay(range.from) : null);
-	// Forward (towards now) only makes sense on a day strictly before today.
-	const canStepForward = $derived(currentDay !== null && currentDay.getTime() < today.getTime());
+	// In a day view the forward arrow always does something: it walks toward now
+	// and, from today, returns to the realtime Live view. Disabled only when Live
+	// (or another non-day range) is already showing.
+	const canStepForward = $derived(currentDay !== null);
 
 	function step(days: number) {
 		// From a non-day range the first step drops into today (the most recent full
@@ -32,7 +34,11 @@
 			return;
 		}
 		const next = new Date(currentDay.getFullYear(), currentDay.getMonth(), currentDay.getDate() + days);
-		if (next.getTime() > today.getTime()) return; // never step into the future
+		// Stepping forward past today returns to the realtime Live view.
+		if (next.getTime() > today.getTime()) {
+			range = resolvePreset('live');
+			return;
+		}
 		range = dayRange(next);
 	}
 

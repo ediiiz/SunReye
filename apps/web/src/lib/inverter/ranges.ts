@@ -92,6 +92,30 @@ export function customRange(from: Date, toInclusive: Date): HistoryRange {
   };
 }
 
+/** Local midnight starting the calendar day `d` falls in. */
+function startOfLocalDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+/**
+ * A single local calendar day `[00:00, next 00:00)` for the day-stepper. Bounds
+ * are computed from date parts (not `+DAY`) so DST-shortened/lengthened days
+ * still cover exactly one civil day. Minute rollups: a day is well within the
+ * ≤7-day minute window.
+ */
+export function dayRange(anchor: Date): HistoryRange {
+  const from = startOfLocalDay(anchor);
+  const to = new Date(from.getFullYear(), from.getMonth(), from.getDate() + 1);
+  return {
+    id: "day",
+    label: dateFmt.format(from),
+    live: false,
+    from,
+    to,
+    bucket: "minute",
+  };
+}
+
 /** Only measurement/cumulative metrics carry a numeric time series worth charting. */
 export function isChartable(metric: ManifestMetric): boolean {
   return metric.kind === "measurement" || metric.kind === "cumulative";

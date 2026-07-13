@@ -34,7 +34,12 @@ adding data — not touching the engine.
 - **Live monitoring** — 1 Hz Modbus polling streamed to the browser over WebSocket; a
   manifest-driven dashboard that renders itself from the active inverter's capabilities.
 - **History & analytics** — every sample in **TimescaleDB**, with per-minute / hourly / daily
-  rollups and automatic retention.
+  rollups and automatic retention. At 1 Hz an inverter writes ~8.5 M rows/day (~5–9 GB
+  uncompressed), but compression (~45×) plus tiered retention keep the on-disk footprint bounded
+  and flat at **~15 GB per inverter**.
+- **SSD-friendly writes** — history writes are batched (one transaction per ~5 s, not per poll)
+  and Postgres ships tuned for endurance, cutting bytes written (TBW) **~2–3×** so continuous
+  1 Hz logging stays gentle on SSDs and Pi-class storage — see [Requirements](apps/docs/src/content/docs/deploy/requirements.md).
 - **Control** — writable settings exposed as validated controls.
 - **Costs & tariffs** — import/export tariffs, time-of-use bands, savings, self-sufficiency.
 - **Third-party REST API (`/api/v1`)** — auto-generated from the profile, with OpenAPI docs.

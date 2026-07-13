@@ -117,7 +117,7 @@
 			{:else}
 				<Chart.Container
 					config={{ avg: { label: metric.label, color: accent } }}
-					class="h-full w-full"
+					class="aspect-auto h-full w-full"
 					style="--color-primary: {accent}"
 				>
 					<AreaChart

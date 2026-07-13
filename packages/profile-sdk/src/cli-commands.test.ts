@@ -1,11 +1,19 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
-import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { deyeSg05lp3Data } from "@SunReye/inverter-deye-sg05lp3";
 
-import { cmdBuild, cmdCoverage, cmdInit, cmdScaffold, cmdValidate, flags } from "./cli-commands";
+import {
+  cmdBuild,
+  cmdCoverage,
+  cmdInit,
+  cmdScaffold,
+  cmdUpgrade,
+  cmdValidate,
+  flags,
+} from "./cli-commands";
 
 const dir = mkdtempSync(join(tmpdir(), "profile-cli-"));
 
@@ -93,6 +101,15 @@ describe("cmdCoverage", () => {
     io = captureIo();
     await cmdCoverage(validProfilePath);
     expect(io.out.join("\n")).toContain("Role coverage:");
+  });
+
+  test("suggests sumOf for a sum that covers an indexed role group", async () => {
+    io = captureIo();
+    // The Deye base's dc.total_power sums exactly the pv.string.power group.
+    await cmdCoverage(validProfilePath);
+    const out = io.out.join("\n");
+    expect(out).toContain("Optimization hints:");
+    expect(out).toContain('sumOf({ role: "pv.string.power" })');
   });
 
   test("refuses an invalid profile before reporting coverage", async () => {
@@ -264,5 +281,61 @@ describe("cmdInit", () => {
     const { deps } = silent();
     await expect(cmdInit(out, { id: "x", manufacturer: "X" }, deps)).rejects.toThrow("exit 1");
     expect(io.err.join("\n")).toContain("refusing to overwrite");
+  });
+});
+
+describe("cmdUpgrade", () => {
+  test("refuses to run outside a project (no package.json)", async () => {
+    io = captureIo();
+    const out = join(dir, "upgrade-empty");
+    await Bun.write(join(out, ".keep"), "");
+    await expect(cmdUpgrade(out, {})).rejects.toThrow("exit 1");
+    expect(io.err.join("\n")).toContain("no package.json");
+  });
+
+  test("creates the guide files, then reports them up to date on a re-run", async () => {
+    const out = join(dir, "upgrade-fresh");
+    await Bun.write(join(out, "package.json"), "{}");
+
+    io = captureIo();
+    await cmdUpgrade(out, {});
+    expect(existsSync(join(out, "AGENTS.md"))).toBe(true);
+    expect(readFileSync(join(out, "CLAUDE.md"), "utf8")).toBe("@AGENTS.md\n");
+    expect(io.out.join("\n")).toContain("created");
+
+    io.restore();
+    io = captureIo();
+    await cmdUpgrade(out, {});
+    expect(io.out.join("\n")).toContain("up to date");
+  });
+
+  test("keeps an edited AGENTS.md unless --force", async () => {
+    const out = join(dir, "upgrade-edited");
+    await Bun.write(join(out, "package.json"), "{}");
+    await Bun.write(join(out, "AGENTS.md"), "# my own guide\n");
+    await Bun.write(join(out, "CLAUDE.md"), "@AGENTS.md\n");
+
+    io = captureIo();
+    await cmdUpgrade(out, {});
+    expect(io.out.join("\n")).toContain("kept your edited copy");
+    expect(readFileSync(join(out, "AGENTS.md"), "utf8")).toBe("# my own guide\n"); // untouched
+
+    io.restore();
+    io = captureIo();
+    await cmdUpgrade(out, { force: "" });
+    expect(readFileSync(join(out, "AGENTS.md"), "utf8")).toContain(
+      "# Authoring SunReye inverter profiles",
+    );
+  });
+
+  test("flags a CLAUDE.md that lacks the @AGENTS.md import without clobbering it", async () => {
+    const out = join(dir, "upgrade-claude");
+    await Bun.write(join(out, "package.json"), "{}");
+    await Bun.write(join(out, "CLAUDE.md"), "# hand-written\n");
+
+    io = captureIo();
+    await cmdUpgrade(out, { force: "" });
+    expect(io.out.join("\n")).toContain("needs a manual edit");
+    expect(readFileSync(join(out, "CLAUDE.md"), "utf8")).toBe("# hand-written\n"); // preserved
   });
 });

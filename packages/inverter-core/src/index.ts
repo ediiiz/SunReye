@@ -5,6 +5,7 @@ export { applyComputed } from "./computed";
 export { SimulatedInverter } from "./simulator";
 export {
   registerProfile,
+  unregisterProfile,
   getProfile,
   tryGetProfile,
   listProfiles,

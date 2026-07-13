@@ -51,7 +51,8 @@ export const profileRoutes = new Elysia({ name: "profile-routes" })
   .get("/api/profiles/updates", () => getUpdateCheck())
   // Browse profiles across enabled repos (clones/pulls each — admin only).
   .get("/api/profiles/available", () => browseAvailable(), { requireAdmin: true })
-  // Download + validate + persist a profile. Selectable after a restart.
+  // Download + validate + persist a profile, registering it immediately so it
+  // shows in the installed list right away. Activating it needs a restart.
   .post(
     "/api/profiles/install",
     async ({ body, status }) => {

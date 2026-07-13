@@ -4,9 +4,10 @@
  * across the configured git sources, download (validate + persist) one, and
  * manage the source list + active profile.
  *
- * Installing persists the validated `ProfileData` to the DB; it becomes
- * registered and selectable on the next restart (the active profile is a boot
- * concern — see {@link @SunReye/db/profiles}).
+ * Installing persists the validated `ProfileData` to the DB and registers it
+ * into the runtime registry immediately, so it's listed/removable/selectable
+ * without a restart. Only *activating* one is a boot concern (it shapes
+ * boot-time routes/manifest/topics — see {@link @SunReye/db/profiles}).
  */
 
 import { db } from "@SunReye/db";
@@ -19,7 +20,13 @@ import {
   type ProfileSources,
 } from "@SunReye/db/profiles";
 import { installedProfiles } from "@SunReye/db/schema/settings";
-import { isNewerVersion, type ProfileData } from "@SunReye/inverter-core";
+import {
+  hydrateProfile,
+  isNewerVersion,
+  registerProfile,
+  unregisterProfile,
+  type ProfileData,
+} from "@SunReye/inverter-core";
 import { eq } from "drizzle-orm";
 import { readSetting, writeSetting } from "./app-settings";
 import { readIndex, readProfile, type RepoProfileEntry, syncRepo } from "./git-source";
@@ -246,6 +253,12 @@ export async function installProfile(
       set: { source: sourceUrl, version: data.version, data, installedAt: new Date() },
     });
 
+  // Register into the runtime registry so it shows in the installed list (and
+  // is removable/selectable) without waiting for a restart — same call boot's
+  // `loadInstalledProfiles` makes. Activation still needs a restart: the active
+  // profile shapes boot-time routes/manifest/topics.
+  registerProfile(hydrateProfile(data));
+
   logger.info('installed profile "{id}" v{version} from {source}', {
     id: data.id,
     version: data.version,
@@ -257,5 +270,8 @@ export async function installProfile(
 /** Remove an installed profile. */
 export async function uninstallProfile(id: string): Promise<void> {
   await db.delete(installedProfiles).where(eq(installedProfiles.id, id));
+  // Drop it from the runtime registry too, so an install-time registration
+  // doesn't linger and re-appear (misreported as a built-in) until restart.
+  unregisterProfile(id);
   logger.info('uninstalled profile "{id}"', { id });
 }

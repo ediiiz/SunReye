@@ -37,8 +37,9 @@
 	});
 
 	async function onExternalInstalled() {
-		// A downloaded profile is only registered/selectable after a restart.
-		restartRequired = true;
+		// The server registers a downloaded profile immediately, so it shows in the
+		// installed list right away — no restart needed just to download. Applying
+		// it (Set active) is what requires a restart.
 		await Promise.all([loadRegistered(), loadUpdates()]);
 	}
 

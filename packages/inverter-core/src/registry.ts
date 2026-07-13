@@ -17,6 +17,11 @@ export function registerProfile(profile: InverterProfile): InverterProfile {
   return profile;
 }
 
+/** Drop a profile from the registry. Returns whether it was present. */
+export function unregisterProfile(id: string): boolean {
+  return profiles.delete(id);
+}
+
 export function getProfile(id: string): InverterProfile {
   const profile = profiles.get(id);
   if (!profile) {

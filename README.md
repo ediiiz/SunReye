@@ -9,6 +9,8 @@
 [![Bun](https://img.shields.io/badge/Bun-1.3-000000?logo=bun&logoColor=white)](https://bun.sh/)
 [![SvelteKit](https://img.shields.io/badge/SvelteKit-5-FF3E00?logo=svelte&logoColor=white)](https://kit.svelte.dev/)
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/F0L42337A8)
+
 **A self-hosted monitoring, control, and integration platform for solar / hybrid inverters.**
 
 SunReye polls your inverter over Modbus, stores every reading as time-series data, and gives

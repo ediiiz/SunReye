@@ -8,7 +8,8 @@ inverter's [capabilities](/profiles/concept/#from-roles-to-capabilities) — not
 hard-coded per vendor, so sections appear only for the subsystems your inverter actually
 has. Live values arrive over a WebSocket at 1 Hz.
 
-![The SunReye overview: an animated power-flow diagram above live KPI cards.](../../../assets/screenshots/dashboard.png)
+<img class="sr-shot sr-light" src="/SunReye/screenshots/dashboard-light.png" alt="The SunReye overview: an animated power-flow diagram above live KPI cards." />
+<img class="sr-shot sr-dark" src="/SunReye/screenshots/dashboard-dark.png" alt="The SunReye overview: an animated power-flow diagram above live KPI cards." />
 
 ## The app shell
 

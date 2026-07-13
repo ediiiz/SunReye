@@ -71,3 +71,20 @@
 .sl-markdown-content table {
   font-size: var(--sl-text-sm);
 }
+
+/* Theme-aware screenshots: two <img>s per shot, one shown per docs theme.
+   Default (dark) hides the light variant; the light theme flips it. */
+.sr-shot {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.sr-shot.sr-light {
+  display: none;
+}
+:root[data-theme="light"] .sr-shot.sr-dark {
+  display: none;
+}
+:root[data-theme="light"] .sr-shot.sr-light {
+  display: block;
+}

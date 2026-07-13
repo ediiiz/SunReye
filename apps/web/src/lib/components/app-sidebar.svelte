@@ -18,6 +18,7 @@
 	import UserIcon from 'phosphor-svelte/lib/User';
 
 	const sessionQuery = useAppSession();
+	const sidebar = Sidebar.useSidebar();
 
 	// Controls (live inverter writes) and Settings (config) are admin-only; the
 	// server enforces this on every mutation, and we hide the nav entries for
@@ -32,9 +33,16 @@
 		{ href: '/costs', label: 'Costs', icon: CoinsIcon },
 		...(isAdmin && (inverter.capabilities?.controls.length ?? 0) > 0
 			? ([{ href: '/controls', label: 'Controls', icon: SlidersIcon }] satisfies NavItem[])
-			: []),
-		...(isAdmin ? ([{ href: '/settings', label: 'Settings', icon: GearIcon }] satisfies NavItem[]) : [])
+			: [])
 	]);
+
+	// Collapse the sidebar as soon as the user picks a destination — on mobile it
+	// dismisses the overlay sheet, on desktop it tucks the rail away so the chosen
+	// page gets the full width.
+	function closeSidebar() {
+		if (sidebar.isMobile) sidebar.setOpenMobile(false);
+		else sidebar.setOpen(false);
+	}
 
 	const userName = $derived(
 		$sessionQuery.data?.user?.name ||
@@ -72,7 +80,7 @@
 						<Sidebar.MenuItem>
 							<Sidebar.MenuButton isActive={page.url.pathname === item.href}>
 								{#snippet child({ props })}
-									<a href={resolve(item.href)} {...props}>
+									<a href={resolve(item.href)} onclick={closeSidebar} {...props}>
 										<Icon class="size-4" />
 										<span>{item.label}</span>
 									</a>
@@ -87,6 +95,18 @@
 
 	<Sidebar.Footer>
 		<Sidebar.Menu>
+			{#if isAdmin}
+				<Sidebar.MenuItem>
+					<Sidebar.MenuButton isActive={page.url.pathname === '/settings'}>
+						{#snippet child({ props })}
+							<a href={resolve('/settings')} onclick={closeSidebar} {...props}>
+								<GearIcon class="size-4" />
+								<span>Settings</span>
+							</a>
+						{/snippet}
+					</Sidebar.MenuButton>
+				</Sidebar.MenuItem>
+			{/if}
 			<Sidebar.MenuItem>
 				<div
 					class="flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground group-data-[collapsible=icon]:hidden"

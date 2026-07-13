@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/SunReye/SunReye/compare/profile-sdk-v1.4.0...profile-sdk-v1.5.0) (2026-07-13)
+
+
+### Features
+
+* **profile-sdk:** version profiles change-aware on build ([2eeff87](https://github.com/SunReye/SunReye/commit/2eeff87cfdcded82a4b577ecf5fe2b4a7d9e0fb2))
+
 ## [1.4.0](https://github.com/SunReye/SunReye/compare/profile-sdk-v1.3.0...profile-sdk-v1.4.0) (2026-07-13)
 
 

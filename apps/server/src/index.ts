@@ -16,6 +16,7 @@ import { buildProfileContext, initProfiles } from "./inverter";
 import { log, setupLogging } from "./logging";
 import { adminRoutes } from "./routes/admin";
 import { adminGuard } from "./routes/admin-guard";
+import { customChartsRoutes } from "./routes/custom-charts";
 import { startUpdateChecks, stopUpdateChecks } from "./profiles";
 import { profileRoutes } from "./routes/profiles";
 import { settingsRoutes } from "./routes/settings";
@@ -112,7 +113,7 @@ const app = new Elysia()
               /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/,
               ...(env.CORS_ORIGIN ? [env.CORS_ORIGIN] : []),
             ],
-      methods: ["GET", "POST", "PUT", "OPTIONS"],
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
       allowedHeaders: ["Content-Type", "Authorization"],
       credentials: true,
     }),
@@ -360,6 +361,8 @@ const app = new Elysia()
   )
   // Profile management: registered list, repo sources, browse/install/activate.
   .use(profileRoutes)
+  // User-defined custom charts for the history page (multi-metric overlays).
+  .use(customChartsRoutes({ ctx }))
   // Admin-only maintenance: data reset + API-key administration.
   .use(adminRoutes)
   .listen({ port: env.PORT, hostname: env.HOST }, () => {

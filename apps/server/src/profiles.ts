@@ -130,6 +130,13 @@ export async function browseAvailable(): Promise<{
       });
     }
   }
+  // Natural sort (numeric-aware) so e.g. "SUN-5K" precedes "SUN-10K" and
+  // profiles group by manufacturer rather than index.json insertion order.
+  profiles.sort(
+    (a, b) =>
+      a.manufacturer.localeCompare(b.manufacturer, undefined, { numeric: true }) ||
+      a.name.localeCompare(b.name, undefined, { numeric: true }),
+  );
   return { profiles, errors };
 }
 

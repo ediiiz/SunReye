@@ -6,8 +6,14 @@
 	import * as Collapsible from '$lib/components/ui/collapsible';
 	import DateRangePicker from '$lib/components/inverter/date-range-picker.svelte';
 	import EntityHistoryCard from '$lib/components/inverter/entity-history-card.svelte';
-	import { categoryOf, isChartable, resolvePreset, type HistoryRange } from '$lib/inverter/ranges';
-	import type { ManifestMetric } from '$lib/inverter/types';
+	import CustomChartSection from '$lib/components/inverter/custom-chart-section.svelte';
+	import {
+		filterMetrics,
+		groupByCategory,
+		isChartable,
+		resolvePreset,
+		type HistoryRange
+	} from '$lib/inverter/ranges';
 
 	let range = $state<HistoryRange>(resolvePreset('live'));
 	let search = $state('');
@@ -15,26 +21,7 @@
 	let collapsed = $state<Record<string, boolean>>({});
 
 	const chartable = $derived(inverter.metrics.filter(isChartable));
-
-	const filtered = $derived.by(() => {
-		const q = search.trim().toLowerCase();
-		if (!q) return chartable;
-		return chartable.filter(
-			(m) => m.label.toLowerCase().includes(q) || m.key.toLowerCase().includes(q)
-		);
-	});
-
-	// Group by category, sorted alphabetically; metrics keep manifest order.
-	const groups = $derived.by(() => {
-		const map = new Map<string, ManifestMetric[]>();
-		for (const m of filtered) {
-			const cat = categoryOf(m);
-			const arr = map.get(cat) ?? [];
-			arr.push(m);
-			map.set(cat, arr);
-		}
-		return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-	});
+	const groups = $derived(groupByCategory(filterMetrics(chartable, search)));
 
 	const accentFor = (i: number) => `var(--color-chart-${(i % 5) + 1})`;
 </script>
@@ -56,6 +43,10 @@
 		/>
 		<Input placeholder="Search entities…" bind:value={search} class="pl-9" />
 	</div>
+
+	{#if chartable.length > 0}
+		<CustomChartSection {range} />
+	{/if}
 
 	{#if chartable.length === 0}
 		<div

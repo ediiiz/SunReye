@@ -9,9 +9,9 @@
 	import AnimatedNumber from '$lib/components/inverter/animated-number.svelte';
 	import { api } from '$lib/api';
 	import { inverter } from '$lib/inverter/store.svelte';
-	import { display } from '$lib/display.svelte';
 	import { fractionDigits } from '$lib/inverter/format';
 	import { inView } from '$lib/actions/in-view';
+	import { tooltipLabel, xTick } from '$lib/inverter/chart-format';
 	import type { HistoryRange } from '$lib/inverter/ranges';
 	import type { ManifestMetric } from '$lib/inverter/types';
 
@@ -67,24 +67,8 @@
 
 	const chartData = $derived(rows.map((r) => ({ ...r, date: new Date(r.time) })));
 
-	// Tooltip axis label. Day-bucketed charts show the date only; finer buckets add
-	// the clock time. Both honour the configured time zone / 12–24h format.
-	const labelFmt = (value: unknown) => {
-		const d = value instanceof Date ? value : new Date(value as string | number);
-		return range.bucket === 'day' ? display.day(d) : display.dayTime(d);
-	};
-
-	// X-axis tick label: clock time for day/24h-scale windows (where the time of
-	// day is the point), calendar date for multi-day spans (where a repeated
-	// "00:00" would be ambiguous). Honours the configured zone / 12–24h format.
-	const DAY_MS = 86_400_000;
-	const xTickFormat = (value: unknown) => {
-		const d = value instanceof Date ? value : new Date(value as string | number);
-		if (range.bucket === 'day') return display.day(d);
-		return range.to.getTime() - range.from.getTime() <= 1.5 * DAY_MS
-			? display.time(d)
-			: display.day(d);
-	};
+	const labelFmt = (value: unknown) => tooltipLabel(range, value);
+	const xTickFormat = (value: unknown) => xTick(range, value);
 
 	type MarksContext = {
 		context: { yScale: (v: number) => number; height: number; padding: { bottom: number } };

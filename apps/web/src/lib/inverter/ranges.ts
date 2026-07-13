@@ -133,9 +133,30 @@ const ROLE_CATEGORY: Record<string, string> = {
 };
 
 /** Human category a metric belongs to — by canonical role prefix, else its group. */
-export function categoryOf(metric: ManifestMetric): string {
+function categoryOf(metric: ManifestMetric): string {
   const prefix = metric.role?.split(".")[0];
   if (prefix && ROLE_CATEGORY[prefix]) return ROLE_CATEGORY[prefix];
   const g = metric.group || "Other";
   return g.charAt(0).toUpperCase() + g.slice(1);
+}
+
+/** Filter metrics by a free-text query over label and key (empty → unchanged). */
+export function filterMetrics(metrics: ManifestMetric[], query: string): ManifestMetric[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return metrics;
+  return metrics.filter(
+    (m) => m.label.toLowerCase().includes(q) || m.key.toLowerCase().includes(q),
+  );
+}
+
+/** Group metrics by category, sorted alphabetically; metrics keep their order. */
+export function groupByCategory(metrics: ManifestMetric[]): [string, ManifestMetric[]][] {
+  const map = new Map<string, ManifestMetric[]>();
+  for (const m of metrics) {
+    const cat = categoryOf(m);
+    const arr = map.get(cat) ?? [];
+    arr.push(m);
+    map.set(cat, arr);
+  }
+  return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
 }

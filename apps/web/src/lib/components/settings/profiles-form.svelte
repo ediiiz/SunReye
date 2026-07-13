@@ -2,6 +2,8 @@
 	import { onMount } from "svelte";
 	import { toast } from "svelte-sonner";
 	import { api } from "$lib/api";
+	import { Button } from "$lib/components/ui/button";
+	import * as Dialog from "$lib/components/ui/dialog";
 	import ExternalProfilesManager from "./external-profiles-manager.svelte";
 	import InstalledProfilesList from "./installed-profiles-list.svelte";
 	import RestartButton from "./restart-button.svelte";
@@ -10,6 +12,11 @@
 	let registered = $state<RegisteredProfile[]>([]);
 	let restartRequired = $state(false);
 	let busyId = $state<string | null>(null);
+	/** Profile queued to become active once the server restarts, if any. */
+	let pendingActiveId = $state<string | null>(null);
+	let restartOpen = $state(false);
+
+	const pendingProfile = $derived(registered.find((p) => p.id === pendingActiveId));
 
 	async function loadRegistered() {
 		const { data } = await api.api.profiles.get();
@@ -45,19 +52,29 @@
 			return;
 		}
 		restartRequired = data.restartRequired;
+		pendingActiveId = p.id;
 		toast.success(`${p.name} will be active after restart`);
 	}
 </script>
 
 <div class="flex flex-col gap-6">
-	{#if restartRequired}
+	{#if restartRequired && !pendingActiveId}
 		<div
-			class="flex items-center gap-2 border border-amber-500/50 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400"
+			class="flex flex-col gap-3 border border-amber-500/50 bg-amber-500/10 p-3 text-sm text-amber-700 sm:flex-row sm:items-center sm:gap-2 dark:text-amber-400"
 		>
-			<span class="inline-block size-2 rounded-full bg-amber-500"></span>
-			<span>Restart required to apply profile changes.</span>
-			<div class="ml-auto">
-				<RestartButton label="Restart now" size="sm" variant="outline" />
+			<span class="flex items-center gap-2">
+				<span class="inline-block size-2 shrink-0 rounded-full bg-amber-500"></span>
+				<span>Restart required to apply profile changes.</span>
+			</span>
+			<div class="sm:ml-auto">
+				<Button
+					size="sm"
+					variant="outline"
+					class="w-full sm:w-auto"
+					onclick={() => (restartOpen = true)}
+				>
+					Restart now
+				</Button>
 			</div>
 		</div>
 	{/if}
@@ -65,9 +82,33 @@
 	<InstalledProfilesList
 		profiles={registered}
 		{busyId}
+		{pendingActiveId}
 		onSetActive={setActive}
 		onUninstall={uninstall}
+		onRestart={() => (restartOpen = true)}
 	/>
 
 	<ExternalProfilesManager onInstalled={onExternalInstalled} />
 </div>
+
+<Dialog.Root bind:open={restartOpen}>
+	<Dialog.Content>
+		<Dialog.Header>
+			<Dialog.Title>Restart to apply changes?</Dialog.Title>
+			<Dialog.Description>
+				{#if pendingProfile}
+					The server will restart to activate
+					<span class="font-medium text-foreground">{pendingProfile.name}</span>. Polling and
+					live data pause briefly while it comes back.
+				{:else}
+					The server will restart to apply your profile changes. Polling and live data pause
+					briefly while it comes back.
+				{/if}
+			</Dialog.Description>
+		</Dialog.Header>
+		<Dialog.Footer>
+			<Button variant="outline" onclick={() => (restartOpen = false)}>Cancel</Button>
+			<RestartButton label="Restart now" />
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>

@@ -4,6 +4,7 @@ import { getActiveProfileOrNull } from "../inverter";
 import {
   browseAvailable,
   getProfileSources,
+  getUpdateCheck,
   installProfile,
   listInstalled,
   setActiveProfile,
@@ -45,6 +46,9 @@ export const profileRoutes = new Elysia({ name: "profile-routes" })
     },
     { requireAdmin: true, body: t.Unknown() },
   )
+  // Cached result of the background update checker (see `startUpdateChecks`).
+  // Public read — just version info; the checker itself runs server-side.
+  .get("/api/profiles/updates", () => getUpdateCheck())
   // Browse profiles across enabled repos (clones/pulls each — admin only).
   .get("/api/profiles/available", () => browseAvailable(), { requireAdmin: true })
   // Download + validate + persist a profile. Selectable after a restart.

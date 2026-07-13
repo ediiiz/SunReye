@@ -61,18 +61,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # The Supervisor installs whatever version config.yaml declares and pulls
-      # exactly that image tag — a drift between the two bricks installs.
-      - name: Assert config.yaml version matches the release tag
-        if: startsWith(github.ref, 'refs/tags/addon-v')
-        run: |
-          tag_version="${GITHUB_REF_NAME#addon-v}"
-          config_version="$(yq -r '.version' sunreye/config.yaml)"
-          if [ "$tag_version" != "$config_version" ]; then
-            echo "::error::sunreye/config.yaml version ($config_version) != tag version ($tag_version)"
-            exit 1
-          fi
-
+      # The image tag and BUILD_VERSION come from the git tag (below), so the
+      # published image is correct regardless of config.yaml. config.yaml is
+      # deliberately NOT bumped yet — the `publish` job advances it on master
+      # only after every arch here has pushed, so the Supervisor never offers a
+      # version whose image is still building (or failed).
       - name: Resolve per-arch base image
         id: base
         run: echo "build_from=$(yq -r '.build_from.${{ matrix.arch }}' sunreye/build.yaml)" >> "$GITHUB_OUTPUT"
@@ -119,3 +112,57 @@ jobs:
           cache-from: type=gha,scope=addon-${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=addon-${{ matrix.arch }}
           provenance: false
+
+  # Every arch image is pushed and reachable at this point. Only now advance
+  # the version the Supervisor reads (config.yaml) and give the release a real
+  # changelog — the union of the server (incl. migrate/db) and web changes,
+  # since the addon ships them as one image. release-please leaves the addon
+  # with a "Synchronize sunreye-stack versions" placeholder; this replaces it.
+  #
+  # Committed to master as a `chore` so it never itself triggers a release, and
+  # only on a real release tag (not nightly/manual builds).
+  publish:
+    name: Publish version + changelog
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/addon-v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.13
+
+      - name: Resolve released version
+        id: v
+        run: echo "version=${GITHUB_REF_NAME#addon-v}" >> "$GITHUB_OUTPUT"
+
+      - name: Aggregate addon changelog from server + web
+        run: |
+          node scripts/addon-changelog.mjs "${{ steps.v.outputs.version }}" > "$RUNNER_TEMP/addon-notes.md"
+
+      - name: Advance config.yaml to the published version
+        run: |
+          sed -i -E "s/^version: .*/version: ${{ steps.v.outputs.version }}/" sunreye/config.yaml
+
+      - name: Commit to master
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --quiet -- sunreye/config.yaml sunreye/CHANGELOG.md; then
+            echo "config.yaml and CHANGELOG.md already current — nothing to publish"
+            exit 0
+          fi
+          git add sunreye/config.yaml sunreye/CHANGELOG.md
+          git commit -m "chore(addon): publish ${{ steps.v.outputs.version }} [skip ci]"
+          git push origin HEAD:master
+
+      - name: Sync GitHub release notes
+        run: gh release edit "${GITHUB_REF_NAME}" --notes-file "$RUNNER_TEMP/addon-notes.md"

@@ -6,6 +6,7 @@
  */
 
 import { existsSync } from "node:fs";
+import { readdir } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -18,11 +19,17 @@ import {
   type InitOptions,
   type UpgradeStatus,
 } from "./init";
-import { buildRepo, type RepoEntryInput } from "./repo";
+import {
+  buildRepo,
+  type RepoBuildResult,
+  type RepoEntryInput,
+  type VersionDecision,
+  type VersionStatus,
+} from "./repo";
 import { scaffoldFromCsv } from "./scaffold";
 import { validateProfile } from "./validate";
 import pkg from "../package.json";
-import type { ProfileData } from "@SunReye/inverter-core";
+import type { BumpLevel, ProfileData } from "@SunReye/inverter-core";
 
 async function readJson(path: string): Promise<unknown> {
   const file = Bun.file(path);
@@ -209,19 +216,88 @@ async function loadEntry(path: string): Promise<RepoEntryInput[]> {
   return found;
 }
 
+/**
+ * Read the previously built `profiles/*.json` under `out` (keyed by id) so the
+ * build can version change-aware. Malformed or non-profile files are skipped —
+ * a broken prior file just means that profile looks "new".
+ */
+async function loadPreviousBuild(out: string): Promise<Map<string, ProfileData>> {
+  const previous = new Map<string, ProfileData>();
+  const dir = join(out, "profiles");
+  if (!existsSync(dir)) return previous;
+  for (const name of await readdir(dir)) {
+    if (!name.endsWith(".json")) continue;
+    try {
+      const parsed = JSON.parse(await Bun.file(join(dir, name)).text());
+      if (isProfileLike(parsed)) previous.set(parsed.id, parsed);
+    } catch {
+      // Skip unreadable/invalid prior file — treated as no previous version.
+    }
+  }
+  return previous;
+}
+
+const VERSION_MARK: Record<VersionStatus, string> = {
+  new: "new",
+  unchanged: "unchanged",
+  "auto-bumped": "bumped",
+  "author-bumped": "bumped by author",
+};
+
+/** Validate the optional `--bump` flag, failing with a usage error if invalid. */
+function parseBumpLevel(raw: string | undefined): BumpLevel | undefined {
+  if (raw === undefined) return undefined;
+  if (raw !== "patch" && raw !== "minor" && raw !== "major") {
+    fail(`invalid --bump "${raw}" (expected patch, minor, or major)`);
+  }
+  return raw;
+}
+
+/** Human-readable "(bumped from x.y.z)" suffix for a build's version decision. */
+function versionNote(decision: VersionDecision | undefined, version: string): string {
+  if (!decision) return "";
+  const mark = VERSION_MARK[decision.status];
+  if (decision.previousVersion && decision.previousVersion !== version) {
+    return ` (${mark} from ${decision.previousVersion})`;
+  }
+  return ` (${mark})`;
+}
+
+/** Print the build summary line + one line per profile with its version note. */
+function reportBuild(result: RepoBuildResult, out: string): void {
+  const bumped = result.versioning.filter((v) => v.status === "auto-bumped").length;
+  console.log(
+    `✓ wrote ${result.index.profiles.length} profile(s) + index.json to ${out}` +
+      (bumped > 0 ? ` (${bumped} auto-bumped)` : ""),
+  );
+  const byId = new Map(result.versioning.map((v) => [v.id, v]));
+  for (const entry of result.index.profiles) {
+    const note = versionNote(byId.get(entry.id), entry.version);
+    console.log(`  • ${entry.id}@${entry.version} → ${entry.path}${note}`);
+  }
+}
+
 export async function cmdBuild(paths: string[], opts: Record<string, string>): Promise<void> {
   if (paths.length === 0) {
     fail(
-      "usage: profile build <module.ts|profile.json ...> --out <dir> [--name n] [--maintainer m]",
+      "usage: profile build <module.ts|profile.json ...> --out <dir> [--name n] [--maintainer m] [--bump patch|minor|major]",
     );
   }
   const out = opts.out;
   if (!out) fail("build requires --out <dir>");
 
+  const bump = parseBumpLevel(opts.bump);
+
   const entries: RepoEntryInput[] = [];
   for (const path of paths) entries.push(...(await loadEntry(path)));
 
-  const result = buildRepo(entries, { name: opts.name, maintainer: opts.maintainer });
+  const previous = await loadPreviousBuild(out);
+  const result = buildRepo(entries, {
+    name: opts.name,
+    maintainer: opts.maintainer,
+    previous,
+    bump,
+  });
   if (!result.ok) {
     console.error("✗ repo build failed:");
     for (const issue of result.issues) console.error(`  • ${issue}`);
@@ -231,10 +307,7 @@ export async function cmdBuild(paths: string[], opts: Record<string, string>): P
   for (const [relPath, contents] of Object.entries(result.files)) {
     await Bun.write(join(out, relPath), contents);
   }
-  console.log(`✓ wrote ${result.index.profiles.length} profile(s) + index.json to ${out}`);
-  for (const entry of result.index.profiles) {
-    console.log(`  • ${entry.id}@${entry.version} → ${entry.path}`);
-  }
+  reportBuild(result, out);
 }
 
 /** Interactive I/O for `cmdInit`, injectable so the command body stays testable. */

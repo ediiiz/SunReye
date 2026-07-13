@@ -7,7 +7,7 @@
  *   profile validate <file>            strict validation + semantic lints
  *   profile coverage <file>            which renderable roles are mapped
  *   profile scaffold <csv> --id <id> --name <n> --manufacturer <m> [--version v]
- *   profile build <entries...> --out <dir> [--name n] [--maintainer m]
+ *   profile build <entries...> --out <dir> [--name n] [--maintainer m] [--bump patch|minor|major]
  *
  * Exits non-zero on validation failure so it's usable as a CI/pre-commit gate.
  * Command bodies live in ./cli-commands (unit-tested); this file only parses

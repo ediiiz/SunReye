@@ -202,6 +202,36 @@ describe("cmdBuild", () => {
     await expect(cmdBuild([empty], { out: join(dir, "empty-out") })).rejects.toThrow("exit 1");
     expect(io.err.join("\n")).toContain("no profiles exported");
   });
+
+  test("auto-bumps a changed profile against the previous build in --out", async () => {
+    const out = join(dir, "versioned-out");
+    const v1 = writeFixture("v1.json", JSON.stringify({ ...deyeSg05lp3Data, version: "1.0.0" }));
+    io = captureIo();
+    await cmdBuild([v1], { out });
+    io.restore();
+
+    // Rebuild the same id with changed content (renamed) into the same out dir.
+    const v2 = writeFixture(
+      "v2.json",
+      JSON.stringify({ ...deyeSg05lp3Data, version: "1.0.0", name: "Renamed" }),
+    );
+    io = captureIo();
+    await cmdBuild([v2], { out });
+
+    const published = JSON.parse(
+      await Bun.file(join(out, `profiles/${deyeSg05lp3Data.id}.json`)).text(),
+    ) as { version: string; name: string };
+    expect(published.version).toBe("1.0.1");
+    expect(io.out.join("\n")).toContain("bumped from 1.0.0");
+  });
+
+  test("rejects an invalid --bump level", async () => {
+    io = captureIo();
+    await expect(
+      cmdBuild([validProfilePath], { out: join(dir, "bad-bump-out"), bump: "huge" }),
+    ).rejects.toThrow("exit 1");
+    expect(io.err.join("\n")).toContain('invalid --bump "huge"');
+  });
 });
 
 describe("cmdInit", () => {

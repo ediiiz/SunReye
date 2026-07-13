@@ -40,12 +40,11 @@
 			: [])
 	]);
 
-	// Collapse the sidebar as soon as the user picks a destination — on mobile it
-	// dismisses the overlay sheet, on desktop it tucks the rail away so the chosen
-	// page gets the full width.
+	// On mobile, dismiss the overlay sheet as soon as the user picks a
+	// destination. On desktop the rail stays put — the active route stays
+	// visible and the user drives collapse themselves.
 	function closeSidebar() {
 		if (sidebar.isMobile) sidebar.setOpenMobile(false);
-		else sidebar.setOpen(false);
 	}
 
 	const userName = $derived(

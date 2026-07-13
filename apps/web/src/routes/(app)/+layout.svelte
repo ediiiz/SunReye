@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { resolve } from '$lib/resolve';
+	import { resolve, routePath } from '$lib/resolve';
 	import { page } from '$app/state';
 	import { fade } from 'svelte/transition';
 	import { MediaQuery } from 'svelte/reactivity';
@@ -49,7 +49,7 @@
 	const ADMIN_ONLY = ['/settings', '/controls'];
 	$effect(() => {
 		if ($sessionQuery.isPending || !$sessionQuery.data) return;
-		if ($sessionQuery.data.user?.role !== 'admin' && ADMIN_ONLY.includes(page.url.pathname)) {
+		if ($sessionQuery.data.user?.role !== 'admin' && ADMIN_ONLY.includes(current)) {
 			goto(resolve('/'));
 		}
 	});
@@ -72,7 +72,7 @@
 		'/controls': 'Controls',
 		'/settings': 'Settings'
 	};
-	const section = $derived(SECTION[page.url.pathname] ?? 'Overview');
+	const section = $derived(SECTION[current] ?? 'Overview');
 
 	// Subtle route-to-route motion: the shell (sidebar + header) stays put while
 	// the inner content cross-fades up on each navigation. Honour reduced-motion.

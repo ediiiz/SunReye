@@ -22,3 +22,16 @@ export function resolve(path: Pathname): string {
   if (!browser) return `#${path}`;
   return `${location.pathname}${location.search}#${path}`;
 }
+
+/**
+ * The active route path under the hash router. Kit pins `page.url` to the
+ * *document* URL, so `page.url.pathname` is wherever the app is served from
+ * (`/`, a port, or the ingress prefix) — never the route. The route lives in
+ * `page.url.hash` as `#/history`; strip the leading `#` and any trailing
+ * search/inner hash to get a value comparable to a `Pathname` ('/history', or
+ * '/' at the root). Use this for active-route checks, not `page.url.pathname`.
+ */
+export function routePath(url: URL): string {
+  const path = url.hash.replace(/^#/, "").replace(/[?#].*$/, "");
+  return path || "/";
+}

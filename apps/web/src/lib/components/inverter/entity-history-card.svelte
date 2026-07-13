@@ -9,6 +9,7 @@
 	import AnimatedNumber from '$lib/components/inverter/animated-number.svelte';
 	import { api } from '$lib/api';
 	import { inverter } from '$lib/inverter/store.svelte';
+	import { display } from '$lib/display.svelte';
 	import { fractionDigits } from '$lib/inverter/format';
 	import { inView } from '$lib/actions/in-view';
 	import type { HistoryRange } from '$lib/inverter/ranges';
@@ -66,11 +67,23 @@
 
 	const chartData = $derived(rows.map((r) => ({ ...r, date: new Date(r.time) })));
 
-	const timeFmt = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
-	const dayFmt = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' });
+	// Tooltip axis label. Day-bucketed charts show the date only; finer buckets add
+	// the clock time. Both honour the configured time zone / 12–24h format.
 	const labelFmt = (value: unknown) => {
 		const d = value instanceof Date ? value : new Date(value as string | number);
-		return range.bucket === 'day' ? dayFmt.format(d) : `${dayFmt.format(d)} ${timeFmt.format(d)}`;
+		return range.bucket === 'day' ? display.day(d) : display.dayTime(d);
+	};
+
+	// X-axis tick label: clock time for day/24h-scale windows (where the time of
+	// day is the point), calendar date for multi-day spans (where a repeated
+	// "00:00" would be ambiguous). Honours the configured zone / 12–24h format.
+	const DAY_MS = 86_400_000;
+	const xTickFormat = (value: unknown) => {
+		const d = value instanceof Date ? value : new Date(value as string | number);
+		if (range.bucket === 'day') return display.day(d);
+		return range.to.getTime() - range.from.getTime() <= 1.5 * DAY_MS
+			? display.time(d)
+			: display.day(d);
 	};
 
 	type MarksContext = {
@@ -124,9 +137,11 @@
 						data={chartData}
 						x="date"
 						y="avg"
-						axis="y"
+						axis
 						grid
-						padding={{ top: 8, right: 8, bottom: 20, left: 44 }}
+						padding={{ top: 8, right: 8, bottom: 28, left: 44 }}
+						xDomain={[range.from, range.to]}
+						props={{ xAxis: { format: xTickFormat, ticks: 4 } }}
 					>
 						{#snippet marks({ context }: MarksContext)}
 							{#if diverging}

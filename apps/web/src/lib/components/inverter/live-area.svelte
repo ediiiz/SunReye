@@ -7,6 +7,7 @@
 	import { linear } from 'svelte/easing';
 	import * as Chart from '$lib/components/ui/chart';
 	import { fractionDigits } from '$lib/inverter/format';
+	import { display } from '$lib/display.svelte';
 	import type { LivePoint } from '$lib/inverter/types';
 
 	let {
@@ -30,12 +31,6 @@
 		/** Unit suffix appended to the tooltip value. */
 		unit?: string;
 	} = $props();
-
-	const timeFmt = new Intl.DateTimeFormat(undefined, {
-		hour: '2-digit',
-		minute: '2-digit',
-		second: '2-digit'
-	});
 
 	// AreaChart's `marks` context isn't exposed in the public types; type just the
 	// fields we read so it isn't implicitly `any`.
@@ -149,7 +144,7 @@
 	>
 		{#snippet tooltip()}
 			<Chart.Tooltip
-				labelFormatter={(value) => timeFmt.format(new Date(Number(value)))}
+				labelFormatter={(value) => display.timeWithSeconds(new Date(Number(value)))}
 				formatter={tooltipValue}
 			/>
 		{/snippet}

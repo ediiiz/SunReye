@@ -16,6 +16,7 @@ import { buildProfileContext, initProfiles } from "./inverter";
 import { log, setupLogging } from "./logging";
 import { adminRoutes } from "./routes/admin";
 import { adminGuard } from "./routes/admin-guard";
+import { startUpdateChecks, stopUpdateChecks } from "./profiles";
 import { profileRoutes } from "./routes/profiles";
 import { settingsRoutes } from "./routes/settings";
 import * as runtime from "./runtime";
@@ -378,9 +379,15 @@ if (ctx) {
   }, ctx);
 }
 
+// Periodically sync profile repos and diff installed versions so the UI can
+// surface "update available" without the admin manually browsing. Independent
+// of the poll loop — runs even in onboarding-only boot.
+startUpdateChecks();
+
 // Graceful shutdown: stop polling and release the transport + broker.
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.on(signal, async () => {
+    stopUpdateChecks();
     await runtime.stop();
     process.exit(0);
   });

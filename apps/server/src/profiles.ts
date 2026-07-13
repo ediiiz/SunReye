@@ -19,7 +19,7 @@ import {
   type ProfileSources,
 } from "@SunReye/db/profiles";
 import { installedProfiles } from "@SunReye/db/schema/settings";
-import type { ProfileData } from "@SunReye/inverter-core";
+import { isNewerVersion, type ProfileData } from "@SunReye/inverter-core";
 import { eq } from "drizzle-orm";
 import { readSetting, writeSetting } from "./app-settings";
 import { readIndex, readProfile, type RepoProfileEntry, syncRepo } from "./git-source";
@@ -89,7 +89,7 @@ export interface AvailableProfile extends RepoProfileEntry {
   source: string;
   installed: boolean;
   installedVersion?: string;
-  /** The repo has a different version than what's installed. */
+  /** The repo offers a semver-newer release than what's installed. */
   updateAvailable: boolean;
 }
 
@@ -120,7 +120,7 @@ export async function browseAvailable(): Promise<{
           source: src.url,
           installed: installed !== undefined,
           installedVersion: installed?.version,
-          updateAvailable: installed !== undefined && installed.version !== p.version,
+          updateAvailable: installed !== undefined && isNewerVersion(installed.version, p.version),
         });
       }
     } catch (error) {
@@ -138,6 +138,89 @@ export async function browseAvailable(): Promise<{
       a.name.localeCompare(b.name, undefined, { numeric: true }),
   );
   return { profiles, errors };
+}
+
+/** One installed profile with a semver-newer release waiting in its source. */
+export interface ProfileUpdate {
+  id: string;
+  name: string;
+  manufacturer: string;
+  source: string;
+  installedVersion: string;
+  latestVersion: string;
+}
+
+export interface UpdateCheckResult {
+  /** ISO timestamp of the last completed check, or null if none has run yet. */
+  checkedAt: string | null;
+  updates: ProfileUpdate[];
+  errors: { source: string; error: string }[];
+}
+
+/** How often the background checker syncs sources and re-diffs versions. */
+const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
+/** Small delay so the first check doesn't compete with boot-time git/network. */
+const UPDATE_CHECK_INITIAL_DELAY_MS = 15 * 1000;
+
+let lastUpdateCheck: UpdateCheckResult = { checkedAt: null, updates: [], errors: [] };
+let checkInFlight: Promise<UpdateCheckResult> | null = null;
+let updateCheckTimer: ReturnType<typeof setInterval> | null = null;
+
+/** The most recent cached update-check result (never triggers a sync). */
+export function getUpdateCheck(): UpdateCheckResult {
+  return lastUpdateCheck;
+}
+
+/**
+ * Sync enabled sources and diff installed versions against them, caching the
+ * result for {@link getUpdateCheck}. Concurrent callers share one in-flight run
+ * so a manual trigger can't stack on the background timer.
+ */
+function checkForUpdates(): Promise<UpdateCheckResult> {
+  checkInFlight ??= runUpdateCheck().finally(() => {
+    checkInFlight = null;
+  });
+  return checkInFlight;
+}
+
+async function runUpdateCheck(): Promise<UpdateCheckResult> {
+  const { profiles, errors } = await browseAvailable();
+  const updates = profiles
+    .filter((p) => p.updateAvailable && p.installedVersion !== undefined)
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      manufacturer: p.manufacturer,
+      source: p.source,
+      installedVersion: p.installedVersion!,
+      latestVersion: p.version,
+    }));
+  lastUpdateCheck = { checkedAt: new Date().toISOString(), updates, errors };
+  if (updates.length > 0) {
+    logger.info("profile update check: {count} update(s) available", { count: updates.length });
+  }
+  return lastUpdateCheck;
+}
+
+/** Start the periodic update checker (initial run shortly after boot). */
+export function startUpdateChecks(): void {
+  if (updateCheckTimer) return;
+  const run = () => {
+    checkForUpdates().catch((error) => {
+      logger.warn("profile update check failed: {error}", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+  };
+  setTimeout(run, UPDATE_CHECK_INITIAL_DELAY_MS).unref();
+  updateCheckTimer = setInterval(run, UPDATE_CHECK_INTERVAL_MS);
+  updateCheckTimer.unref();
+}
+
+/** Stop the periodic update checker (graceful shutdown). */
+export function stopUpdateChecks(): void {
+  if (updateCheckTimer) clearInterval(updateCheckTimer);
+  updateCheckTimer = null;
 }
 
 /** Download, validate, and persist one profile from a source. */

@@ -36,20 +36,33 @@ export interface WeatherReading {
   label: string;
 }
 
-/** WMO weather interpretation code → coarse condition + icon bucket. */
+/** WMO weather interpretation code → coarse condition + icon, as data. Ranges
+ *  are expanded into a lookup once, so interpretation is a single map read. */
+const range = (lo: number, hi: number): number[] =>
+  Array.from({ length: hi - lo + 1 }, (_, i) => lo + i);
+
+const CODE_TABLE: [codes: number[], condition: string, icon: WeatherIcon][] = [
+  [[0], "Clear sky", "clear"],
+  [[1], "Mainly clear", "clear"],
+  [[2], "Partly cloudy", "partly-cloudy"],
+  [[3], "Overcast", "cloudy"],
+  [[45, 48], "Fog", "fog"],
+  [range(51, 57), "Drizzle", "drizzle"],
+  [range(61, 67), "Rain", "rain"],
+  [range(71, 77), "Snow", "snow"],
+  [range(80, 82), "Rain showers", "rain"],
+  [[85, 86], "Snow showers", "snow"],
+  [range(95, 99), "Thunderstorm", "thunder"],
+];
+
+const CODE_MAP = new Map<number, { condition: string; icon: WeatherIcon }>(
+  CODE_TABLE.flatMap(([codes, condition, icon]) =>
+    codes.map((c) => [c, { condition, icon }] as const),
+  ),
+);
+
 function interpret(code: number): { condition: string; icon: WeatherIcon } {
-  if (code === 0) return { condition: "Clear sky", icon: "clear" };
-  if (code === 1) return { condition: "Mainly clear", icon: "clear" };
-  if (code === 2) return { condition: "Partly cloudy", icon: "partly-cloudy" };
-  if (code === 3) return { condition: "Overcast", icon: "cloudy" };
-  if (code === 45 || code === 48) return { condition: "Fog", icon: "fog" };
-  if (code >= 51 && code <= 57) return { condition: "Drizzle", icon: "drizzle" };
-  if (code >= 61 && code <= 67) return { condition: "Rain", icon: "rain" };
-  if (code >= 71 && code <= 77) return { condition: "Snow", icon: "snow" };
-  if (code >= 80 && code <= 82) return { condition: "Rain showers", icon: "rain" };
-  if (code === 85 || code === 86) return { condition: "Snow showers", icon: "snow" };
-  if (code >= 95) return { condition: "Thunderstorm", icon: "thunder" };
-  return { condition: "Unknown", icon: "cloudy" };
+  return CODE_MAP.get(code) ?? { condition: "Unknown", icon: "cloudy" };
 }
 
 interface OpenMeteoResponse {
@@ -58,7 +71,28 @@ interface OpenMeteoResponse {
   daily?: { shortwave_radiation_sum?: (number | null)[] };
 }
 
+/** Parse an Open-Meteo response into a reading, or throw on missing fields. */
+function toReading(data: OpenMeteoResponse, config: WeatherConfig): WeatherReading {
+  const current = data.current;
+  if (!current || current.temperature_2m === undefined || current.weather_code === undefined) {
+    throw new Error("missing current fields");
+  }
+  const daily = data.daily?.shortwave_radiation_sum;
+  const { condition, icon } = interpret(current.weather_code);
+  return {
+    temperature: current.temperature_2m,
+    unit: data.current_units?.temperature_2m ?? "°C",
+    code: current.weather_code,
+    condition,
+    icon,
+    solarRadiationSum: daily && daily.length > 0 ? (daily[0] ?? null) : null,
+    label: config.label,
+  };
+}
+
 let cache: { key: string; at: number; reading: WeatherReading } | null = null;
+const fresh = (key: string): boolean =>
+  cache !== null && cache.key === key && Date.now() - cache.at < CACHE_TTL_MS;
 
 /**
  * Current weather for the configured location, or `null` when weather is
@@ -69,9 +103,7 @@ export async function fetchWeather(config: WeatherConfig): Promise<WeatherReadin
   if (!weatherReady(config)) return null;
 
   const key = `${config.latitude},${config.longitude}`;
-  if (cache && cache.key === key && Date.now() - cache.at < CACHE_TTL_MS) {
-    return cache.reading;
-  }
+  if (fresh(key)) return cache!.reading;
 
   const url =
     "https://api.open-meteo.com/v1/forecast" +
@@ -82,26 +114,12 @@ export async function fetchWeather(config: WeatherConfig): Promise<WeatherReadin
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = (await res.json()) as OpenMeteoResponse;
-    const temp = data.current?.temperature_2m;
-    const code = data.current?.weather_code;
-    if (temp === undefined || code === undefined) throw new Error("missing current fields");
-
-    const { condition, icon } = interpret(code);
-    const reading: WeatherReading = {
-      temperature: temp,
-      unit: data.current_units?.temperature_2m ?? "°C",
-      code,
-      condition,
-      icon,
-      solarRadiationSum: data.daily?.shortwave_radiation_sum?.[0] ?? null,
-      label: config.label,
-    };
+    const reading = toReading((await res.json()) as OpenMeteoResponse, config);
     cache = { key, at: Date.now(), reading };
     return reading;
   } catch (err) {
     logger.warn("fetch failed: {error}", { error: err instanceof Error ? err.message : err });
     // Serve a stale reading for the same location if we have one.
-    return cache && cache.key === key ? cache.reading : null;
+    return cache?.key === key ? cache.reading : null;
   }
 }

@@ -10,6 +10,7 @@
 	import { useAppSession } from '$lib/session';
 	import { inverter } from '$lib/inverter/store.svelte';
 	import GaugeIcon from 'phosphor-svelte/lib/Gauge';
+	import CpuIcon from 'phosphor-svelte/lib/Cpu';
 	import ChartLineIcon from 'phosphor-svelte/lib/ChartLine';
 	import SlidersIcon from 'phosphor-svelte/lib/SlidersHorizontal';
 	import CoinsIcon from 'phosphor-svelte/lib/Coins';
@@ -33,6 +34,7 @@
 
 	const items = $derived<NavItem[]>([
 		{ href: '/', label: 'Overview', icon: GaugeIcon },
+		{ href: '/system', label: 'System', icon: CpuIcon },
 		{ href: '/history', label: 'History', icon: ChartLineIcon },
 		{ href: '/costs', label: 'Costs', icon: CoinsIcon },
 		...(isAdmin && (inverter.capabilities?.controls.length ?? 0) > 0

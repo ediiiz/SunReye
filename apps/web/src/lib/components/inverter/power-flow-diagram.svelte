@@ -5,6 +5,7 @@
 	import AnimatedNumber from './animated-number.svelte';
 	import PowerFlowNode from './power-flow-node.svelte';
 	import { inverter } from '$lib/inverter/store.svelte';
+	import * as msg from '$lib/paraglide/messages';
 	import { buildPowerGraph, type Flow, type Pt } from '$lib/inverter/power-graph';
 
 	function power(role: CanonicalRole, index?: number): number | undefined {
@@ -178,7 +179,7 @@
 			<span
 				class={`size-1.5 shrink-0 rounded-full ${inverter.status === 'live' ? 'bg-emerald-500' : 'bg-muted-foreground'}`}
 			></span>
-			<span class="text-xs font-semibold 2xl:text-sm">Inverter</span>
+			<span class="text-xs font-semibold 2xl:text-sm">{msg.label_inverter()}</span>
 			<span class="text-[0.62rem] text-muted-foreground 2xl:text-xs">
 				{inverter.status === 'live' ? 'Online' : 'Connecting…'}
 			</span>

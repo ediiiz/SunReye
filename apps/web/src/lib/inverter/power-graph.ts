@@ -1,4 +1,5 @@
 import type { CanonicalRole, InverterCapabilities } from "$lib/inverter/types";
+import * as m from "$lib/paraglide/messages";
 
 // Flow relative to the inverter: `in` = power arriving (production / discharge
 // / import), `out` = leaving it (load / charge / export).
@@ -59,7 +60,7 @@ export function sense(
   const v = value ?? 0;
   if (v > 0.5) return positive;
   if (v < -0.5) return negative;
-  return { flow: "idle", state: "Idle" };
+  return { flow: "idle", state: m.flow_idle() };
 }
 
 // Default flow hue by direction relative to the inverter: arriving = green,
@@ -156,10 +157,10 @@ export function buildPowerGraph(
     count > 0
       ? Array.from({ length: count }, (_, i) => ({
           id: `pv${i + 1}`,
-          label: `String ${i + 1}`,
+          label: `${m.label_string()} ${i + 1}`,
           value: power("pv.string.power", i + 1),
         }))
-      : [{ id: "solar", label: "Solar", value: power("pv.total.power") }];
+      : [{ id: "solar", label: m.label_solar(), value: power("pv.total.power") }];
   const pvXs = portrait ? rowPositions(pv.length, 0.1, 0.9) : pv.map(() => 0.08);
   // Portrait keeps the source row low enough that the caption stack above the
   // circles (state + value + name) stays inside the box.
@@ -169,7 +170,11 @@ export function buildPowerGraph(
       ? [hub.y]
       : rowPositions(pv.length, 0.12, 0.72);
   pv.forEach((p, i) => {
-    const s = sense(p.value, { flow: "in", state: "Producing" }, { flow: "idle", state: "Idle" });
+    const s = sense(
+      p.value,
+      { flow: "in", state: m.flow_producing() },
+      { flow: "idle", state: m.flow_idle() },
+    );
     const at = { x: pvXs[i], y: pvYs[i] };
     nodes.push({
       ...p,
@@ -208,10 +213,14 @@ export function buildPowerGraph(
   if (caps?.battery) {
     const v = power("battery.power");
     // Sign convention (Deye register 590): power > 0 discharging (in), < 0 charging (out).
-    const s = sense(v, { flow: "in", state: "Discharging" }, { flow: "out", state: "Charging" });
+    const s = sense(
+      v,
+      { flow: "in", state: m.flow_discharging() },
+      { flow: "out", state: m.flow_charging() },
+    );
     bottoms.push({
       id: "battery",
-      label: "Battery",
+      label: m.label_battery(),
       kind: "battery",
       type: "DC",
       value: v,
@@ -224,13 +233,13 @@ export function buildPowerGraph(
   const gridValue = caps?.grid ? power("grid.power") : undefined;
   const gridSense = sense(
     gridValue,
-    { flow: "in", state: "Importing" },
-    { flow: "out", state: "Exporting" },
+    { flow: "in", state: m.flow_importing() },
+    { flow: "out", state: m.flow_exporting() },
   );
   if (caps?.grid && portrait) {
     bottoms.push({
       id: "grid",
-      label: "Grid",
+      label: m.label_grid(),
       kind: "grid",
       type: "AC",
       value: gridValue,
@@ -242,10 +251,14 @@ export function buildPowerGraph(
 
   if (caps?.backupLoad) {
     const v = power("load.power");
-    const s = sense(v, { flow: "out", state: "Consuming" }, { flow: "out", state: "Consuming" });
+    const s = sense(
+      v,
+      { flow: "out", state: m.flow_consuming() },
+      { flow: "out", state: m.flow_consuming() },
+    );
     bottoms.push({
       id: "load",
-      label: "Load",
+      label: m.label_load(),
       kind: "load",
       type: "AC",
       value: v,
@@ -257,10 +270,14 @@ export function buildPowerGraph(
 
   if (caps?.generator) {
     const v = power("generator.power");
-    const s = sense(v, { flow: "in", state: "Running" }, { flow: "idle", state: "Off" });
+    const s = sense(
+      v,
+      { flow: "in", state: m.flow_running() },
+      { flow: "idle", state: m.flow_off() },
+    );
     bottoms.push({
       id: "generator",
-      label: "Generator",
+      label: m.label_generator(),
       kind: "generator",
       type: "AC",
       value: v,
@@ -292,7 +309,7 @@ export function buildPowerGraph(
     const at = { x: 0.92, y: hub.y };
     nodes.push({
       id: "grid",
-      label: "Grid",
+      label: m.label_grid(),
       kind: "grid",
       value: gridValue,
       accent: "var(--color-chart-4)",

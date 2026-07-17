@@ -6,15 +6,19 @@
 	import BatteryBar from '$lib/components/inverter/battery-bar.svelte';
 	import SubsystemSection from '$lib/components/inverter/subsystem-section.svelte';
 	import IndexedGroup from '$lib/components/inverter/indexed-group.svelte';
+	import * as m from '$lib/paraglide/messages';
 
 	const caps = $derived(inverter.capabilities);
 
-	const KPI_DEFS: { role: CanonicalRole; accent: string; diverging?: boolean }[] = [
-		{ role: 'pv.total.power', accent: 'var(--color-chart-1)' },
-		{ role: 'battery.power', accent: 'var(--color-chart-3)' },
-		{ role: 'grid.power', accent: 'var(--color-chart-4)', diverging: true },
-		{ role: 'load.power', accent: 'var(--color-chart-5)' }
-	];
+	// Canonical-role KPIs get a translated label from the role (not the profile's
+	// author-chosen label), falling back to the profile label if unmapped.
+	const KPI_DEFS: { role: CanonicalRole; label: () => string; accent: string; diverging?: boolean }[] =
+		[
+			{ role: 'pv.total.power', label: m.label_solar, accent: 'var(--color-chart-1)' },
+			{ role: 'battery.power', label: m.label_battery, accent: 'var(--color-chart-3)' },
+			{ role: 'grid.power', label: m.label_grid, accent: 'var(--color-chart-4)', diverging: true },
+			{ role: 'load.power', label: m.label_load, accent: 'var(--color-chart-5)' }
+		];
 
 	const kpis = $derived(
 		KPI_DEFS.map((d) => ({ ...d, metric: inverter.byRole(d.role) })).filter(
@@ -54,7 +58,7 @@
 			{@const v = inverter.value(k.metric.key)}
 			<div class="min-w-0 border border-border">
 				<Kpi
-					label={k.metric.label}
+					label={k.label()}
 					value={v}
 					text={formatValue(k.metric, v)}
 					unit={k.metric.unit ?? ''}
@@ -68,7 +72,7 @@
 
 	<div class="grid gap-6 lg:grid-cols-2">
 		{#if caps?.battery}
-			<SubsystemSection title="Battery" metrics={batteryRows}>
+			<SubsystemSection title={m.label_battery()} metrics={batteryRows}>
 				<BatteryBar
 					soc={socMetric ? inverter.value(socMetric.key) : undefined}
 					power={batteryPowerMetric ? inverter.value(batteryPowerMetric.key) : undefined}
@@ -77,19 +81,19 @@
 		{/if}
 
 		{#if inverterStatus.length > 0}
-			<SubsystemSection title="Inverter" metrics={inverterStatus} />
+			<SubsystemSection title={m.label_inverter()} metrics={inverterStatus} />
 		{/if}
 
 		{#if pvStrings.length > 0}
-			<SubsystemSection title={`Solar · ${pvStrings.length} strings`} metrics={[]}>
-				<IndexedGroup label="String" indices={pvStrings} roles={stringRoles} />
+			<SubsystemSection title={m.system_solar_strings({ count: pvStrings.length })} metrics={[]}>
+				<IndexedGroup label={m.label_string()} indices={pvStrings} roles={stringRoles} />
 			</SubsystemSection>
 		{/if}
 
 		{#if caps?.grid && phases.length > 0}
-			<SubsystemSection title={`Grid · ${phases.length}-phase`} metrics={[]}>
+			<SubsystemSection title={m.system_grid_phase({ count: phases.length })} metrics={[]}>
 				<IndexedGroup
-					label="Phase"
+					label={m.label_phase()}
 					indices={phases}
 					roles={phaseRoles}
 					columns="sm:grid-cols-2 lg:grid-cols-3"
@@ -98,11 +102,11 @@
 		{/if}
 
 		{#if caps?.generator}
-			<SubsystemSection title="Generator" metrics={inverter.inGroup('generator')} />
+			<SubsystemSection title={m.label_generator()} metrics={inverter.inGroup('generator')} />
 		{/if}
 
 		{#if caps?.backupLoad}
-			<SubsystemSection title="Backup load" metrics={inverter.inGroup('load')} />
+			<SubsystemSection title={m.system_backup_load()} metrics={inverter.inGroup('load')} />
 		{/if}
 	</div>
 </div>

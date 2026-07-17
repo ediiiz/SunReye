@@ -1,0 +1,4 @@
+[test]
+# Stub browser globals (localStorage for the Paraglide locale) before any
+# module under test loads — see src/test-setup.ts.
+preload = ["./src/test-setup.ts"]

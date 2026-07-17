@@ -32,8 +32,43 @@ describe("buildPowerGraph", () => {
     );
     expect(g.nodes.map((n) => n.id)).toEqual(["pv1", "pv2", "pv3"]);
     expect(g.nodes[1].flow).toBe("idle");
-    // Multi-string routes take the elbowed 4-point rail into the hub.
-    expect(g.segments.every((s) => s.pts.length === 4)).toBe(true);
+    // Multi-string landscape routes take the cubic S-curve (4 pts) into the hub,
+    // except a string that already sits on the hub's row, which runs straight.
+    expect(
+      g.segments.every((s) => s.pts.length === 4 || (s.pts.length === 2 && s.pts[0].y === g.hub.y)),
+    ).toBe(true);
+  });
+
+  test("orientation moves the grid: right of the hub in landscape, sink row in portrait", () => {
+    const power = powerFrom({ "grid.power": 400 });
+    const landscape = buildPowerGraph(caps({ grid: true }), power, "landscape");
+    const lGrid = landscape.nodes.find((n) => n.id === "grid");
+    expect(lGrid?.at.x).toBeGreaterThan(landscape.hub.x);
+    expect(lGrid?.at.y).toBe(landscape.hub.y);
+    const portrait = buildPowerGraph(caps({ grid: true }), power, "portrait");
+    const pGrid = portrait.nodes.find((n) => n.id === "grid");
+    expect(pGrid?.at.y).toBeGreaterThan(portrait.hub.y);
+  });
+
+  test("portrait pv captions sit above their nodes, clear of the connectors", () => {
+    const power = powerFrom({ "pv.string.power#1": 500, "pv.string.power#2": 300 });
+    const portrait = buildPowerGraph(caps({ pvStrings: 2 }), power, "portrait");
+    expect(portrait.nodes.every((n) => n.labelSide === "above")).toBe(true);
+    const landscape = buildPowerGraph(caps({ pvStrings: 2 }), power, "landscape");
+    expect(landscape.nodes.every((n) => n.labelSide === "below")).toBe(true);
+  });
+
+  test("every segment ends at the hub in both orientations", () => {
+    const power = powerFrom({});
+    for (const orientation of ["landscape", "portrait"] as const) {
+      const g = buildPowerGraph(
+        caps({ pvStrings: 2, battery: true, backupLoad: true, generator: true, grid: true }),
+        power,
+        orientation,
+      );
+      expect(g.segments.every((s) => s.pts.at(-1)?.x === g.hub.x)).toBe(true);
+      expect(g.segments.every((s) => s.pts.at(-1)?.y === g.hub.y)).toBe(true);
+    }
   });
 
   test("battery sign convention: positive discharges, negative charges", () => {

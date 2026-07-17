@@ -52,10 +52,14 @@
 </script>
 
 {#if weather && Icon}
-	<div class="flex items-center gap-4 rounded-lg border border-border bg-background px-4 py-3">
-		<Icon class="size-10 shrink-0 text-primary" weight="duotone" />
-		<div class="flex min-w-0 flex-col">
-			<span class="text-2xl font-semibold tabular-nums leading-none">
+	<div class="flex h-full items-center gap-4 rounded-xl border border-border/60 bg-card p-3 sm:p-4">
+		<span
+			class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 2xl:size-16"
+		>
+			<Icon class="size-7 text-primary 2xl:size-9" weight="duotone" />
+		</span>
+		<div class="flex min-w-0 flex-col gap-0.5">
+			<span class="text-3xl font-semibold tabular-nums leading-none 2xl:text-4xl">
 				{Math.round(weather.temperature)}{weather.unit}
 			</span>
 			<span class="truncate text-sm text-muted-foreground">{weather.condition}</span>
@@ -67,8 +71,8 @@
 			{/if}
 		</div>
 		{#if weather.solarRadiationSum !== null}
-			<div class="ml-auto flex flex-col items-end">
-				<span class="text-sm font-medium tabular-nums">
+			<div class="ml-auto flex shrink-0 flex-col items-end">
+				<span class="text-sm font-medium tabular-nums 2xl:text-base">
 					{weather.solarRadiationSum.toLocaleString(undefined, { maximumFractionDigits: 1 })}
 				</span>
 				<span class="text-[0.6rem] uppercase tracking-wide text-muted-foreground">MJ/m² sun</span>

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { AreaChart, Area, ChartClipPath } from 'layerchart';
+	import { AreaChart, Area, ChartClipPath, Highlight } from 'layerchart';
 	import { curveCatmullRom } from 'd3-shape';
 	import DivergingArea from '$lib/components/inverter/diverging-area.svelte';
 	import { untrack } from 'svelte';
@@ -104,6 +104,11 @@
 					fillOpacity={0.3}
 				/>
 			{/if}
+			<!-- Render the hover highlight INSIDE the glide-translated group so the
+			     point/crosshair track the visible line. The chart's built-in highlight
+			     (disabled below) positions in untranslated data space and would sit
+			     offset from the line by exactly `glideX`. -->
+			<Highlight points lines />
 		</g>
 	</ChartClipPath>
 {/snippet}
@@ -140,6 +145,7 @@
 		legend={false}
 		padding={{ top: 6, bottom: 6, left: 44, right: 6 }}
 		marks={clippedMarks}
+		highlight={false}
 		tooltipContext={{ mode: 'bisect-x' }}
 	>
 		{#snippet tooltip()}

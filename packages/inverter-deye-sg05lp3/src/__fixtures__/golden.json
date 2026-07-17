@@ -867,7 +867,11 @@
         "unit": "W",
         "group": "timeofuse",
         "kind": "setting",
-        "writable": true
+        "writable": true,
+        "range": {
+          "min": 0,
+          "max": 20000
+        }
       },
       {
         "key": "timeofuse.power.2",
@@ -876,7 +880,11 @@
         "unit": "W",
         "group": "timeofuse",
         "kind": "setting",
-        "writable": true
+        "writable": true,
+        "range": {
+          "min": 0,
+          "max": 20000
+        }
       },
       {
         "key": "timeofuse.power.3",
@@ -885,7 +893,11 @@
         "unit": "W",
         "group": "timeofuse",
         "kind": "setting",
-        "writable": true
+        "writable": true,
+        "range": {
+          "min": 0,
+          "max": 20000
+        }
       },
       {
         "key": "timeofuse.power.4",
@@ -894,7 +906,11 @@
         "unit": "W",
         "group": "timeofuse",
         "kind": "setting",
-        "writable": true
+        "writable": true,
+        "range": {
+          "min": 0,
+          "max": 20000
+        }
       },
       {
         "key": "timeofuse.power.5",
@@ -903,7 +919,11 @@
         "unit": "W",
         "group": "timeofuse",
         "kind": "setting",
-        "writable": true
+        "writable": true,
+        "range": {
+          "min": 0,
+          "max": 20000
+        }
       },
       {
         "key": "timeofuse.power.6",
@@ -912,7 +932,11 @@
         "unit": "W",
         "group": "timeofuse",
         "kind": "setting",
-        "writable": true
+        "writable": true,
+        "range": {
+          "min": 0,
+          "max": 20000
+        }
       },
       {
         "key": "timeofuse.voltage.1",
@@ -2349,7 +2373,11 @@
         154
       ],
       "scale": 1,
-      "access": "rw"
+      "access": "rw",
+      "range": {
+        "min": 0,
+        "max": 20000
+      }
     },
     {
       "key": "timeofuse.power.2",
@@ -2362,7 +2390,11 @@
         155
       ],
       "scale": 1,
-      "access": "rw"
+      "access": "rw",
+      "range": {
+        "min": 0,
+        "max": 20000
+      }
     },
     {
       "key": "timeofuse.power.3",
@@ -2375,7 +2407,11 @@
         156
       ],
       "scale": 1,
-      "access": "rw"
+      "access": "rw",
+      "range": {
+        "min": 0,
+        "max": 20000
+      }
     },
     {
       "key": "timeofuse.power.4",
@@ -2388,7 +2424,11 @@
         157
       ],
       "scale": 1,
-      "access": "rw"
+      "access": "rw",
+      "range": {
+        "min": 0,
+        "max": 20000
+      }
     },
     {
       "key": "timeofuse.power.5",
@@ -2401,7 +2441,11 @@
         158
       ],
       "scale": 1,
-      "access": "rw"
+      "access": "rw",
+      "range": {
+        "min": 0,
+        "max": 20000
+      }
     },
     {
       "key": "timeofuse.power.6",
@@ -2414,7 +2458,11 @@
         159
       ],
       "scale": 1,
-      "access": "rw"
+      "access": "rw",
+      "range": {
+        "min": 0,
+        "max": 20000
+      }
     },
     {
       "key": "timeofuse.voltage.1",

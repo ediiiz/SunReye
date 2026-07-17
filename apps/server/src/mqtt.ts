@@ -81,6 +81,17 @@ const valueToLabelTemplate = (labels: Record<number, string>): string =>
 type Discovery = { component: string; config: Record<string, unknown> };
 
 /**
+ * HA `number` entities default their range to **0–100** when `min`/`max` are
+ * omitted, silently rejecting any real setpoint above 100 (e.g. a 6000 W TOU
+ * power). When a profile metric declares no `range`, fall back to this permissive
+ * envelope so a missing range degrades to "accept realistic values" instead of
+ * "reject > 100". Declaring an explicit `range` on the metric is still the right
+ * fix — it renders a bounded slider and clamps writes; this is only a safety net
+ * (notably for downloaded data profiles that may omit ranges).
+ */
+const NUMBER_RANGE_FALLBACK = { min: 0, max: 100_000 };
+
+/**
  * The HA discovery component for an entity and its config payload.
  *
  * - writable enum → `select` (options are the friendly labels; templates map
@@ -96,16 +107,22 @@ function discoveryConfig(
   profileId: string,
   haDevice: HaDevice,
 ): Discovery {
+  const labels = m.enumLabels;
+  // The HA component (domain) this entity maps to — decided by the same branches
+  // below. Needed up front because `default_entity_id` (unlike the deprecated
+  // `object_id` it replaces) must carry the domain prefix, e.g. `sensor.…`.
+  const component = c.writable ? (labels ? "select" : "number") : "sensor";
   const shared = clean({
     name: m.label,
     unique_id: `sunreye_${profileId}_${slug(m.key)}`,
-    object_id: `sunreye_${slug(m.key)}`,
+    // Replaces deprecated `object_id` (removed in HA Core 2026.4). HA derives the
+    // suggested entity_id from this; it must include the component domain.
+    default_entity_id: `${component}.sunreye_${slug(m.key)}`,
     state_topic: topics.state(m),
     availability_topic: topics.availability,
     unit_of_measurement: m.unit ?? undefined,
     device: haDevice,
   });
-  const labels = m.enumLabels;
 
   if (c.writable && labels) {
     // label→value for commands, value→label for state display.
@@ -128,8 +145,8 @@ function discoveryConfig(
       config: clean({
         ...shared,
         command_topic: topics.command(m),
-        min: c.min,
-        max: c.max,
+        min: c.min ?? NUMBER_RANGE_FALLBACK.min,
+        max: c.max ?? NUMBER_RANGE_FALLBACK.max,
         mode: "box",
         device_class: deviceClass(m),
       }),

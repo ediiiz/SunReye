@@ -638,6 +638,10 @@ const timeOfUse: MetricDataDef[] = [
       group: "timeofuse",
       addr,
       access: "rw",
+      // Grid charge/discharge power setpoint. Generic family envelope (largest
+      // SKU, 20 kW); without a range HA defaults the number entity to 0–100 and
+      // rejects real setpoints (e.g. 6000 W).
+      range: { min: 0, max: 20000 },
     }),
   ),
   ...[160, 161, 162, 163, 164, 165].map((addr, i) =>

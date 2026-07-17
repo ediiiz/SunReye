@@ -67,8 +67,10 @@
 	</header>
 
 	<Tabs.Root bind:value={tab} class="gap-6">
-		<div class="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-			<Tabs.List variant="line" class="w-max">
+		<!-- Mobile: single-line horizontal scroll. Desktop (sm+): wrap within the
+		     column instead of scrolling, since there is room to lay the tabs out. -->
+		<div class="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:overflow-x-visible sm:px-0">
+			<Tabs.List variant="line" class="w-max sm:w-full sm:flex-wrap">
 				{#each TABS as t (t.id)}
 					<Tabs.Trigger value={t.id}>{t.label}</Tabs.Trigger>
 				{/each}

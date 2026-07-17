@@ -22,3 +22,31 @@ export async function writeSetting<T>(key: string, value: T): Promise<void> {
     .values({ key, value })
     .onConflictDoUpdate({ target: appSettings.key, set: { value, updatedAt: new Date() } });
 }
+
+/** A single instance-wide setting: read (cached, validated) + validated write. */
+export interface CachedSetting<T> {
+  /** Active value, falling back to the default when unset/invalid. Cached. */
+  get(): Promise<T>;
+  /** Validate and persist (upsert), refreshing the cache. */
+  set(input: unknown): Promise<T>;
+}
+
+/**
+ * Build a memory-cached accessor for one `app_settings` row (invalidated on
+ * write). The shared shape behind display/access/weather/... so each is one
+ * declaration rather than a copy of the same get/set pair.
+ */
+export function cachedSetting<T>(key: string, schema: ZodType<T>, fallback: T): CachedSetting<T> {
+  let cache: T | null = null;
+  return {
+    async get() {
+      cache ??= await readSetting(key, schema, fallback);
+      return cache;
+    },
+    async set(input) {
+      cache = schema.parse(input);
+      await writeSetting(key, cache);
+      return cache;
+    },
+  };
+}

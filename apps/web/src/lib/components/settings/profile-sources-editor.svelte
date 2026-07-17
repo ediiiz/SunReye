@@ -5,7 +5,7 @@
 	import { Label } from "$lib/components/ui/label";
 	import { Switch } from "$lib/components/ui/switch";
 	import SettingsSection from "./settings-section.svelte";
-	import { isOfficialSource, type Source } from "./profile-types";
+	import type { Source } from "./profile-types";
 
 	let {
 		sources,
@@ -65,7 +65,7 @@
 						onCheckedChange={(checked) => onToggle(s.url, checked)}
 						aria-label="Enabled"
 					/>
-					{#if isOfficialSource(s.url)}
+					{#if s.official}
 						<!-- Protected: the official source can be disabled but not removed. -->
 						<span class="text-xs uppercase tracking-wide text-muted-foreground">Default</span>
 					{:else}

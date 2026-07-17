@@ -12,6 +12,8 @@ import { getAccess, setAccess } from "../access-settings";
 import { getDisplay, setDisplay } from "../display-settings";
 import * as runtime from "../runtime";
 import { getTariff, setTariff } from "../settings";
+import { fetchWeather } from "../weather";
+import { getWeatherConfig, setWeatherConfig } from "../weather-settings";
 import { adminGuard } from "./admin-guard";
 
 // Runtime configuration (tariff, inverter, MQTT), editable from the UI. Saving
@@ -124,4 +126,23 @@ export const settingsRoutes = new Elysia({ name: "settings-routes" })
       }
     },
     { requireAdmin: true, body: t.Unknown() },
-  );
+  )
+  // Weather config (location for the dashboard tile) — admin read + write.
+  .get("/api/settings/weather", () => getWeatherConfig(), { requireAdmin: true })
+  .put(
+    "/api/settings/weather",
+    async ({ body, status }) => {
+      try {
+        return await setWeatherConfig(body);
+      } catch (error) {
+        return status(400, { error: error instanceof Error ? error.message : "Invalid weather" });
+      }
+    },
+    { requireAdmin: true, body: t.Unknown() },
+  )
+  // Current weather for the configured location (Open-Meteo, server-proxied +
+  // cached). Rides the dashboard read policy so the kiosk view shows it too;
+  // `null` when weather is disabled/unconfigured or the upstream is unavailable.
+  .get("/api/weather", async () => (await fetchWeather(await getWeatherConfig())) ?? null, {
+    requireSession: true,
+  });

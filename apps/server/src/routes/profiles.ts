@@ -1,3 +1,4 @@
+import { isOfficialSource } from "@SunReye/db/profiles";
 import { listProfiles } from "@SunReye/inverter-core";
 import { Elysia, t } from "elysia";
 import { getActiveProfileOrNull } from "../inverter";
@@ -37,8 +38,17 @@ export const profileRoutes = new Elysia({ name: "profile-routes" })
     },
     { requireAdmin: true },
   )
-  // Repo sources: admin read + write (config surface).
-  .get("/api/settings/profile-sources", () => getProfileSources(), { requireAdmin: true })
+  // Repo sources: admin read + write (config surface). Each source is tagged
+  // `official` (the protected default) so the UI can hide its Remove action
+  // without re-deriving the check client-side.
+  .get(
+    "/api/settings/profile-sources",
+    async () => {
+      const { sources } = await getProfileSources();
+      return { sources: sources.map((s) => ({ ...s, official: isOfficialSource(s.url) })) };
+    },
+    { requireAdmin: true },
+  )
   .put(
     "/api/settings/profile-sources",
     async ({ body, status }) => {

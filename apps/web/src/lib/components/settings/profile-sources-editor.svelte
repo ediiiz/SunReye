@@ -5,7 +5,7 @@
 	import { Label } from "$lib/components/ui/label";
 	import { Switch } from "$lib/components/ui/switch";
 	import SettingsSection from "./settings-section.svelte";
-	import type { Source } from "./profile-types";
+	import { isOfficialSource, type Source } from "./profile-types";
 
 	let {
 		sources,
@@ -28,7 +28,6 @@
 	// whole set with an opaque 400).
 	function validationError(url: string): string | null {
 		if (!url.startsWith("https://")) return "URL must be an https git URL";
-		if (!url.endsWith(".git")) return 'URL should end with ".git"';
 		return null;
 	}
 
@@ -66,9 +65,14 @@
 						onCheckedChange={(checked) => onToggle(s.url, checked)}
 						aria-label="Enabled"
 					/>
-					<Button variant="ghost" size="sm" disabled={saving} onclick={() => onRemove(s.url)}>
-						Remove
-					</Button>
+					{#if isOfficialSource(s.url)}
+						<!-- Protected: the official source can be disabled but not removed. -->
+						<span class="text-xs uppercase tracking-wide text-muted-foreground">Default</span>
+					{:else}
+						<Button variant="ghost" size="sm" disabled={saving} onclick={() => onRemove(s.url)}>
+							Remove
+						</Button>
+					{/if}
 				</div>
 			</div>
 		{/each}

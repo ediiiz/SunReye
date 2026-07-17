@@ -16,6 +16,7 @@ import {
   LEGACY_DEFAULT_SOURCE_URL,
   PROFILE_SOURCES_KEY,
   activeProfileSchema,
+  mergeOfficialSource,
   profileSourcesSchema,
   type ProfileSources,
 } from "@SunReye/db/profiles";
@@ -34,15 +35,27 @@ import { log } from "./logging";
 
 const logger = log("profiles");
 
-/** The configured git repo sources (none by default — added manually). */
-export function getProfileSources(): Promise<ProfileSources> {
-  return readSetting(PROFILE_SOURCES_KEY, profileSourcesSchema, profileSourcesSchema.parse({}));
+/**
+ * The configured git repo sources. The protected official source is merged in
+ * on read, so it's always present even for installs predating it (back-fill
+ * without a migration) — the user can disable it but not remove it.
+ */
+export async function getProfileSources(): Promise<ProfileSources> {
+  const stored = await readSetting(
+    PROFILE_SOURCES_KEY,
+    profileSourcesSchema,
+    profileSourcesSchema.parse({}),
+  );
+  return { sources: mergeOfficialSource(stored.sources) };
 }
 
 export async function setProfileSources(input: unknown): Promise<ProfileSources> {
   const parsed = profileSourcesSchema.parse(input);
-  await writeSetting(PROFILE_SOURCES_KEY, parsed);
-  return parsed;
+  // Re-inject the official source if the write tried to drop it (disable-not-
+  // remove); an incoming disabled entry is preserved by mergeOfficialSource.
+  const merged = { sources: mergeOfficialSource(parsed.sources) };
+  await writeSetting(PROFILE_SOURCES_KEY, merged);
+  return merged;
 }
 
 /**

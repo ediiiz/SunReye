@@ -8,7 +8,6 @@ import {
   buildManifest,
   createInverter,
   entityConstraint,
-  getProfile,
   hydrateProfile,
   metricByKey,
   parseProfileData,
@@ -103,7 +102,21 @@ export async function initProfiles(): Promise<InverterProfile | null> {
     activeProfile = null;
     return null;
   }
-  activeProfile = getProfile(id);
+  // The saved id may point at a profile that's no longer available — e.g. an
+  // upgrade that dropped a formerly built-in package (the id lives in
+  // app_settings, not the installedProfiles table, so it isn't reloaded). Don't
+  // crash the whole server on a stale id: degrade to onboarding-only so the
+  // admin can reinstall it from a source.
+  const resolved = tryGetProfile(id);
+  if (!resolved) {
+    logger.warn(
+      'active inverter profile "{id}" is not installed — booting onboarding-only (reinstall it from a profile source, then restart)',
+      { id },
+    );
+    activeProfile = null;
+    return null;
+  }
+  activeProfile = resolved;
   return activeProfile;
 }
 

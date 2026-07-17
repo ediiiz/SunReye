@@ -115,7 +115,11 @@ export function buildPowerGraph(
     for (let i = 1; i <= count; i++) {
       const y = count === 1 ? HUB.y : lo + ((hi - lo) * (i - 1)) / (count - 1);
       const v = power("pv.string.power", i);
-      const s = sense(v, { flow: "in", state: "Producing" }, { flow: "idle", state: "Idle" });
+      const s = sense(
+        v,
+        { flow: "in", state: m.flow_producing() },
+        { flow: "idle", state: m.flow_idle() },
+      );
       const at = { x: 0.08, y };
       nodes.push({
         id: `pv${i}`,

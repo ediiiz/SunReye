@@ -68,13 +68,41 @@ async function git(args: string[], cwd?: string): Promise<void> {
 }
 
 /**
+ * In-flight sync per cache dir. Two git processes in the same repo race on
+ * `.git/*.lock` ("Another git process seems to be running"), so overlapping
+ * callers for the same URL — a browse polled from the UI, a browse overlapping a
+ * download — must run one at a time, not concurrently.
+ */
+const syncChains = new Map<string, Promise<unknown>>();
+
+/**
  * Clone the repo on first use, or update an existing clone. Returns the local
- * working-tree directory. A failed update wipes the cache and re-clones so a
- * corrupt clone can't wedge the source permanently.
+ * working-tree directory. Syncs for the same dir are serialized (see
+ * {@link syncChains}); a failed update wipes the cache and re-clones so a
+ * corrupt clone — or a stale lock left by a process killed across a restart —
+ * can't wedge the source permanently.
  */
 export async function syncRepo(url: string): Promise<string> {
   assertAllowedGitUrl(url);
   const dir = cacheDirFor(url);
+  // Chain onto any in-flight sync for this dir, running regardless of whether it
+  // resolved or rejected, so we never launch a second concurrent git here.
+  const prior = syncChains.get(dir) ?? Promise.resolve();
+  const result = prior.then(
+    () => doSync(dir, url),
+    () => doSync(dir, url),
+  );
+  // Advance the chain with a rejection-swallowing link so the next caller isn't
+  // poisoned by our failure, and drop the entry once it's the last to settle.
+  const link = result.catch(() => {});
+  syncChains.set(dir, link);
+  void link.finally(() => {
+    if (syncChains.get(dir) === link) syncChains.delete(dir);
+  });
+  return result;
+}
+
+async function doSync(dir: string, url: string): Promise<string> {
   const exists = await Bun.file(join(dir, ".git", "HEAD")).exists();
   if (!exists) {
     await rm(dir, { recursive: true, force: true });

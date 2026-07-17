@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { fade } from 'svelte/transition';
+	import Info from 'phosphor-svelte/lib/Info';
 	import { api } from '$lib/api';
+	import * as Popover from '$lib/components/ui/popover';
 	import CostRangePicker from '$lib/components/inverter/cost-range-picker.svelte';
 	import CostBarChart from '$lib/components/inverter/cost-bar-chart.svelte';
 	import EnergySplitChart from '$lib/components/inverter/energy-split-chart.svelte';
@@ -17,14 +19,9 @@
 		gridOnlyCost: number;
 		savings: number;
 		solarSavings: number;
+		selfConsumedKwh: number;
 		selfSufficiency: number | null;
 		selfConsumption: number | null;
-		byDay: {
-			date: string;
-			importCost: number;
-			exportEarnings: number;
-			net: number;
-		}[];
 		byBand: { name: string; importKwh: number; cost: number }[];
 	};
 
@@ -92,23 +89,21 @@
 			currency: cost?.currency ?? 'EUR'
 		}).format(v);
 	const kwh = (v: number) => `${v.toLocaleString(undefined, { maximumFractionDigits: 1 })} kWh`;
-	const pct = (v: number | null) => (v === null ? '—' : `${Math.round(v * 100)}%`);
+	const price = (v: number) =>
+		new Intl.NumberFormat(undefined, {
+			style: 'currency',
+			currency: cost?.currency ?? 'EUR',
+			minimumFractionDigits: 2,
+			maximumFractionDigits: 3
+		}).format(v);
 
-	// byDay bar chart scaling (net cost per day, signed).
-	const maxAbs = $derived(Math.max(1e-9, ...(cost?.byDay ?? []).map((d) => Math.abs(d.net))));
-	// byDay dates are typed as `YYYY-MM-DD`, but at runtime may arrive as a Date or
-	// timestamp. Parse a bare date at local midnight so it isn't shifted a day in
-	// negative UTC offsets; hand everything else straight to `new Date`. Fall back
-	// to the raw value rather than rendering "Invalid Date".
-	const dayLabel = (iso: string) => {
-		const d =
-			typeof iso === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(iso)
-				? new Date(`${iso}T00:00:00`)
-				: new Date(iso);
-		return Number.isNaN(d.getTime())
-			? String(iso ?? '')
-			: d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-	};
+	// Solar Saving breakdown: self-consumed kWh × effective grid price = saving.
+	// The effective price is the saving spread over the self-consumed energy, so
+	// it stays band-accurate without the server returning a separate price.
+	const solarSavingBreakdown = $derived.by(() => {
+		if (!cost || cost.selfConsumedKwh <= 0) return null;
+		return `${kwh(cost.selfConsumedKwh)} × ${price(cost.solarSavings / cost.selfConsumedKwh)}`;
+	});
 </script>
 
 <div class="flex w-full flex-col gap-6 p-4 sm:p-6">
@@ -131,48 +126,80 @@
 			class="grid gap-px border border-border bg-border sm:grid-cols-2 lg:grid-cols-3"
 			transition:fade={{ duration: 200 }}
 		>
-			{#snippet tile(label: string, value: string, sub?: string, accent?: string)}
+			{#snippet tile(t: {
+				label: string;
+				value: string;
+				sub?: string;
+				accent?: string;
+				explain: string;
+			})}
 				<div class="flex flex-col gap-1 bg-background px-4 py-3">
-					<span class="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">
-						{label}
-					</span>
-					<span class="text-2xl font-semibold tabular-nums {accent ?? ''}">{value}</span>
-					{#if sub}<span class="text-xs text-muted-foreground">{sub}</span>{/if}
+					<div class="flex items-center gap-1.5">
+						<span
+							class="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground"
+						>
+							{t.label}
+						</span>
+						<Popover.Root>
+							<Popover.Trigger
+								class="text-muted-foreground/70 transition-colors hover:text-foreground"
+								aria-label="What is {t.label}?"
+							>
+								<Info class="size-3.5" weight="bold" />
+							</Popover.Trigger>
+							<Popover.Content class="max-w-xs text-xs leading-relaxed">
+								{t.explain}
+							</Popover.Content>
+						</Popover.Root>
+					</div>
+					<span class="text-2xl font-semibold tabular-nums {t.accent ?? ''}">{t.value}</span>
+					{#if t.sub}<span class="text-xs text-muted-foreground">{t.sub}</span>{/if}
 				</div>
 			{/snippet}
 
-			{@render tile(
-				'Total cost',
-				money(c.net),
-				`incl. ${money(c.standingCharge)} standing`,
-				c.net < 0 ? 'text-emerald-500' : ''
-			)}
-			{@render tile('Grid import', money(c.importCost), kwh(c.importKwh))}
-			{@render tile('Export earnings', money(c.exportEarnings), kwh(c.exportKwh))}
-			{@render tile(
-				'Solar savings',
-				money(c.solarSavings),
-				'self-consumed × grid price',
-				c.solarSavings > 0 ? 'text-emerald-500' : ''
-			)}
-			{@render tile('Savings vs grid-only', money(c.savings), `incl. ${money(c.exportEarnings)} export`)}
-
-			<!-- Efficiency: two ratios in one tile so the 6-tile grid stays square. -->
-			<div class="flex flex-col gap-1 bg-background px-4 py-3">
-				<span class="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">
-					Efficiency
-				</span>
-				<div class="flex gap-6">
-					<div class="flex flex-col">
-						<span class="text-2xl font-semibold tabular-nums">{pct(c.selfSufficiency)}</span>
-						<span class="text-xs text-muted-foreground">self-sufficiency</span>
-					</div>
-					<div class="flex flex-col">
-						<span class="text-2xl font-semibold tabular-nums">{pct(c.selfConsumption)}</span>
-						<span class="text-xs text-muted-foreground">self-consumption</span>
-					</div>
-				</div>
-			</div>
+			{@render tile({
+				label: 'Grid cost',
+				value: money(c.importCost + c.standingCharge),
+				sub: `import ${money(c.importCost)} + standing ${money(c.standingCharge)}`,
+				explain:
+					'What you actually pay the utility: imported energy priced at your tariff plus the standing charge. Export earnings are NOT subtracted here — this is the bill before feed-in income.'
+			})}
+			{@render tile({
+				label: 'Effective cost',
+				value: money(c.net),
+				sub: `grid cost − ${money(c.exportEarnings)} export`,
+				accent: c.net < 0 ? 'text-emerald-500' : '',
+				explain:
+					'Grid cost after subtracting export (feed-in) earnings — your net out-of-pocket for the period. Negative means feed-in outweighed your bill.'
+			})}
+			{@render tile({
+				label: 'Grid import',
+				value: kwh(c.importKwh),
+				sub: `${money(c.importCost)} at your tariff`,
+				explain: 'Energy drawn from the grid over the period, and what it cost to import.'
+			})}
+			{@render tile({
+				label: 'Grid export',
+				value: kwh(c.exportKwh),
+				sub: `${money(c.exportEarnings)} feed-in`,
+				explain: 'Energy fed back to the grid over the period, and the feed-in earnings it produced.'
+			})}
+			{@render tile({
+				label: 'Solar saving',
+				value: money(c.solarSavings),
+				sub: solarSavingBreakdown ?? 'self-consumed energy',
+				accent: c.solarSavings > 0 ? 'text-emerald-500' : '',
+				explain:
+					'Value of solar/battery energy you used on-site instead of buying it: self-consumed kWh priced at the grid rate you would have paid. Excludes feed-in (that is Grid export).'
+			})}
+			{@render tile({
+				label: 'Total savings',
+				value: money(c.savings),
+				sub: `solar saving + ${money(c.exportEarnings)} export`,
+				accent: c.savings > 0 ? 'text-emerald-500' : '',
+				explain:
+					'How much better off you are than buying everything from the grid: solar saving plus export earnings. (Standing charge is excluded — you would pay it on all-grid too.)'
+			})}
 		</div>
 
 		<!-- Contextual total-cost bars. Window/granularity follow the picked range
@@ -192,33 +219,6 @@
 		<!-- Energy split (grid-vs-solar, self-consumed-vs-exported), same range as above.
 		     Owns its own section + fade and hides itself when the range has no energy. -->
 		<EnergySplitChart chart={range.chart} caption={range.chart.caption} />
-
-		<!-- Daily net cost — finer per-day detail than the "one level up" chart for
-		     month/year presets. Hidden entirely when the range has no days. -->
-		{#if c.byDay.length > 0}
-			<section
-				class="flex flex-col gap-3 border border-border p-4"
-				transition:fade={{ duration: 200 }}
-			>
-				<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-					Net cost per day
-				</h2>
-				<div class="flex flex-col gap-1.5">
-					{#each c.byDay as d (d.date)}
-						<div class="flex items-center gap-3 text-xs">
-							<span class="w-16 shrink-0 text-muted-foreground">{dayLabel(d.date)}</span>
-							<div class="flex h-4 flex-1 items-center">
-								<div
-									class="h-full {d.net < 0 ? 'bg-emerald-500/70' : 'bg-primary/70'}"
-									style="width: {(Math.abs(d.net) / maxAbs) * 100}%"
-								></div>
-							</div>
-							<span class="w-20 shrink-0 text-right tabular-nums">{money(d.net)}</span>
-						</div>
-					{/each}
-				</div>
-			</section>
-		{/if}
 
 		<!-- Import by band -->
 		{#if c.byBand.length > 0}

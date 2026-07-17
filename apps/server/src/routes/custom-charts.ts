@@ -43,15 +43,15 @@ function validateChart(ctx: ProfileContext | null, body: unknown): ChartValidati
 }
 
 /**
- * User-defined custom charts for the history page. Reads are public (matching
- * the rest of the read surface — the payload is just metric keys + a chart
- * type); writes are admin-gated and validated against the shared Zod schema and
- * the active profile's metric catalog.
+ * User-defined custom charts for the history page. Reads ride the dashboard read
+ * policy (session, or anonymous when the public dashboard is on) — the payload
+ * is just metric keys + a chart type; writes are admin-gated and validated
+ * against the shared Zod schema and the active profile's metric catalog.
  */
 export function customChartsRoutes({ ctx }: CustomChartRoutesDeps) {
   return new Elysia({ name: "custom-charts-routes" })
     .use(adminGuard)
-    .get("/api/custom-charts", () => listCharts())
+    .get("/api/custom-charts", () => listCharts(), { requireSession: true })
     .post(
       "/api/custom-charts",
       async ({ body, status }) => {

@@ -1,12 +1,25 @@
 import { auth } from "@SunReye/auth";
 import { Elysia } from "elysia";
+import { isPublicDashboard } from "../access-settings";
 
-// Admin gate for privileged mutations (config + live inverter writes). Opt in
-// per route with `{ requireAdmin: true }`. Reads stay public. Every environment
-// enforces a real admin session — no dev bypass — so unauthenticated callers
-// can never mutate settings, activate profiles, or restart the process. Named
-// plugin: deduped when several route modules `.use()` it, and the macro
-// propagates to every consumer.
+/**
+ * Whether a dashboard **read** may proceed. Allowed anonymously when the public
+ * read-only dashboard is enabled (kiosk / wall-display mode); otherwise requires
+ * any valid session (no role check). Shared by the `requireSession` macro and
+ * the WebSocket upgrade guard so both honour the same policy.
+ */
+export async function dashboardReadAllowed(headers: Headers): Promise<boolean> {
+  if (await isPublicDashboard()) return true;
+  return (await auth.api.getSession({ headers })) !== null;
+}
+
+// Access gates. Opt in per route:
+// - `requireAdmin` — privileged config reads + all mutations (config + live
+//   inverter writes). Always needs an admin session; no dev bypass.
+// - `requireSession` — dashboard reads. Needs any session, UNLESS the public
+//   read-only dashboard is enabled, in which case anonymous reads are allowed.
+// Named plugin: deduped when several route modules `.use()` it, and the macros
+// propagate to every consumer.
 export const adminGuard = new Elysia({ name: "admin-guard" }).macro({
   requireAdmin(enabled: boolean) {
     if (!enabled) return {};
@@ -16,6 +29,16 @@ export const adminGuard = new Elysia({ name: "admin-guard" }).macro({
         if (!session) return status(401, { error: "Authentication required" });
         if (session.user.role !== "admin") {
           return status(403, { error: "Admin access required" });
+        }
+      },
+    };
+  },
+  requireSession(enabled: boolean) {
+    if (!enabled) return {};
+    return {
+      async beforeHandle({ request, status }) {
+        if (!(await dashboardReadAllowed(request.headers))) {
+          return status(401, { error: "Authentication required" });
         }
       },
     };

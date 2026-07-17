@@ -5,6 +5,7 @@
 	import InverterForm from '$lib/components/settings/inverter-form.svelte';
 	import MqttForm from '$lib/components/settings/mqtt-form.svelte';
 	import DisplayForm from '$lib/components/settings/display-form.svelte';
+	import AccessForm from '$lib/components/settings/access-form.svelte';
 	import ProfilesForm from '$lib/components/settings/profiles-form.svelte';
 	import UsersForm from '$lib/components/settings/users-form.svelte';
 	import ApiKeysForm from '$lib/components/settings/api-keys-form.svelte';
@@ -23,6 +24,7 @@
 		{ id: 'display', label: 'Date & Time' },
 		...(isAdmin
 			? [
+					{ id: 'access', label: 'Access' },
 					{ id: 'profiles', label: 'Profiles' },
 					{ id: 'users', label: 'Users' },
 					{ id: 'apikeys', label: 'API Keys' },
@@ -90,6 +92,9 @@
 			<DisplayForm />
 		</Tabs.Content>
 		{#if isAdmin}
+			<Tabs.Content value="access" class="flex flex-col gap-6">
+				<AccessForm />
+			</Tabs.Content>
 			<Tabs.Content value="profiles" class="flex flex-col gap-6">
 				<ProfilesForm />
 			</Tabs.Content>

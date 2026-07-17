@@ -20,21 +20,25 @@ export const profileRoutes = new Elysia({ name: "profile-routes" })
   // Registered profiles (built-in + DB-installed) with active/installed/version.
   // A profile registered but absent from `installed_profiles` is a built-in
   // (shipped in-repo), which the UI badges "Built in".
-  .get("/api/profiles", async () => {
-    const activeId = getActiveProfileOrNull()?.id ?? null;
-    const installed = new Map((await listInstalled()).map((p) => [p.id, p]));
-    return listProfiles().map((p) => ({
-      id: p.id,
-      name: p.name,
-      manufacturer: p.manufacturer,
-      active: p.id === activeId,
-      installed: installed.has(p.id),
-      builtin: !installed.has(p.id),
-      version: installed.get(p.id)?.version,
-    }));
-  })
-  // Repo sources: public read (just URLs), admin write.
-  .get("/api/settings/profile-sources", () => getProfileSources())
+  .get(
+    "/api/profiles",
+    async () => {
+      const activeId = getActiveProfileOrNull()?.id ?? null;
+      const installed = new Map((await listInstalled()).map((p) => [p.id, p]));
+      return listProfiles().map((p) => ({
+        id: p.id,
+        name: p.name,
+        manufacturer: p.manufacturer,
+        active: p.id === activeId,
+        installed: installed.has(p.id),
+        builtin: !installed.has(p.id),
+        version: installed.get(p.id)?.version,
+      }));
+    },
+    { requireAdmin: true },
+  )
+  // Repo sources: admin read + write (config surface).
+  .get("/api/settings/profile-sources", () => getProfileSources(), { requireAdmin: true })
   .put(
     "/api/settings/profile-sources",
     async ({ body, status }) => {

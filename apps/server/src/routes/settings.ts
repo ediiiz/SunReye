@@ -8,6 +8,7 @@ import {
   setInverterConfig,
   setMqttConfig,
 } from "../config";
+import { getAccess, setAccess } from "../access-settings";
 import { getDisplay, setDisplay } from "../display-settings";
 import * as runtime from "../runtime";
 import { getTariff, setTariff } from "../settings";
@@ -20,7 +21,7 @@ export const settingsRoutes = new Elysia({ name: "settings-routes" })
   // Tariff config for the web app: read the active economic model, or replace
   // it. The body is validated by the shared Zod schema (setTariff), so a bad
   // payload becomes a 400 rather than a 500.
-  .get("/api/settings/tariff", () => getTariff())
+  .get("/api/settings/tariff", () => getTariff(), { requireAdmin: true })
   .put(
     "/api/settings/tariff",
     async ({ body, status }) => {
@@ -33,8 +34,10 @@ export const settingsRoutes = new Elysia({ name: "settings-routes" })
     { requireAdmin: true, body: t.Unknown() },
   )
   // Display preferences (clock format + time zone) for the web app. A shared,
-  // instance-wide render setting: any authed user reads it; only admins write.
-  .get("/api/settings/display", () => getDisplay())
+  // instance-wide render setting the dashboard needs to format timestamps, so it
+  // rides the dashboard read policy (session, or anonymous when the public
+  // dashboard is on); only admins write.
+  .get("/api/settings/display", () => getDisplay(), { requireSession: true })
   .put(
     "/api/settings/display",
     async ({ body, status }) => {
@@ -46,7 +49,7 @@ export const settingsRoutes = new Elysia({ name: "settings-routes" })
     },
     { requireAdmin: true, body: t.Unknown() },
   )
-  .get("/api/settings/inverter", () => getInverterConfig())
+  .get("/api/settings/inverter", () => getInverterConfig(), { requireAdmin: true })
   .put(
     "/api/settings/inverter",
     async ({ body, status }) => {
@@ -79,7 +82,9 @@ export const settingsRoutes = new Elysia({ name: "settings-routes" })
   )
   // MQTT config: the password is masked on read and preserved on write when the
   // client omits it (write-only secret).
-  .get("/api/settings/mqtt", async () => maskMqttConfig(await getMqttConfig()))
+  .get("/api/settings/mqtt", async () => maskMqttConfig(await getMqttConfig()), {
+    requireAdmin: true,
+  })
   .put(
     "/api/settings/mqtt",
     async ({ body, status }) => {
@@ -105,4 +110,18 @@ export const settingsRoutes = new Elysia({ name: "settings-routes" })
     { requireAdmin: true, body: t.Unknown() },
   )
   // Live connection health (inverter + MQTT) for the settings dashboard.
-  .get("/api/status", () => runtime.status());
+  .get("/api/status", () => runtime.status(), { requireAdmin: true })
+  // Access config: the public read-only dashboard toggle. Admin-only both ways —
+  // reads expose the security posture, writes change who can view the dashboard.
+  .get("/api/settings/access", () => getAccess(), { requireAdmin: true })
+  .put(
+    "/api/settings/access",
+    async ({ body, status }) => {
+      try {
+        return await setAccess(body);
+      } catch (error) {
+        return status(400, { error: error instanceof Error ? error.message : "Invalid access" });
+      }
+    },
+    { requireAdmin: true, body: t.Unknown() },
+  );

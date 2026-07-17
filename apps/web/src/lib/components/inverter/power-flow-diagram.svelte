@@ -12,6 +12,7 @@
 	import type { CanonicalRole } from '$lib/inverter/types';
 	import AnimatedNumber from './animated-number.svelte';
 	import { inverter } from '$lib/inverter/store.svelte';
+	import * as msg from '$lib/paraglide/messages';
 	import {
 		HUB,
 		buildPowerGraph,
@@ -159,7 +160,7 @@
 				<CpuIcon class="size-7 text-primary" weight="duotone" />
 			</div>
 			<div class="absolute left-1/2 top-full mt-2 flex w-32 -translate-x-1/2 flex-col items-center leading-tight">
-				<span class="text-xs font-semibold">Inverter</span>
+				<span class="text-xs font-semibold">{msg.label_inverter()}</span>
 				<span class="text-[0.62rem] text-muted-foreground">
 					{inverter.status === 'live' ? 'Online' : 'Connecting…'}
 				</span>

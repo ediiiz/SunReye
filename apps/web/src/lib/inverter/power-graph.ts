@@ -1,4 +1,5 @@
 import type { CanonicalRole, InverterCapabilities } from "$lib/inverter/types";
+import * as m from "$lib/paraglide/messages";
 
 // Flow relative to the inverter: `in` = power arriving (production / discharge
 // / import), `out` = leaving it (load / charge / export).
@@ -49,7 +50,7 @@ export function sense(
   const v = value ?? 0;
   if (v > 0.5) return positive;
   if (v < -0.5) return negative;
-  return { flow: "idle", state: "Idle" };
+  return { flow: "idle", state: m.flow_idle() };
 }
 
 // Default flow hue by direction relative to the inverter: arriving = green,
@@ -118,7 +119,7 @@ export function buildPowerGraph(
       const at = { x: 0.08, y };
       nodes.push({
         id: `pv${i}`,
-        label: `String ${i}`,
+        label: `${m.label_string()} ${i}`,
         kind: "pv",
         value: v,
         accent: solarAccent,
@@ -143,11 +144,15 @@ export function buildPowerGraph(
     }
   } else {
     const v = power("pv.total.power");
-    const s = sense(v, { flow: "in", state: "Producing" }, { flow: "idle", state: "Idle" });
+    const s = sense(
+      v,
+      { flow: "in", state: m.flow_producing() },
+      { flow: "idle", state: m.flow_idle() },
+    );
     const at = { x: 0.08, y: HUB.y };
     nodes.push({
       id: "solar",
-      label: "Solar",
+      label: m.label_solar(),
       kind: "pv",
       value: v,
       accent: solarAccent,
@@ -168,10 +173,14 @@ export function buildPowerGraph(
   if (caps?.battery) {
     const v = power("battery.power");
     // Sign convention (Deye register 590): power > 0 discharging (in), < 0 charging (out).
-    const s = sense(v, { flow: "in", state: "Discharging" }, { flow: "out", state: "Charging" });
+    const s = sense(
+      v,
+      { flow: "in", state: m.flow_discharging() },
+      { flow: "out", state: m.flow_charging() },
+    );
     nodes.push({
       id: "battery",
-      label: "Battery",
+      label: m.label_battery(),
       kind: "battery",
       value: v,
       accent: "var(--color-chart-3)",
@@ -191,10 +200,14 @@ export function buildPowerGraph(
 
   if (caps?.backupLoad) {
     const v = power("load.power");
-    const s = sense(v, { flow: "out", state: "Consuming" }, { flow: "out", state: "Consuming" });
+    const s = sense(
+      v,
+      { flow: "out", state: m.flow_consuming() },
+      { flow: "out", state: m.flow_consuming() },
+    );
     nodes.push({
       id: "load",
-      label: "Load",
+      label: m.label_load(),
       kind: "load",
       value: v,
       accent: "var(--color-chart-5)",
@@ -216,10 +229,14 @@ export function buildPowerGraph(
 
   if (caps?.generator) {
     const v = power("generator.power");
-    const s = sense(v, { flow: "in", state: "Running" }, { flow: "idle", state: "Off" });
+    const s = sense(
+      v,
+      { flow: "in", state: m.flow_running() },
+      { flow: "idle", state: m.flow_off() },
+    );
     nodes.push({
       id: "generator",
-      label: "Generator",
+      label: m.label_generator(),
       kind: "generator",
       value: v,
       accent: "var(--color-chart-2)",
@@ -239,10 +256,14 @@ export function buildPowerGraph(
 
   if (caps?.grid) {
     const v = power("grid.power");
-    const s = sense(v, { flow: "in", state: "Importing" }, { flow: "out", state: "Exporting" });
+    const s = sense(
+      v,
+      { flow: "in", state: m.flow_importing() },
+      { flow: "out", state: m.flow_exporting() },
+    );
     nodes.push({
       id: "grid",
-      label: "Grid",
+      label: m.label_grid(),
       kind: "grid",
       value: v,
       accent: "var(--color-chart-4)",

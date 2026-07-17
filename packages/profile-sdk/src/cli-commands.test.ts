@@ -3,8 +3,12 @@ import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { deyeSg05lp3Data } from "@SunReye/inverter-deye-sg05lp3";
+import type { ProfileData } from "@SunReye/inverter-core";
 
+// A real, full profile fixture (the published Deye SG05LP3), snapshotted so the
+// CLI tests build/validate a realistic profile without depending on any inverter
+// package. Source of truth: github.com/SunReye/SunReye-Official-Profiles.
+import sampleProfile from "./__fixtures__/sample-profile.json";
 import {
   cmdBuild,
   cmdCoverage,
@@ -14,6 +18,8 @@ import {
   cmdValidate,
   flags,
 } from "./cli-commands";
+
+const deyeSg05lp3Data = sampleProfile as unknown as ProfileData;
 
 const dir = mkdtempSync(join(tmpdir(), "profile-cli-"));
 

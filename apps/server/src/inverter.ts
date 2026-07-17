@@ -23,11 +23,10 @@ import type {
   ManifestMetric,
   MetricDef,
 } from "@SunReye/inverter-core";
-// Side-effect import: installing the package self-registers its profile into
-// the inverter-core registry. Add more `@SunReye/inverter-*` imports here to
-// ship additional inverter support in the box; downloaded profiles are loaded
-// from the database by `loadInstalledProfiles` at boot.
-import "@SunReye/inverter-deye-sg05lp3";
+// No inverter profile ships in the box: the core is profile-agnostic. Profiles
+// are installed from a repo source (the official one is baked in by default) and
+// loaded from the database by `loadInstalledProfiles` at boot. A fresh install
+// therefore boots onboarding-only until the admin installs and activates one.
 import { readSetting } from "./app-settings";
 import { log } from "./logging";
 import { dropLegacyDefaultSource } from "./profiles";

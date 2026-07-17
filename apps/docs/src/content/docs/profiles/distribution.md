@@ -42,10 +42,10 @@ You don't have to write this layout by hand: `bunx profile build ./src/profiles.
 [generates it](/profiles/authoring/#profile-build-entries---out-dir) from code-defined
 profiles — validate, emit, commit, push.
 
-**No source ships by default** — the core stays clean. Out of the box the only profiles
-present are the **built-in** ones (shipped in-repo, badged "Built in" in the UI and selectable
-directly). To pull external profiles, add a repository yourself. Source URLs must be
-`https://` and end in `.git`.
+**The official source ships as a default, protected source** — the core itself carries no
+profile. `https://github.com/SunReye/SunReye-Official-Profiles` is merged in automatically;
+it can be **disabled but not removed** (shown as "Default" in the UI). Add more repositories
+yourself. Source URLs must be `https://` (a trailing `.git` is optional).
 
 ## Managing sources
 
@@ -99,7 +99,8 @@ live.
 
 On startup, profiles are registered in two phases before any routes or topics are built:
 
-1. **Built-in packages** (like Deye) self-register on import.
+1. **Code profiles** — first-party packages can self-register on import, but none ship in the
+   core today (the box carries no profile).
 2. **Installed profiles** are read from the database, each **re-validated** (a stored row may
    predate a schema change) and registered; an invalid row is logged and skipped, so one bad
    download can't take the server down.

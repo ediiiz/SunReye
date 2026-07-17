@@ -1,12 +1,17 @@
 import { describe, expect, test } from "bun:test";
 
 import { defineProfile, metric, type ProfileData } from "@SunReye/inverter-core";
-import { deyeSg05lp3Data } from "@SunReye/inverter-deye-sg05lp3";
 
+// A real, full profile fixture (the published Deye SG05LP3), snapshotted so the
+// SDK tests exercise a realistic register map without depending on any inverter
+// package. Source of truth: github.com/SunReye/SunReye-Official-Profiles.
+import sampleProfile from "./__fixtures__/sample-profile.json";
 import { coverage } from "./coverage";
 import { exerciseProfile } from "./harness";
 import { scaffoldFromCsv } from "./scaffold";
 import { validateProfile } from "./validate";
+
+const deyeSg05lp3Data = sampleProfile as unknown as ProfileData;
 
 function tinyProfile(): ProfileData {
   return defineProfile({

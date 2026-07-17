@@ -50,7 +50,7 @@ Variables below are marked:
 
 | Variable | Type | Default | Status | Purpose |
 | --- | --- | --- | --- | --- |
-| `INVERTER_PROFILE` | string | `deye-sg05lp3` | seed only | Active profile id. Seeds the `activeProfile` setting; changing the active profile takes effect on restart. |
+| `INVERTER_PROFILE` | string | _(unset)_ | seed only | Active profile id. Optional; when unset the server boots onboarding-only until a profile is installed and activated. Seeds the `activeProfile` setting; changing the active profile takes effect on restart. |
 | `INVERTER_HOST` | string | `192.168.1.100` | seed only | Modbus TCP host. |
 | `INVERTER_PORT` | number | `502` | seed only | Modbus TCP port. |
 | `INVERTER_UNIT_ID` | number | `1` | seed only | Modbus unit / slave id. |

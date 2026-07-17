@@ -38,7 +38,6 @@
         "@SunReye/db": "workspace:*",
         "@SunReye/env": "workspace:*",
         "@SunReye/inverter-core": "workspace:*",
-        "@SunReye/inverter-deye-sg05lp3": "workspace:*",
         "@elysiajs/cors": "^1.4.1",
         "@elysiajs/openapi": "^1.4.0",
         "@logtape/elysia": "^2.2.3",
@@ -59,7 +58,7 @@
     },
     "apps/web": {
       "name": "web",
-      "version": "0.2.2",
+      "version": "0.7.1",
       "dependencies": {
         "@SunReye/inverter-core": "workspace:*",
         "@elysiajs/eden": "^1.4.1",
@@ -163,21 +162,9 @@
         "typescript": "catalog:",
       },
     },
-    "packages/inverter-deye-sg05lp3": {
-      "name": "@SunReye/inverter-deye-sg05lp3",
-      "version": "0.0.0",
-      "dependencies": {
-        "@SunReye/inverter-core": "workspace:*",
-      },
-      "devDependencies": {
-        "@SunReye/config": "workspace:*",
-        "@types/bun": "catalog:",
-        "typescript": "catalog:",
-      },
-    },
     "packages/profile-sdk": {
       "name": "@sunreye/profile-sdk",
-      "version": "1.1.0",
+      "version": "1.5.0",
       "bin": {
         "profile": "./dist/cli.mjs",
       },
@@ -187,7 +174,6 @@
       "devDependencies": {
         "@SunReye/config": "workspace:*",
         "@SunReye/inverter-core": "workspace:*",
-        "@SunReye/inverter-deye-sg05lp3": "workspace:*",
         "@types/bun": "catalog:",
         "tsdown": "^0.22.5",
         "typescript": "catalog:",
@@ -217,8 +203,6 @@
     "@SunReye/env": ["@SunReye/env@workspace:packages/env"],
 
     "@SunReye/inverter-core": ["@SunReye/inverter-core@workspace:packages/inverter-core"],
-
-    "@SunReye/inverter-deye-sg05lp3": ["@SunReye/inverter-deye-sg05lp3@workspace:packages/inverter-deye-sg05lp3"],
 
     "@astrojs/compiler-binding": ["@astrojs/compiler-binding@0.3.0", "", { "optionalDependencies": { "@astrojs/compiler-binding-darwin-arm64": "0.3.0", "@astrojs/compiler-binding-darwin-x64": "0.3.0", "@astrojs/compiler-binding-linux-arm64-gnu": "0.3.0", "@astrojs/compiler-binding-linux-arm64-musl": "0.3.0", "@astrojs/compiler-binding-linux-x64-gnu": "0.3.0", "@astrojs/compiler-binding-linux-x64-musl": "0.3.0", "@astrojs/compiler-binding-wasm32-wasi": "0.3.0", "@astrojs/compiler-binding-win32-arm64-msvc": "0.3.0", "@astrojs/compiler-binding-win32-x64-msvc": "0.3.0" } }, "sha512-zlsOT5COD9hRwplJCgQhS21unxON5AKirf0vgt1ijXwuseYIaZdm2ZOpF8fsz+DY9EyXx+I/ukxtg7uoBep68A=="],
 

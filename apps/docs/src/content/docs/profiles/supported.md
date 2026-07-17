@@ -4,27 +4,34 @@ description: Which inverters SunReye ships support for, and how support grows.
 ---
 
 Because inverters are [data, not code](/profiles/concept/), "supported" means "a profile
-exists." SunReye ships one first-party profile and can load more at runtime.
+exists." The core ships **no** bundled profile — it's inverter-agnostic — and installs one
+at runtime from a profile repository.
 
-## First-party
+## The official profile repository
 
-### Deye / Sunsynk hybrid
+The [SunReye Official Profiles](https://github.com/SunReye/SunReye-Official-Profiles) repo
+is baked in as a **default, protected source** (it can be disabled but not removed). On a
+fresh install the admin browses it under **Settings → Profiles**, installs a profile, and
+activates it. It currently includes the **Deye / Sunsynk** hybrid families, e.g.:
 
-The `deye-sg05lp3` profile ships in the box (`packages/inverter-deye-sg05lp3`) and
-self-registers on import. It covers roughly **99 metrics** (≈38 writable), including:
+- `deye-sg05lp3` (SG05LP3, incl. 14/15/16/18/20K SKUs)
+- `deye-sg01hp3` (SG01HP3 three-phase, incl. 5–25K SKUs)
 
-- PV strings (power / voltage / current per string)
-- Battery (SoC, power, voltage, current, temperature, charged/discharged energy)
-- Grid (per-phase voltage/current/power, imported/exported energy)
-- Backup load and generator
-- Inverter status and temperatures
-- Writable settings: charge/discharge currents, work mode, grid charge, solar-sell, and a
-  6-slot **time-of-use** schedule
+A profile covers PV strings, battery, grid (per phase), backup load, generator, inverter
+status/temperatures, and writable settings (charge/discharge currents, work mode, grid
+charge, solar-sell, and a time-of-use schedule).
 
-As a first-party package it also ships a coherent **simulator**, so it runs with realistic
-fake data out of the box.
+## Running without hardware
 
-It's the default active profile (`INVERTER_PROFILE=deye-sg05lp3`).
+The core includes a generic, role-based **simulator**: any installed profile (or a bare
+primitive set) produces plausible, energy-balanced, time-aware fake data — so you can try
+SunReye before wiring up an inverter, with no profile-specific code.
+
+## Fresh boot
+
+With no profile installed yet, the server boots **onboarding-only** — that's the normal
+first-run state, not a degraded one. Install a profile from the official source (or your
+own) to bring the full dashboard online.
 
 ## Adding more
 

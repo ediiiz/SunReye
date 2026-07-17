@@ -6,13 +6,14 @@
 	import ArrowLineDown from 'phosphor-svelte/lib/ArrowLineDown';
 	import type { CanonicalRole } from '$lib/inverter/types';
 	import { inverter } from '$lib/inverter/store.svelte';
+	import * as m from '$lib/paraglide/messages';
 	import AnimatedNumber from './animated-number.svelte';
 
-	const DEFS: { role: CanonicalRole; label: string; icon: Component; accent: string }[] = [
-		{ role: 'production.today', label: 'Production', icon: Sun, accent: 'text-chart-1' },
-		{ role: 'load.energy.today', label: 'Consumption', icon: House, accent: 'text-chart-5' },
-		{ role: 'grid.energy.exported.today', label: 'Feed-in', icon: ArrowLineUp, accent: 'text-chart-3' },
-		{ role: 'grid.energy.imported.today', label: 'Purchase', icon: ArrowLineDown, accent: 'text-chart-4' }
+	const DEFS: { role: CanonicalRole; label: () => string; icon: Component; accent: string }[] = [
+		{ role: 'production.today', label: m.energy_production, icon: Sun, accent: 'text-chart-1' },
+		{ role: 'load.energy.today', label: m.energy_consumption, icon: House, accent: 'text-chart-5' },
+		{ role: 'grid.energy.exported.today', label: m.energy_feed_in, icon: ArrowLineUp, accent: 'text-chart-3' },
+		{ role: 'grid.energy.imported.today', label: m.energy_purchase, icon: ArrowLineDown, accent: 'text-chart-4' }
 	];
 
 	// Only tiles whose role the active profile actually maps.
@@ -31,7 +32,7 @@
 			<div class="flex flex-col gap-1 rounded-lg border border-border bg-background px-3 py-2.5">
 				<span class="flex items-center gap-1.5 text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">
 					<Icon class="size-3.5 {t.accent}" weight="duotone" />
-					{t.label}
+					{t.label()}
 				</span>
 				<span class="text-xl font-semibold tabular-nums">
 					{#if value === undefined}

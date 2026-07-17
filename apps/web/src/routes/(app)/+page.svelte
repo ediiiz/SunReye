@@ -2,6 +2,7 @@
 	import PowerFlow from '$lib/components/inverter/power-flow-diagram.svelte';
 	import WeatherTile from '$lib/components/inverter/weather-tile.svelte';
 	import DailyEnergy from '$lib/components/inverter/daily-energy.svelte';
+	import * as m from '$lib/paraglide/messages';
 </script>
 
 <!--
@@ -18,7 +19,7 @@
 		class="flex min-h-0 flex-1 flex-col gap-2 overflow-auto rounded-lg border border-border p-2 lg:flex-2"
 	>
 		<h2 class="px-1 text-sm font-medium uppercase tracking-wide text-muted-foreground">
-			Power flow
+			{m.overview_power_flow()}
 		</h2>
 		<div class="flex min-h-0 flex-1 items-center">
 			<PowerFlow />

@@ -9,6 +9,7 @@
 	import { authClient } from '$lib/auth-client';
 	import { useAppSession } from '$lib/session';
 	import { inverter } from '$lib/inverter/store.svelte';
+	import * as m from '$lib/paraglide/messages';
 	import GaugeIcon from 'phosphor-svelte/lib/Gauge';
 	import CpuIcon from 'phosphor-svelte/lib/Cpu';
 	import ChartLineIcon from 'phosphor-svelte/lib/ChartLine';
@@ -33,12 +34,12 @@
 	type NavItem = { href: Pathname; label: string; icon: Component };
 
 	const items = $derived<NavItem[]>([
-		{ href: '/', label: 'Overview', icon: GaugeIcon },
-		{ href: '/system', label: 'System', icon: CpuIcon },
-		{ href: '/history', label: 'History', icon: ChartLineIcon },
-		{ href: '/costs', label: 'Costs', icon: CoinsIcon },
+		{ href: '/', label: m.nav_overview(), icon: GaugeIcon },
+		{ href: '/system', label: m.nav_system(), icon: CpuIcon },
+		{ href: '/history', label: m.nav_history(), icon: ChartLineIcon },
+		{ href: '/costs', label: m.nav_costs(), icon: CoinsIcon },
 		...(isAdmin && (inverter.capabilities?.controls.length ?? 0) > 0
-			? ([{ href: '/controls', label: 'Controls', icon: SlidersIcon }] satisfies NavItem[])
+			? ([{ href: '/controls', label: m.nav_controls(), icon: SlidersIcon }] satisfies NavItem[])
 			: [])
 	]);
 
@@ -52,7 +53,7 @@
 	const userName = $derived(
 		$sessionQuery.data?.user?.name ||
 			$sessionQuery.data?.user?.email?.split('@')[0] ||
-			'Signed in'
+			m.nav_signed_in()
 	);
 
 	async function signOut() {
@@ -69,7 +70,7 @@
 				<span class="truncate text-xs text-muted-foreground">
 					{inverter.manifest
 						? `${inverter.manifest.manufacturer} · ${inverter.manifest.name}`
-						: 'Loading…'}
+						: m.app_loading()}
 				</span>
 			</div>
 		</div>
@@ -77,7 +78,7 @@
 
 	<Sidebar.Content>
 		<Sidebar.Group>
-			<Sidebar.GroupLabel>Monitoring</Sidebar.GroupLabel>
+			<Sidebar.GroupLabel>{m.nav_monitoring()}</Sidebar.GroupLabel>
 			<Sidebar.GroupContent>
 				<Sidebar.Menu>
 					{#each items as item (item.href)}
@@ -106,7 +107,7 @@
 						{#snippet child({ props })}
 							<a href={resolve('/settings')} onclick={closeSidebar} {...props}>
 								<GearIcon class="size-4" />
-								<span>Settings</span>
+								<span>{m.nav_settings()}</span>
 							</a>
 						{/snippet}
 					</Sidebar.MenuButton>
@@ -125,7 +126,7 @@
 					{#snippet child({ props })}
 						<button type="button" onclick={signOut} {...props}>
 							<SignOutIcon class="size-4" />
-							<span>Sign out</span>
+							<span>{m.nav_sign_out()}</span>
 						</button>
 					{/snippet}
 				</Sidebar.MenuButton>

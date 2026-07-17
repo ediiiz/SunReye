@@ -13,6 +13,7 @@
 	import { firstRunGate, type FirstRunGate } from '$lib/setup';
 	import { inverter } from '$lib/inverter/store.svelte';
 	import { display } from '$lib/display.svelte';
+	import * as m from '$lib/paraglide/messages';
 	import SunIcon from 'phosphor-svelte/lib/Sun';
 	import MoonIcon from 'phosphor-svelte/lib/Moon';
 
@@ -65,15 +66,15 @@
 		}
 	});
 
-	const SECTION: Record<string, string> = {
-		'/': 'Overview',
-		'/system': 'System',
-		'/history': 'History',
-		'/costs': 'Costs',
-		'/controls': 'Controls',
-		'/settings': 'Settings'
+	const SECTION: Record<string, () => string> = {
+		'/': m.nav_overview,
+		'/system': m.nav_system,
+		'/history': m.nav_history,
+		'/costs': m.nav_costs,
+		'/controls': m.nav_controls,
+		'/settings': m.nav_settings
 	};
-	const section = $derived(SECTION[current] ?? 'Overview');
+	const section = $derived((SECTION[current] ?? m.nav_overview)());
 
 	// Subtle route-to-route motion: the shell (sidebar + header) stays put while
 	// the inner content cross-fades up on each navigation. Honour reduced-motion.
@@ -83,13 +84,13 @@
 </script>
 
 {#if $sessionQuery.isPending}
-	<div class="grid h-svh place-items-center text-muted-foreground">Loading…</div>
+	<div class="grid h-svh place-items-center text-muted-foreground">{m.app_loading()}</div>
 {:else if !$sessionQuery.data}
-	<div class="grid h-svh place-items-center text-muted-foreground">Redirecting to login…</div>
+	<div class="grid h-svh place-items-center text-muted-foreground">{m.app_redirecting_login()}</div>
 {:else if gate === null}
-	<div class="grid h-svh place-items-center text-muted-foreground">Loading…</div>
+	<div class="grid h-svh place-items-center text-muted-foreground">{m.app_loading()}</div>
 {:else if gate !== 'ready'}
-	<div class="grid h-svh place-items-center text-muted-foreground">Redirecting…</div>
+	<div class="grid h-svh place-items-center text-muted-foreground">{m.app_redirecting()}</div>
 {:else}
 	<Sidebar.Provider>
 		<AppSidebar />
@@ -99,7 +100,7 @@
 			>
 				<Sidebar.Trigger />
 				<div class="flex items-center gap-2 text-sm">
-					<span class="text-muted-foreground">Monitoring</span>
+					<span class="text-muted-foreground">{m.nav_monitoring()}</span>
 					<span class="text-muted-foreground">/</span>
 					{#key section}
 						<span class="font-medium" in:fade={titleIn}>{section}</span>
@@ -107,9 +108,9 @@
 				</div>
 				<div class="ml-auto flex items-center gap-2">
 					<Badge variant={inverter.status === 'live' ? 'default' : 'secondary'}>
-						{inverter.status === 'live' ? 'Live' : 'Connecting…'}
+						{inverter.status === 'live' ? m.status_live() : m.status_connecting()}
 					</Badge>
-					<Button variant="ghost" size="icon" onclick={toggleMode} aria-label="Toggle theme">
+					<Button variant="ghost" size="icon" onclick={toggleMode} aria-label={m.action_toggle_theme()}>
 						<SunIcon class="size-4 dark:hidden" />
 						<MoonIcon class="hidden size-4 dark:block" />
 					</Button>

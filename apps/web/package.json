@@ -9,8 +9,10 @@
     "build": "vite build",
     "build:static": "SVELTEKIT_ADAPTER=static vite build && bun scripts/relativize-fallback.ts",
     "preview": "PORT=4173 node build/index.js",
-    "prepare": "svelte-kit sync || echo ''",
-    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "paraglide": "bun scripts/compile-i18n.ts",
+    "i18n:lint": "bun scripts/i18n-lint.ts",
+    "prepare": "bun scripts/compile-i18n.ts && (svelte-kit sync || echo '')",
+    "check": "bun scripts/compile-i18n.ts && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "test": "bun test src"
   },
@@ -25,6 +27,7 @@
   "devDependencies": {
     "@SunReye/config": "workspace:*",
     "@fontsource-variable/geist-mono": "^5.2.8",
+    "@inlang/paraglide-js": "^2.22.0",
     "@internationalized/date": "^3.12.0",
     "@sveltejs/adapter-auto": "^7.0.1",
     "@sveltejs/adapter-node": "^5.5.4",

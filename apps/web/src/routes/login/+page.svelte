@@ -3,6 +3,7 @@
 	import { resolve } from '$lib/resolve';
 	import * as Card from '$lib/components/ui/card';
 	import { needsSetup } from '$lib/setup';
+	import * as m from '$lib/paraglide/messages';
 	import AuthForm from '../../components/AuthForm.svelte';
 	import AuthShell from '../../components/AuthShell.svelte';
 
@@ -15,11 +16,11 @@
 	});
 </script>
 
-<AuthShell title="SunReye" subtitle="Modbus inverter monitoring">
+<AuthShell title="SunReye" subtitle={m.brand_tagline()}>
 	<Card.Root>
 		<Card.Header>
-			<Card.Title>Sign in</Card.Title>
-			<Card.Description>Enter your credentials to access the console.</Card.Description>
+			<Card.Title>{m.login_title()}</Card.Title>
+			<Card.Description>{m.login_description()}</Card.Description>
 		</Card.Header>
 		<Card.Content>
 			<AuthForm mode="signin" />

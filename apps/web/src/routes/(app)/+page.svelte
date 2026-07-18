@@ -22,11 +22,15 @@
 		<PowerFlow />
 	</section>
 
-	<div class="flex shrink-0 flex-col gap-3 sm:gap-4 lg:flex-row">
-		<div class="lg:w-96 lg:shrink-0 2xl:w-120">
-			<WeatherTile />
-		</div>
-		<div class="min-w-0 lg:flex-1">
+	<!-- The weather tile renders nothing when disabled — no wrapper may claim its
+	     slot, or the strip shows a ghost gap. Without the tile the energy cards
+	     are capped and centred; with it they stretch to fill the row (`:has()`
+	     via group-has, no JS). -->
+	<div class="group flex shrink-0 flex-col gap-3 sm:gap-4 lg:flex-row lg:justify-center">
+		<WeatherTile />
+		<div
+			class="w-full min-w-0 lg:max-w-4xl lg:group-has-data-weather-tile:max-w-none lg:group-has-data-weather-tile:flex-1 2xl:max-w-5xl"
+		>
 			<DailyEnergy />
 		</div>
 	</div>

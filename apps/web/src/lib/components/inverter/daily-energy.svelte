@@ -31,7 +31,11 @@
 </script>
 
 {#if tiles.length > 0}
-	<div class="grid h-full grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+	<!-- lg+ sizes tracks by the cards actually mapped (auto-fit) so a profile
+	     without e.g. grid energy roles doesn't leave empty columns. -->
+	<div
+		class="grid h-full grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-[repeat(auto-fit,minmax(13rem,1fr))]"
+	>
 		{#each tiles as t (t.role)}
 			{@const value = inverter.value(t.metric.key)}
 			{@const Icon = t.icon}

@@ -63,7 +63,12 @@
 </script>
 
 {#if weather && Icon}
-	<div class="flex h-full items-center gap-4 rounded-xl border border-border/60 bg-card p-3 sm:p-4">
+	<!-- Owns its fixed lg width (and the data marker the overview strip keys its
+	     centring off) so nothing occupies the slot when weather is disabled. -->
+	<div
+		data-weather-tile
+		class="flex h-full items-center gap-4 rounded-xl border border-border/60 bg-card p-3 sm:p-4 lg:w-96 lg:shrink-0 2xl:w-120"
+	>
 		<span
 			class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 2xl:size-16"
 		>

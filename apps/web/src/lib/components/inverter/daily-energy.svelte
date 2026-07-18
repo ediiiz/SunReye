@@ -59,10 +59,14 @@
 	function kpisFor(role: CanonicalRole): Kpi[] {
 		if (!cost) return [];
 		switch (role) {
-			case 'production.today': {
+			case 'production.today':
+				return cost.selfConsumption === null
+					? []
+					: [{ kind: 'ratio', label: m.energy_self_consumption, value: cost.selfConsumption }];
+			case 'load.energy.today': {
 				const rows: Kpi[] = [];
-				if (cost.selfConsumption !== null) {
-					rows.push({ kind: 'ratio', label: m.energy_self_consumption, value: cost.selfConsumption });
+				if (cost.selfSufficiency !== null) {
+					rows.push({ kind: 'ratio', label: m.energy_autarky, value: cost.selfSufficiency });
 				}
 				// What buying the self-consumed energy would have cost instead.
 				rows.push({
@@ -73,10 +77,6 @@
 				});
 				return rows;
 			}
-			case 'load.energy.today':
-				return cost.selfSufficiency === null
-					? []
-					: [{ kind: 'ratio', label: m.energy_autarky, value: cost.selfSufficiency }];
 			case 'grid.energy.exported.today':
 				return [
 					{

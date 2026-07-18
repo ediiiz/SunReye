@@ -3,6 +3,7 @@
 	import * as Tabs from '$lib/components/ui/tabs';
 	import TariffForm from '$lib/components/settings/tariff-form.svelte';
 	import InverterForm from '$lib/components/settings/inverter-form.svelte';
+	import SensorsForm from '$lib/components/settings/sensors-form.svelte';
 	import MqttForm from '$lib/components/settings/mqtt-form.svelte';
 	import DisplayForm from '$lib/components/settings/display-form.svelte';
 	import WeatherForm from '$lib/components/settings/weather-form.svelte';
@@ -21,6 +22,7 @@
 	// know the viewer is an admin.
 	const TABS = $derived([
 		{ id: 'inverter', label: m.label_inverter() },
+		{ id: 'sensors', label: m.settings_tab_sensors() },
 		{ id: 'mqtt', label: m.settings_tab_mqtt() },
 		{ id: 'tariff', label: m.settings_tab_tariff() },
 		{ id: 'display', label: m.settings_tab_display() },
@@ -83,6 +85,9 @@
 
 		<Tabs.Content value="inverter" class="flex flex-col gap-6">
 			<InverterForm status={status?.inverter ?? null} />
+		</Tabs.Content>
+		<Tabs.Content value="sensors" class="flex flex-col gap-6">
+			<SensorsForm />
 		</Tabs.Content>
 		<Tabs.Content value="mqtt" class="flex flex-col gap-6">
 			<MqttForm status={status?.mqtt ?? null} />

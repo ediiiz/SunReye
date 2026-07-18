@@ -12,6 +12,7 @@ import { getAccess, setAccess } from "../access-settings";
 import { getDisplay, setDisplay } from "../display-settings";
 import * as runtime from "../runtime";
 import { getTariff, setTariff } from "../settings";
+import { getUiPrefs, setUiPrefs } from "../ui-prefs-settings";
 import { fetchWeather } from "../weather";
 import { getWeatherConfig, setWeatherConfig } from "../weather-settings";
 import { adminGuard } from "./admin-guard";
@@ -47,6 +48,24 @@ export const settingsRoutes = new Elysia({ name: "settings-routes" })
         return await setDisplay(body);
       } catch (error) {
         return status(400, { error: error instanceof Error ? error.message : "Invalid display" });
+      }
+    },
+    { requireAdmin: true, body: t.Unknown() },
+  )
+  // Dashboard visibility preferences (which metrics/groups are hidden). Rides
+  // the dashboard read policy so the kiosk/public view filters the same way;
+  // only admins write. Hidden metrics stay polled, stored, and published to
+  // MQTT / the public API — this only affects what the web app renders.
+  .get("/api/settings/ui", () => getUiPrefs(), { requireSession: true })
+  .put(
+    "/api/settings/ui",
+    async ({ body, status }) => {
+      try {
+        return await setUiPrefs(body);
+      } catch (error) {
+        return status(400, {
+          error: error instanceof Error ? error.message : "Invalid preferences",
+        });
       }
     },
     { requireAdmin: true, body: t.Unknown() },

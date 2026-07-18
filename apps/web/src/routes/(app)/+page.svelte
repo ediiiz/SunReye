@@ -28,13 +28,15 @@
 		<PowerFlow />
 	</section>
 
-	<!-- Right column: weather at its natural height, energy cards fill the rest.
-	     The weather tile renders nothing when disabled ({#if weather ...}); the
-	     cards then simply take the whole column — no ghost gap, no centring logic
-	     needed since each column owns its own width. -->
+	<!-- Right column: weather tile then the energy cards, both at their natural
+	     (compact) height, top-aligned. On tall lg viewports the leftover height
+	     falls below the cards rather than stretching them. The weather tile
+	     renders nothing when disabled ({#if weather ...}); the cards then simply
+	     top-align on their own — no ghost gap, no centring logic needed since each
+	     column owns its own width. -->
 	<div class="flex flex-col gap-3 sm:gap-4 lg:min-h-0">
 		<WeatherTile />
-		<div class="w-full min-w-0 lg:min-h-0 lg:flex-1">
+		<div class="w-full min-w-0">
 			<DailyEnergy />
 		</div>
 	</div>

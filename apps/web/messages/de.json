@@ -454,5 +454,15 @@
   "chart_custom_charts": "Benutzerdefinierte Diagramme",
   "chart_none_yet": "Noch keine benutzerdefinierten Diagramme.",
   "chart_create_first": "Erstellen Sie Ihr erstes Diagramm",
-  "chart_delete_confirm": "„{name}“ löschen? Dies kann nicht rückgängig gemacht werden."
+  "chart_delete_confirm": "„{name}“ löschen? Dies kann nicht rückgängig gemacht werden.",
+  "chart_from_battery": "Aus der Batterie",
+  "chart_from_solar": "Aus Solar",
+  "weather_forecast_title": "Solarprognose",
+  "weather_forecast_power": "Erwartete Leistung",
+  "weather_forecast_peak": "Spitze",
+  "overview_detail_consumption": "Verbrauch nach Quelle (heute)",
+  "overview_detail_production": "Produktion (heute)",
+  "overview_detail_feed_in": "Einspeisung (heute)",
+  "overview_detail_purchase": "Netzbezug (heute)",
+  "overview_no_data_today": "Heute noch keine Daten"
 }

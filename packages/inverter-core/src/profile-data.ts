@@ -41,13 +41,18 @@ export interface ProfileData {
  * - `combine` sum of `add` keys minus sum of `sub` keys (a signed linear mix).
  * - `ratio`   (sum of `num` / sum of `den`) times `scale` (default 1); a zero
  *             denominator reads as 0 so night/idle samples never divide by zero.
+ * - `clamp`   a single metric key bounded to `[min, max]` (either bound may be
+ *             omitted); e.g. `{ clamp: { key, min: 0 } }` is the positive part
+ *             `max(0, x)`, letting a profile define a directional operand (grid
+ *             import only, battery discharge only) to feed a signed `ratio`.
  */
 export type ComputeExpr =
   | { sum: string[] }
   | { diff: [string, string] }
   | { scale: [string, number] }
   | { combine: { add: string[]; sub?: string[] } }
-  | { ratio: { num: string[]; den: string[]; scale?: number } };
+  | { ratio: { num: string[]; den: string[]; scale?: number } }
+  | { clamp: { key: string; min?: number; max?: number } };
 
 /**
  * Author-time selector for a deferred aggregate ({@link AggregateExpr}). Names
@@ -146,6 +151,15 @@ export function compileComputeExpr(expr: ComputeExpr): (values: MetricValues) =>
   if ("combine" in expr) {
     const { add, sub = [] } = expr.combine;
     return (v) => sumOf(add, v) - sumOf(sub, v);
+  }
+  if ("clamp" in expr) {
+    const { key, min, max } = expr.clamp;
+    return (v) => {
+      let x = v[key] ?? 0;
+      if (min !== undefined) x = Math.max(min, x);
+      if (max !== undefined) x = Math.min(max, x);
+      return x;
+    };
   }
   const { num, den, scale = 1 } = expr.ratio;
   return (v) => {

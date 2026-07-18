@@ -13,6 +13,12 @@
 		return m ? inverter.value(m.key) : undefined;
 	}
 
+	// Presence follows *visible* metrics: byRole is filtered by Settings → Sensors,
+	// so a hidden group or PV string drops its node/segment (not just its value).
+	function has(role: CanonicalRole, index?: number): boolean {
+		return inverter.byRole(role, index) !== undefined;
+	}
+
 	const caps = $derived(inverter.capabilities);
 
 	// Computed metrics shown on the hub itself: self-consumption (conversion
@@ -44,7 +50,7 @@
 		landscape: 'inset-x-12 top-10 bottom-22 sm:bottom-24 2xl:inset-x-16 2xl:top-12 2xl:bottom-30'
 	};
 
-	const graph = $derived.by(() => buildPowerGraph(caps, power, orientation));
+	const graph = $derived.by(() => buildPowerGraph(caps, power, orientation, has));
 
 	type Line = { id: string; type: 'DC' | 'AC'; flow: Flow; color: string; dur: number; d: string; pill: Pt };
 

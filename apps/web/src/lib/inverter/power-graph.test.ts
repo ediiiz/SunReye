@@ -107,6 +107,55 @@ describe("buildPowerGraph", () => {
     // Undefined power everywhere → everything idles (grid state included).
     expect(g.segments.every((s) => s.flow === "idle")).toBe(true);
   });
+
+  // `has` reports whether a metric is *visible* (Settings → Sensors). Capabilities
+  // stay true, so a hidden subsystem must drop its node/segment via `has` alone.
+  const hidden = (keys: string[]) => (role: CanonicalRole, index?: number) =>
+    !keys.includes(index === undefined ? role : `${role}#${index}`);
+
+  test("hidden group drops its node even though the capability stays true", () => {
+    const g = buildPowerGraph(
+      caps({ battery: true, backupLoad: true, generator: true, grid: true }),
+      () => undefined,
+      "landscape",
+      hidden(["generator.power"]),
+    );
+    const kinds = g.nodes.map((n) => n.kind);
+    expect(kinds).not.toContain("generator");
+    expect(kinds).toContain("battery");
+    expect(g.segments.some((s) => s.id === "generator-hub")).toBe(false);
+  });
+
+  test("hiding one PV string keeps the others", () => {
+    const g = buildPowerGraph(
+      caps({ pvStrings: 3 }),
+      powerFrom({ "pv.string.power#1": 500, "pv.string.power#3": 300 }),
+      "landscape",
+      hidden(["pv.string.power#2"]),
+    );
+    expect(g.nodes.map((n) => n.id)).toEqual(["pv1", "pv3"]);
+    expect(g.segments.map((s) => s.id)).toEqual(["pv1-hub", "pv3-hub"]);
+  });
+
+  test("all strings hidden falls back to the aggregate solar node when visible", () => {
+    const g = buildPowerGraph(
+      caps({ pvStrings: 2 }),
+      powerFrom({ "pv.total.power": 900 }),
+      "landscape",
+      hidden(["pv.string.power#1", "pv.string.power#2"]),
+    );
+    expect(g.nodes.map((n) => n.id)).toEqual(["solar"]);
+  });
+
+  test("no visible PV metric at all yields no PV node", () => {
+    const g = buildPowerGraph(
+      caps({ pvStrings: 1 }),
+      () => undefined,
+      "landscape",
+      hidden(["pv.string.power#1", "pv.total.power"]),
+    );
+    expect(g.nodes.some((n) => n.kind === "pv")).toBe(false);
+  });
 });
 
 describe("helpers", () => {

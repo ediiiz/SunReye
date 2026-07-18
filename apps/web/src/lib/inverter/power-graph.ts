@@ -138,11 +138,19 @@ function sweep(from: Pt, hub: Pt): Pt[] {
  * Build the schematic graph for the power-flow diagram from the profile's
  * capabilities and a live power lookup. Pure — the caller injects `power`
  * (role → watts) so this stays free of the inverter store singleton.
+ *
+ * `has(role, index)` reports whether the driving metric is *visible* — the
+ * caller backs it with the filtered `byRole`, so a metric hidden via Settings →
+ * Sensors drops its node/segment (a whole group, or a single PV string). It
+ * defaults to always-visible so non-UI callers (tests) keep the caps-only
+ * shape. Capabilities stay server-derived and never flip on hiding, so presence
+ * is `caps` *and* a visible metric.
  */
 export function buildPowerGraph(
   caps: InverterCapabilities | null,
   power: (role: CanonicalRole, index?: number) => number | undefined,
   orientation: Orientation = "landscape",
+  has: (role: CanonicalRole, index?: number) => boolean = () => true,
 ): PowerGraph {
   const hub = HUBS[orientation];
   const portrait = orientation === "portrait";
@@ -154,14 +162,22 @@ export function buildPowerGraph(
   // them in a row along the top (captions above, clear of the connectors);
   // landscape stacks them down the left edge.
   const count = caps?.pvStrings ?? 0;
+  // One node per *visible* PV string; hiding a string's power metric drops it.
+  // With no per-string capability (or every string hidden), fall back to the
+  // aggregate solar node when it's visible, else no PV source at all.
+  const strings = Array.from({ length: count }, (_, i) => i + 1)
+    .filter((idx) => has("pv.string.power", idx))
+    .map((idx) => ({
+      id: `pv${idx}`,
+      label: `${m.label_string()} ${idx}`,
+      value: power("pv.string.power", idx),
+    }));
   const pv =
-    count > 0
-      ? Array.from({ length: count }, (_, i) => ({
-          id: `pv${i + 1}`,
-          label: `${m.label_string()} ${i + 1}`,
-          value: power("pv.string.power", i + 1),
-        }))
-      : [{ id: "solar", label: m.label_solar(), value: power("pv.total.power") }];
+    strings.length > 0
+      ? strings
+      : has("pv.total.power")
+        ? [{ id: "solar", label: m.label_solar(), value: power("pv.total.power") }]
+        : [];
   const pvXs = portrait ? rowPositions(pv.length, 0.02, 0.98) : pv.map(() => 0);
   const pvYs = portrait
     ? pv.map(() => 0)
@@ -209,7 +225,7 @@ export function buildPowerGraph(
   };
   const bottoms: BottomSpec[] = [];
 
-  if (caps?.battery) {
+  if (caps?.battery && has("battery.power")) {
     const v = power("battery.power");
     // Sign convention (Deye register 590): power > 0 discharging (in), < 0 charging (out).
     const s = sense(
@@ -229,13 +245,14 @@ export function buildPowerGraph(
     });
   }
 
-  const gridValue = caps?.grid ? power("grid.power") : undefined;
+  const gridVisible = Boolean(caps?.grid) && has("grid.power");
+  const gridValue = gridVisible ? power("grid.power") : undefined;
   const gridSense = sense(
     gridValue,
     { flow: "in", state: m.flow_importing() },
     { flow: "out", state: m.flow_exporting() },
   );
-  if (caps?.grid && portrait) {
+  if (gridVisible && portrait) {
     bottoms.push({
       id: "grid",
       label: m.label_grid(),
@@ -248,7 +265,7 @@ export function buildPowerGraph(
     });
   }
 
-  if (caps?.backupLoad) {
+  if (caps?.backupLoad && has("load.power")) {
     const v = power("load.power");
     const s = sense(
       v,
@@ -267,7 +284,7 @@ export function buildPowerGraph(
     });
   }
 
-  if (caps?.generator) {
+  if (caps?.generator && has("generator.power")) {
     const v = power("generator.power");
     const s = sense(
       v,
@@ -306,7 +323,7 @@ export function buildPowerGraph(
     });
   });
 
-  if (caps?.grid && !portrait) {
+  if (gridVisible && !portrait) {
     const at = { x: 1, y: hub.y };
     nodes.push({
       id: "grid",

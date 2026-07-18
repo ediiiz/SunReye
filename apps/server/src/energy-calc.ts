@@ -38,6 +38,27 @@ export interface PeriodEnergy extends EnergyTotals {
   selfConsumption: number | null;
 }
 
+/**
+ * Overlay live current-day energy on a period's `*.total`-delta totals: every
+ * field present in `today` replaces the delta-derived value, while fields absent
+ * from `today` keep it. Pure — returns a fresh object and never mutates either
+ * input. Lets the in-progress day be sourced from the live `*.today` registers
+ * (which lead the coarse cross-bucket counter delta) while older, complete
+ * periods keep the `*.total` delta as their source of truth. A field carrying an
+ * explicit `0` in `today` still overrides — only `undefined` (absent) is skipped.
+ */
+export function applyTodayOverride(
+  totals: EnergyTotals,
+  today: Partial<EnergyTotals>,
+): EnergyTotals {
+  return {
+    importKwh: today.importKwh ?? totals.importKwh,
+    exportKwh: today.exportKwh ?? totals.exportKwh,
+    loadKwh: today.loadKwh ?? totals.loadKwh,
+    productionKwh: today.productionKwh ?? totals.productionKwh,
+  };
+}
+
 /** Derive the display splits and ratios for one period's summed energy. */
 export function derivePeriodEnergy(bucket: string, totals: EnergyTotals): PeriodEnergy {
   const { importKwh, exportKwh, loadKwh, productionKwh } = totals;

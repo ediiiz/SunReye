@@ -13,10 +13,14 @@
 
 import { db } from "@SunReye/db";
 import { importPriceForHour } from "@SunReye/db/tariff";
-import type { CanonicalRole, InverterProfile } from "@SunReye/inverter-core";
+import type { CanonicalRole, InverterProfile, InverterSample } from "@SunReye/inverter-core";
 import { sql } from "drizzle-orm";
-import { type CostBreakdown, type HourEnergy, allocateCost } from "./cost-calc";
+import { type CostBreakdown, type CostTotals, type HourEnergy, allocateCost } from "./cost-calc";
+import type { EnergyTotals } from "./energy-calc";
 import { getTariff } from "./settings";
+import { liveState } from "./state";
+
+const clamp01 = (n: number): number => Math.min(1, Math.max(0, n));
 
 export type { CostBreakdown } from "./cost-calc";
 export { resolveRange } from "./cost-calc";
@@ -47,6 +51,86 @@ function resolveEnergyKeys(profile: InverterProfile): Map<string, EnergyField> {
     if (key) fieldByKey.set(key, field as EnergyField);
   }
   return fieldByKey;
+}
+
+/**
+ * The live `*.today` register roles — the current-day twins of the cumulative
+ * `*.total` counters in {@link ENERGY_FIELDS}. All OPTIONAL: a profile may map
+ * some, none, or all. When a twin is mapped and present in the live sample it
+ * gives the in-progress day's energy directly, ahead of the coarser
+ * cross-bucket `*.total` delta the rollups derive (which lags the live register
+ * for the current day) — so the chart/KPIs match the dashboard headline.
+ */
+const ENERGY_TODAY_FIELDS = {
+  import: "grid.energy.imported.today",
+  export: "grid.energy.exported.today",
+  load: "load.energy.today",
+  production: "production.today",
+} as const satisfies Record<EnergyField, CanonicalRole>;
+
+/** {@link EnergyField} → the {@link EnergyTotals} kWh key it feeds. */
+const TODAY_TOTALS_FIELD = {
+  import: "importKwh",
+  export: "exportKwh",
+  load: "loadKwh",
+  production: "productionKwh",
+} as const satisfies Record<EnergyField, keyof EnergyTotals>;
+
+/** Whether two Dates fall on the same local (server-tz) calendar day. */
+function isSameLocalDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+/**
+ * The live current-day energy totals from an explicit sample, as a partial
+ * {@link EnergyTotals} carrying only the fields safe to trust. Pure and DB-free
+ * (no singleton read) so its guards are unit-testable — see {@link
+ * ./cost.test}. Returns `{}` (no override) unless ALL hold:
+ *  - `sample` is non-null;
+ *  - `sample.inverterId` matches the query's effective `inverterId`;
+ *  - the sample is from TODAY in server-local time — a stale sample carried
+ *    across midnight must not override the fresh day.
+ * A field is included only when its `*.today` twin role is mapped by the profile
+ * AND the sample carries a finite value for that role's metric key; every other
+ * field is left to the caller's `*.total`-delta value.
+ */
+export function resolveLiveTodayTotals(
+  profile: InverterProfile,
+  sample: InverterSample | null,
+  inverterId: string,
+  now: Date,
+): Partial<EnergyTotals> {
+  if (!sample) return {};
+  if (sample.inverterId !== inverterId) return {};
+  if (!isSameLocalDay(new Date(sample.time), now)) return {};
+
+  const out: Partial<EnergyTotals> = {};
+  for (const field of Object.keys(ENERGY_TODAY_FIELDS) as EnergyField[]) {
+    const key = keyForRole(profile, ENERGY_TODAY_FIELDS[field]);
+    if (!key) continue; // profile doesn't map this today-twin → keep the delta value
+    const value = sample.metrics[key];
+    if (typeof value === "number" && Number.isFinite(value)) {
+      out[TODAY_TOTALS_FIELD[field]] = value;
+    }
+  }
+  return out;
+}
+
+/**
+ * Runtime reader: {@link resolveLiveTodayTotals} against the in-memory live
+ * sample ({@link liveState}). The only layer that touches the singleton; the
+ * decision logic stays in the pure function above.
+ */
+export function liveTodayTotals(
+  profile: InverterProfile,
+  inverterId: string,
+  now: Date = new Date(),
+): Partial<EnergyTotals> {
+  return resolveLiveTodayTotals(profile, liveState.latest, inverterId, now);
 }
 
 /**
@@ -190,6 +274,16 @@ function periodKey(d: Date, bucket: CostBucket): string {
   if (bucket === "month") return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
   if (bucket === "day") return ymd;
   return `${ymd}T${pad2(d.getHours())}`;
+}
+
+/**
+ * The local period key `now` occupies at `bucket` granularity — i.e. the key of
+ * the current, in-progress period in {@link fetchCounterDeltaMatrix}'s output.
+ * Reuses {@link periodKey} so a live-register override lands on the exact same
+ * key the matrix produced for today.
+ */
+export function currentPeriodKey(bucket: CostBucket, now: Date = new Date()): string {
+  return periodKey(now, bucket);
 }
 
 /**
@@ -408,6 +502,56 @@ export async function computeCostSeries(
   return [...byKey.values()];
 }
 
+/**
+ * Whether `[from, to)` is exactly the current day up to now — the `range:
+ * "today"` case: `from` is this local day's midnight and `to` lands on today
+ * (at or after `from`). Only this window may take the live `*.today` override;
+ * month/year windows never do (see {@link computeCost}). Note: on the 1st of a
+ * month/year the month/year-to-date IS just today, so this correctly returns
+ * true — overriding the tiny window with the live register is coherent there.
+ */
+function isTodayWindow(from: Date, to: Date, now: Date = new Date()): boolean {
+  const midnight = new Date(now);
+  midnight.setHours(0, 0, 0, 0);
+  return (
+    from.getTime() === midnight.getTime() &&
+    to.getTime() >= from.getTime() &&
+    isSameLocalDay(to, now)
+  );
+}
+
+/**
+ * Report the live `*.today` energy on top of the per-hour cost totals for the
+ * current-day window: replace the four energy kWh figures with the live values
+ * (only the fields the reader supplied) and RECOMPUTE the pure derived-energy /
+ * ratio fields from them — mirroring {@link allocateCost}'s formulas exactly so
+ * the tiles stay coherent.
+ *
+ * Deliberate split: the MONEY fields (importCost, exportEarnings,
+ * standingCharge, net, gridOnlyCost, savings, solarSavings, byDay, byBand) pass
+ * through untouched. They are priced per-hour-of-day tariff band from the
+ * `*.total` deltas and stay authoritative for money — a day register can't be
+ * banded — so the reported kWh and its priced cost may diverge slightly while
+ * the day is in progress.
+ */
+function reportLiveTodayTotals(totals: CostTotals, today: Partial<EnergyTotals>): CostTotals {
+  const importKwh = today.importKwh ?? totals.importKwh;
+  const exportKwh = today.exportKwh ?? totals.exportKwh;
+  const loadKwh = today.loadKwh ?? totals.loadKwh;
+  const productionKwh = today.productionKwh ?? totals.productionKwh;
+  return {
+    ...totals,
+    importKwh,
+    exportKwh,
+    loadKwh,
+    productionKwh,
+    selfConsumedKwh: Math.max(0, loadKwh - importKwh),
+    selfSufficiency: loadKwh > 0 ? clamp01((loadKwh - importKwh) / loadKwh) : null,
+    selfConsumption:
+      productionKwh > 0 ? clamp01((productionKwh - exportKwh) / productionKwh) : null,
+  };
+}
+
 /** Full cost breakdown for an explicit [from, to) window. */
 export async function computeCost(
   profile: InverterProfile,
@@ -421,10 +565,23 @@ export async function computeCost(
   const tariff = await getTariff();
   const hours = await fetchHourlyEnergy(profile, inverterId, opts.from, opts.to);
   const rangeDays = Math.max(0, (opts.to.getTime() - opts.from.getTime()) / 86_400_000);
+  const totals = allocateCost(hours, tariff, rangeDays);
+
+  // Current-day window only: report the ENERGY kWh from the live *.today
+  // registers (which lead the coarse cross-bucket *.total delta for the
+  // in-progress day, matching the dashboard headline), recomputing the ratios
+  // from them. Money stays per-hour (see reportLiveTodayTotals). Month/year
+  // windows: no override — the today portion is negligible and can't be cleanly
+  // separated from the window's *.total delta.
+  const now = new Date();
+  const reported = isTodayWindow(opts.from, opts.to, now)
+    ? reportLiveTodayTotals(totals, liveTodayTotals(profile, inverterId, now))
+    : totals;
+
   return {
     currency: tariff.currency,
     from: opts.from.toISOString(),
     to: opts.to.toISOString(),
-    ...allocateCost(hours, tariff, rangeDays),
+    ...reported,
   };
 }

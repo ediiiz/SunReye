@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { type EnergyTotals, derivePeriodEnergy } from "./energy-calc";
+import { type EnergyTotals, applyTodayOverride, derivePeriodEnergy } from "./energy-calc";
 
 const totals = (t: Partial<EnergyTotals>): EnergyTotals => ({
   importKwh: 0,
@@ -54,5 +54,38 @@ describe("derivePeriodEnergy", () => {
       selfSufficiency: null,
       selfConsumption: null,
     });
+  });
+});
+
+describe("applyTodayOverride", () => {
+  const base = totals({ importKwh: 1, exportKwh: 2, loadKwh: 3, productionKwh: 4 });
+
+  test("overrides only the fields present in `today`", () => {
+    expect(applyTodayOverride(base, { loadKwh: 8.6, importKwh: 5 })).toEqual({
+      importKwh: 5, // overridden
+      exportKwh: 2, // kept (absent from today)
+      loadKwh: 8.6, // overridden
+      productionKwh: 4, // kept (absent from today)
+    });
+  });
+
+  test("an explicit zero in `today` still overrides (only undefined is skipped)", () => {
+    expect(applyTodayOverride(base, { exportKwh: 0 })).toMatchObject({
+      exportKwh: 0,
+      importKwh: 1,
+    });
+  });
+
+  test("empty `today` is the identity (all delta values kept)", () => {
+    expect(applyTodayOverride(base, {})).toEqual({ ...base });
+  });
+
+  test("does not mutate either input", () => {
+    const snapshot = { ...base };
+    const today = { loadKwh: 9 };
+    const out = applyTodayOverride(base, today);
+    expect(base).toEqual(snapshot); // input untouched
+    expect(today).toEqual({ loadKwh: 9 }); // override untouched
+    expect(out).not.toBe(base); // fresh object
   });
 });

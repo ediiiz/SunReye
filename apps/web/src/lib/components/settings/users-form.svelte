@@ -10,13 +10,14 @@
 	import SettingsSection from './settings-section.svelte';
 	import PlusIcon from 'phosphor-svelte/lib/Plus';
 	import TrashIcon from 'phosphor-svelte/lib/Trash';
+	import * as m from '$lib/paraglide/messages';
 
 	type Role = 'user' | 'admin';
 	type Row = { id: string; name: string; email: string; role?: string | null };
 
 	const ROLES: { value: Role; label: string }[] = [
-		{ value: 'user', label: 'User' },
-		{ value: 'admin', label: 'Admin' }
+		{ value: 'user', label: m.users_role_user() },
+		{ value: 'admin', label: m.users_role_admin() }
 	];
 	let users = $state<Row[]>([]);
 	let loading = $state(true);
@@ -31,7 +32,7 @@
 	async function load() {
 		loading = true;
 		const { data, error } = await authClient.admin.listUsers({ query: { limit: 100 } });
-		if (error) toast.error('Failed to load users');
+		if (error) toast.error(m.users_toast_load_error());
 		else users = (data?.users ?? []) as Row[];
 		loading = false;
 	}
@@ -44,10 +45,10 @@
 		const { error } = await authClient.admin.createUser({ name, email, password, role });
 		creating = false;
 		if (error) {
-			toast.error(error.message ?? 'Failed to create user');
+			toast.error(error.message ?? m.users_toast_create_error());
 			return;
 		}
-		toast.success(`Created ${email}`);
+		toast.success(m.users_toast_created({ email }));
 		name = email = password = '';
 		role = 'user';
 		await load();
@@ -55,36 +56,36 @@
 
 	async function setRole(userId: string, next: Role) {
 		const { error } = await authClient.admin.setRole({ userId, role: next });
-		if (error) toast.error('Failed to update role');
+		if (error) toast.error(m.users_toast_role_error());
 		else {
-			toast.success('Role updated');
+			toast.success(m.users_toast_role_updated());
 			await load();
 		}
 	}
 
 	async function remove(userId: string, label: string) {
-		if (!confirm(`Remove ${label}? This cannot be undone.`)) return;
+		if (!confirm(m.users_remove_confirm({ label }))) return;
 		const { error } = await authClient.admin.removeUser({ userId });
-		if (error) toast.error('Failed to remove user');
+		if (error) toast.error(m.users_toast_remove_error());
 		else {
-			toast.success('User removed');
+			toast.success(m.users_toast_removed());
 			await load();
 		}
 	}
 </script>
 
-<SettingsSection title="Add user">
+<SettingsSection title={m.users_add_title()}>
 	<form class="grid items-end gap-3 sm:grid-cols-[1fr_1fr_1fr_auto_auto]" onsubmit={create}>
 		<div class="flex flex-col gap-1.5">
-			<Label for="u-name">Name</Label>
+			<Label for="u-name">{m.auth_field_name()}</Label>
 			<Input id="u-name" bind:value={name} required />
 		</div>
 		<div class="flex flex-col gap-1.5">
-			<Label for="u-email">Email</Label>
+			<Label for="u-email">{m.auth_field_email()}</Label>
 			<Input id="u-email" type="email" autocomplete="off" bind:value={email} required />
 		</div>
 		<div class="flex flex-col gap-1.5">
-			<Label for="u-password">Password</Label>
+			<Label for="u-password">{m.auth_field_password()}</Label>
 			<Input
 				id="u-password"
 				type="password"
@@ -95,32 +96,32 @@
 			/>
 		</div>
 		<div class="flex flex-col gap-1.5">
-			<Label>Role</Label>
+			<Label>{m.users_role()}</Label>
 			<OptionSelect
 				value={role}
 				items={ROLES}
 				onchange={(v) => (role = v as Role)}
-				placeholder="User"
+				placeholder={m.users_role_user()}
 				triggerClass="w-28"
 			/>
 		</div>
 		<Button type="submit" disabled={creating}>
 			<PlusIcon class="size-4" />
-			{creating ? 'Adding…' : 'Add'}
+			{creating ? m.users_adding() : m.action_add()}
 		</Button>
 	</form>
 </SettingsSection>
 
-<SettingsSection title="Users">
+<SettingsSection title={m.settings_tab_users()}>
 	{#if loading}
-		<p class="text-sm text-muted-foreground">Loading users…</p>
+		<p class="text-sm text-muted-foreground">{m.users_loading()}</p>
 	{:else}
 		<Table.Root>
 			<Table.Header>
 				<Table.Row>
-					<Table.Head>Name</Table.Head>
-					<Table.Head>Email</Table.Head>
-					<Table.Head class="w-32">Role</Table.Head>
+					<Table.Head>{m.auth_field_name()}</Table.Head>
+					<Table.Head>{m.auth_field_email()}</Table.Head>
+					<Table.Head class="w-32">{m.users_role()}</Table.Head>
 					<Table.Head class="w-12"></Table.Head>
 				</Table.Row>
 			</Table.Header>
@@ -143,7 +144,7 @@
 								variant="ghost"
 								size="icon"
 								onclick={() => remove(u.id, u.email)}
-								aria-label="Remove user"
+								aria-label={m.users_remove_aria()}
 							>
 								<TrashIcon class="size-4" />
 							</Button>

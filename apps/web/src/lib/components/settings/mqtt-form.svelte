@@ -8,6 +8,7 @@
 	import FormActions from './form-actions.svelte';
 	import SettingsSection from './settings-section.svelte';
 	import StatusBadge from './status-badge.svelte';
+	import * as m from '$lib/paraglide/messages';
 
 	// Form shape: the password is write-only. `hasPassword` reflects whether one
 	// is already stored; the password field stays empty and is only sent when the
@@ -33,7 +34,12 @@
 
 	const result = $derived(
 		testResult
-			? { ok: testResult.ok, message: testResult.ok ? 'Broker reachable' : `Failed: ${testResult.error}` }
+			? {
+					ok: testResult.ok,
+					message: testResult.ok
+						? m.mqtt_test_ok()
+						: m.conn_test_failed({ error: testResult.error ?? '' })
+				}
 			: null
 	);
 
@@ -69,7 +75,7 @@
 		testResult = null;
 		const { data, error } = await api.api.settings.mqtt.test.post(body);
 		testing = false;
-		testResult = data ?? { ok: false, error: error ? String(error.value) : 'Request failed' };
+		testResult = data ?? { ok: false, error: error ? String(error.value) : m.conn_request_failed() };
 	}
 
 	async function save() {
@@ -79,34 +85,38 @@
 		const { data, error } = await api.api.settings.mqtt.put(body);
 		saving = false;
 		if (error) {
-			toast.error('Failed to save MQTT settings');
+			toast.error(m.mqtt_toast_error());
 			return;
 		}
 		if (data) hasPassword = data.hasPassword;
 		password = '';
-		toast.success('MQTT settings saved — applied live');
+		toast.success(m.mqtt_toast_saved());
 	}
 </script>
 
 {#if !cfg}
 	<div class="flex h-40 items-center justify-center border border-border text-sm text-muted-foreground">
-		Loading…
+		{m.app_loading()}
 	</div>
 {:else}
-	<SettingsSection title="MQTT broker">
+	<SettingsSection title={m.mqtt_broker_title()}>
 		{#snippet actions()}
 			{#if status}
 				<StatusBadge
 					ok={status.connected}
-					label={!status.enabled ? 'Disabled' : status.connected ? 'Connected' : 'Connecting…'}
+					label={!status.enabled
+						? m.mqtt_status_disabled()
+						: status.connected
+							? m.status_connected()
+							: m.status_connecting()}
 				/>
 			{/if}
 		{/snippet}
 
 		<div class="flex items-center justify-between gap-4">
 			<div class="flex flex-col">
-				<Label for="mqtt-enabled">Enabled</Label>
-				<span class="text-xs text-muted-foreground">Bridge entities to an MQTT broker.</span>
+				<Label for="mqtt-enabled">{m.label_enabled()}</Label>
+				<span class="text-xs text-muted-foreground">{m.mqtt_enabled_desc()}</span>
 			</div>
 			<Switch id="mqtt-enabled" bind:checked={cfg.enabled} />
 		</div>
@@ -121,25 +131,25 @@
 				<Input id="prefix" bind:value={cfg.topicPrefix} />
 			</div>
 			<div class="flex flex-col gap-1.5">
-				<Label for="mqtt-user">Username</Label>
+				<Label for="mqtt-user">{m.mqtt_username()}</Label>
 				<Input id="mqtt-user" bind:value={cfg.username} autocomplete="off" />
 			</div>
 			<div class="flex flex-col gap-1.5">
-				<Label for="mqtt-pass">Password</Label>
+				<Label for="mqtt-pass">{m.auth_field_password()}</Label>
 				<Input
 					id="mqtt-pass"
 					type="password"
 					bind:value={password}
 					autocomplete="new-password"
-					placeholder={hasPassword ? '•••••• (unchanged)' : ''}
+					placeholder={hasPassword ? m.mqtt_password_unchanged() : ''}
 				/>
 			</div>
 		</div>
 
 		<div class="flex items-center justify-between gap-4 border-t border-border pt-4">
 			<div class="flex flex-col">
-				<Label for="ha">Home Assistant discovery</Label>
-				<span class="text-xs text-muted-foreground">Auto-publish entity configs to HA.</span>
+				<Label for="ha">{m.mqtt_ha_discovery()}</Label>
+				<span class="text-xs text-muted-foreground">{m.mqtt_ha_desc()}</span>
 			</div>
 			<Switch id="ha" bind:checked={cfg.haDiscoveryEnabled} />
 		</div>

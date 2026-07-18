@@ -3,6 +3,7 @@
 	import AvailableProfileGroup from "./available-profile-group.svelte";
 	import SettingsSection from "./settings-section.svelte";
 	import type { AvailableProfile, FamilyGroup, ManufacturerGroup, Source } from "./profile-types";
+	import * as m from "$lib/paraglide/messages";
 
 	let {
 		available,
@@ -83,23 +84,23 @@
 	});
 </script>
 
-<SettingsSection title="Available profiles">
+<SettingsSection title={m.profiles_available_title()}>
 	{#snippet actions()}
 		<Button variant="outline" size="sm" disabled={browsing} onclick={onBrowse}>
-			{browsing ? "Browsing…" : "Browse repositories"}
+			{browsing ? m.profiles_browsing() : m.profiles_browse()}
 		</Button>
 	{/snippet}
 
 	{#each errors as e (e.source)}
-		<p class="text-xs text-destructive">Could not read {e.source}: {e.error}</p>
+		<p class="text-xs text-destructive">{m.profiles_browse_error({ source: e.source, error: e.error })}</p>
 	{/each}
 
 	{#if available === null}
 		<p class="text-sm text-muted-foreground">
-			Browse your repositories to see profiles you can download.
+			{m.profiles_browse_hint()}
 		</p>
 	{:else if available.length === 0}
-		<p class="text-sm text-muted-foreground">No profiles found in the enabled repositories.</p>
+		<p class="text-sm text-muted-foreground">{m.profiles_none_found()}</p>
 	{:else}
 		<div class="flex flex-col gap-1">
 			{#each groups as g (g.manufacturer)}

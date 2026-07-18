@@ -6,6 +6,7 @@
 	import SettingsSection from './settings-section.svelte';
 	import { api } from '$lib/api';
 	import { useAppSession } from '$lib/session';
+	import * as m from '$lib/paraglide/messages';
 
 	const session = useAppSession();
 	const isAdmin = $derived($session.data?.user.role === 'admin');
@@ -27,24 +28,22 @@
 		saving = false;
 		if (error) {
 			publicDashboard = prev; // revert on failure
-			toast.error('Failed to update access setting');
+			toast.error(m.access_toast_error());
 		} else {
-			toast.success(next ? 'Public dashboard enabled' : 'Public dashboard disabled');
+			toast.success(next ? m.access_toast_enabled() : m.access_toast_disabled());
 		}
 	}
 </script>
 
-<SettingsSection title="Access">
+<SettingsSection title={m.settings_tab_access()}>
 	{#if publicDashboard === null}
-		<p class="text-sm text-muted-foreground">Loading…</p>
+		<p class="text-sm text-muted-foreground">{m.app_loading()}</p>
 	{:else}
 		<div class="flex items-start justify-between gap-4">
 			<div class="flex flex-col gap-1">
-				<Label for="public-dashboard">Public read-only dashboard</Label>
+				<Label for="public-dashboard">{m.access_public_label()}</Label>
 				<p class="max-w-prose text-sm text-muted-foreground">
-					Let anyone view the live dashboard without signing in — for wall displays and kiosks. The
-					dashboard is read-only: changing settings and controlling the inverter still require an
-					admin login.
+					{m.access_public_desc()}
 				</p>
 			</div>
 			<Switch
@@ -55,7 +54,7 @@
 			/>
 		</div>
 		{#if !isAdmin}
-			<span class="text-xs text-muted-foreground">Only admins can change this setting.</span>
+			<span class="text-xs text-muted-foreground">{m.settings_admin_only()}</span>
 		{/if}
 	{/if}
 </SettingsSection>

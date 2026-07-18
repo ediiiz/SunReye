@@ -5,6 +5,7 @@
 	import SettingsSection from "./settings-section.svelte";
 	import StatusBadge from "./status-badge.svelte";
 	import type { RegisteredProfile } from "./profile-types";
+	import * as m from "$lib/paraglide/messages";
 
 	let {
 		profiles,
@@ -34,7 +35,7 @@
 			<span class="flex flex-wrap items-center gap-1.5 text-sm font-medium">
 				<span class="wrap-break-word">{p.name}</span>
 				{#if p.active}
-					<StatusBadge ok label="Active" />
+					<StatusBadge ok label={m.profiles_active()} />
 				{/if}
 				{#if pending}
 					<Badge
@@ -42,21 +43,21 @@
 						class="border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400"
 					>
 						<span class="mr-1.5 inline-block size-1.5 rounded-full bg-amber-500"></span>
-						Restart to activate
+						{m.profiles_restart_to_activate()}
 					</Badge>
 				{/if}
 				{#if p.builtin}
-					<StatusBadge label="Built in" />
+					<StatusBadge label={m.badge_builtin()} />
 				{/if}
 			</span>
 			<span class="text-xs text-muted-foreground">
 				{p.manufacturer}{p.version ? ` · v${p.version}` : ""}
-				{p.builtin ? " · built-in" : " · downloaded"}
+				· {p.builtin ? m.profiles_builtin() : m.profiles_downloaded()}
 			</span>
 		</div>
 		<div class="flex shrink-0 items-center gap-2">
 			{#if pending}
-				<Button size="sm" class="flex-1 sm:flex-none" onclick={onRestart}>Restart</Button>
+				<Button size="sm" class="flex-1 sm:flex-none" onclick={onRestart}>{m.profiles_restart_short()}</Button>
 			{:else if !p.active}
 				<Button
 					variant="outline"
@@ -65,7 +66,7 @@
 					disabled={busyId === p.id}
 					onclick={() => onSetActive(p)}
 				>
-					Set active
+					{m.profiles_set_active()}
 				</Button>
 				{#if p.installed}
 					<Button
@@ -75,7 +76,7 @@
 						disabled={busyId === p.id}
 						onclick={() => onUninstall(p)}
 					>
-						Remove
+						{m.action_remove()}
 					</Button>
 				{/if}
 			{/if}
@@ -83,12 +84,12 @@
 	</div>
 {/snippet}
 
-<SettingsSection title="Installed profiles">
+<SettingsSection title={m.profiles_installed_title()}>
 	<GroupedProfileList
 		{profiles}
 		row={profileRow}
 		exclude={(p) => p.active}
-		emptyLabel="No other profiles installed."
+		emptyLabel={m.profiles_none_other()}
 	>
 		{#snippet pinned()}
 			{#if activeProfile}

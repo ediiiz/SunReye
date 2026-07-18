@@ -12,6 +12,7 @@
 	import ApiKeysForm from '$lib/components/settings/api-keys-form.svelte';
 	import DangerZoneForm from '$lib/components/settings/danger-zone-form.svelte';
 	import { useAppSession } from '$lib/session';
+	import * as m from '$lib/paraglide/messages';
 
 	const session = useAppSession();
 	const isAdmin = $derived($session.data?.user.role === 'admin');
@@ -19,17 +20,17 @@
 	// Profiles and Users are admin-only management surfaces; append them once we
 	// know the viewer is an admin.
 	const TABS = $derived([
-		{ id: 'inverter', label: 'Inverter' },
-		{ id: 'mqtt', label: 'MQTT & Home Assistant' },
-		{ id: 'tariff', label: 'Tariff' },
-		{ id: 'display', label: 'Display' },
+		{ id: 'inverter', label: m.label_inverter() },
+		{ id: 'mqtt', label: m.settings_tab_mqtt() },
+		{ id: 'tariff', label: m.settings_tab_tariff() },
+		{ id: 'display', label: m.settings_tab_display() },
 		...(isAdmin
 			? [
-					{ id: 'access', label: 'Access' },
-					{ id: 'profiles', label: 'Profiles' },
-					{ id: 'users', label: 'Users' },
-					{ id: 'apikeys', label: 'API Keys' },
-					{ id: 'danger', label: 'Danger Zone' }
+					{ id: 'access', label: m.settings_tab_access() },
+					{ id: 'profiles', label: m.settings_tab_profiles() },
+					{ id: 'users', label: m.settings_tab_users() },
+					{ id: 'apikeys', label: m.settings_tab_apikeys() },
+					{ id: 'danger', label: m.settings_tab_danger() }
 				]
 			: [])
 	] as const);
@@ -66,7 +67,7 @@
 
 <div class="mx-auto flex w-full max-w-3xl flex-col gap-6 p-4 sm:p-6">
 	<header class="flex flex-col gap-1">
-		<h1 class="text-lg font-semibold">Settings</h1>
+		<h1 class="text-lg font-semibold">{m.nav_settings()}</h1>
 	</header>
 
 	<Tabs.Root bind:value={tab} class="gap-6">

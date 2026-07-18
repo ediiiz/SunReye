@@ -8,6 +8,7 @@
 	import SettingsSection from './settings-section.svelte';
 	import { api } from '$lib/api';
 	import { useAppSession } from '$lib/session';
+	import * as m from '$lib/paraglide/messages';
 
 	const session = useAppSession();
 	const isAdmin = $derived($session.data?.user.role === 'admin');
@@ -46,7 +47,7 @@
 		const latitude = parseCoord(latText);
 		const longitude = parseCoord(lonText);
 		if (draft.enabled && (latitude === null || longitude === null)) {
-			toast.error('Enter a valid latitude and longitude');
+			toast.error(m.weather_toast_invalid_coords());
 			return;
 		}
 		saving = true;
@@ -57,25 +58,24 @@
 			label: draft.label
 		});
 		saving = false;
-		if (error) toast.error('Failed to save weather settings');
+		if (error) toast.error(m.weather_toast_error());
 		else {
 			draft = data as WeatherConfig;
-			toast.success('Weather settings saved');
+			toast.success(m.weather_toast_saved());
 		}
 	}
 </script>
 
-<SettingsSection title="Weather">
+<SettingsSection title={m.weather_title()}>
 	{#if !draft}
-		<p class="text-sm text-muted-foreground">Loading…</p>
+		<p class="text-sm text-muted-foreground">{m.app_loading()}</p>
 	{:else}
 		<p class="text-sm text-muted-foreground">
-			Show current weather on the dashboard, from Open-Meteo (no account needed). Enter your
-			location's coordinates — find them on any map service.
+			{m.weather_desc()}
 		</p>
 
 		<div class="flex items-center justify-between gap-4">
-			<Label for="weather-enabled">Show weather tile</Label>
+			<Label for="weather-enabled">{m.weather_show_tile()}</Label>
 			<Switch
 				id="weather-enabled"
 				checked={draft.enabled}
@@ -86,7 +86,7 @@
 
 		<div class="grid gap-3 sm:grid-cols-2">
 			<div class="flex flex-col gap-1.5">
-				<Label for="weather-lat">Latitude</Label>
+				<Label for="weather-lat">{m.weather_latitude()}</Label>
 				<Input
 					id="weather-lat"
 					bind:value={latText}
@@ -96,7 +96,7 @@
 				/>
 			</div>
 			<div class="flex flex-col gap-1.5">
-				<Label for="weather-lon">Longitude</Label>
+				<Label for="weather-lon">{m.weather_longitude()}</Label>
 				<Input
 					id="weather-lon"
 					bind:value={lonText}
@@ -108,7 +108,7 @@
 		</div>
 
 		<div class="flex flex-col gap-1.5">
-			<Label for="weather-label">Location name</Label>
+			<Label for="weather-label">{m.weather_location_name()}</Label>
 			<Input
 				id="weather-label"
 				bind:value={draft.label}
@@ -119,9 +119,9 @@
 		</div>
 
 		<div class="flex items-center gap-3">
-			<Button onclick={save} disabled={!isAdmin || saving}>{saving ? 'Saving…' : 'Save'}</Button>
+			<Button onclick={save} disabled={!isAdmin || saving}>{saving ? m.action_saving() : m.action_save()}</Button>
 			{#if !isAdmin}
-				<span class="text-xs text-muted-foreground">Only admins can change this setting.</span>
+				<span class="text-xs text-muted-foreground">{m.settings_admin_only()}</span>
 			{/if}
 		</div>
 	{/if}

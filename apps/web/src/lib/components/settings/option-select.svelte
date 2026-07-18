@@ -1,11 +1,12 @@
 <script lang="ts">
 	import * as Select from '$lib/components/ui/select';
+	import * as m from '$lib/paraglide/messages';
 
 	let {
 		value,
 		items,
 		onchange,
-		placeholder = 'Select…',
+		placeholder = m.option_select_placeholder(),
 		triggerClass
 	}: {
 		value: string;

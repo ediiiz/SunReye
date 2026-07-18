@@ -7,6 +7,7 @@
 	import { Label } from '$lib/components/ui/label';
 	import RestartButton from './restart-button.svelte';
 	import WarningIcon from 'phosphor-svelte/lib/Warning';
+	import * as m from '$lib/paraglide/messages';
 
 	// Must match RESET_DATA_CONFIRM on the server (apps/server/src/maintenance.ts):
 	// the user types it to arm the wipe, and the server re-checks it.
@@ -25,11 +26,11 @@
 		busy = false;
 		if (error) {
 			toast.error(
-				(error.value as { error?: string })?.error ?? 'Failed to reset data'
+				(error.value as { error?: string })?.error ?? m.danger_toast_reset_error()
 			);
 			return;
 		}
-		toast.success('All measurement data cleared. Fresh data will appear as polling resumes.');
+		toast.success(m.danger_toast_reset_success());
 		open = false;
 		phrase = '';
 	}
@@ -38,35 +39,31 @@
 <section class="flex flex-col gap-4 border border-destructive/50 p-4">
 	<div class="flex items-center gap-2 text-destructive">
 		<WarningIcon class="size-4" weight="fill" />
-		<h2 class="text-sm font-medium uppercase tracking-wide">Danger zone</h2>
+		<h2 class="text-sm font-medium uppercase tracking-wide">{m.danger_zone_title()}</h2>
 	</div>
 
 	<div class="flex flex-col gap-1">
-		<p class="text-sm font-medium">Restart server</p>
+		<p class="text-sm font-medium">{m.settings_restart_server()}</p>
 		<p class="text-sm text-muted-foreground">
-			Restart the server process to apply boot-time changes — chiefly a newly activated inverter
-			profile, which reshapes the API, manifest, and topics built once at boot. Polling and live
-			data pause briefly while it comes back.
+			{m.danger_restart_desc()}
 		</p>
 	</div>
 
 	<div>
-		<RestartButton label="Restart server" variant="outline" />
+		<RestartButton label={m.settings_restart_server()} variant="outline" />
 	</div>
 
 	<div class="border-t border-destructive/30"></div>
 
 	<div class="flex flex-col gap-1">
-		<p class="text-sm font-medium">Reset all data</p>
+		<p class="text-sm font-medium">{m.danger_reset_title()}</p>
 		<p class="text-sm text-muted-foreground">
-			Permanently delete every recorded measurement — the raw history and all rollups behind the
-			charts and cost pages — so the instance starts fresh. Accounts, settings, tariff, and
-			profiles are kept. This cannot be undone.
+			{m.danger_reset_desc()}
 		</p>
 	</div>
 
 	<div>
-		<Button variant="destructive" onclick={() => (open = true)}>Reset all data…</Button>
+		<Button variant="destructive" onclick={() => (open = true)}>{m.danger_reset_button()}</Button>
 	</div>
 </section>
 
@@ -78,14 +75,15 @@
 >
 	<Dialog.Content>
 		<Dialog.Header>
-			<Dialog.Title>Reset all data?</Dialog.Title>
+			<Dialog.Title>{m.danger_reset_dialog_title()}</Dialog.Title>
 			<Dialog.Description>
-				This permanently deletes all recorded measurements and cannot be undone. Type
-				<span class="font-mono font-medium text-foreground">{CONFIRM_PHRASE}</span> to confirm.
+				{m.danger_reset_confirm_pre()}
+				<span class="font-mono font-medium text-foreground">{CONFIRM_PHRASE}</span>
+				{m.danger_reset_confirm_post()}
 			</Dialog.Description>
 		</Dialog.Header>
 		<div class="flex flex-col gap-1.5">
-			<Label for="reset-confirm">Confirmation</Label>
+			<Label for="reset-confirm">{m.danger_confirm_label()}</Label>
 			<Input
 				id="reset-confirm"
 				bind:value={phrase}
@@ -94,9 +92,9 @@
 			/>
 		</div>
 		<Dialog.Footer>
-			<Button variant="outline" onclick={() => (open = false)} disabled={busy}>Cancel</Button>
+			<Button variant="outline" onclick={() => (open = false)} disabled={busy}>{m.action_cancel()}</Button>
 			<Button variant="destructive" onclick={reset} disabled={!armed || busy}>
-				{busy ? 'Resetting…' : 'Delete everything'}
+				{busy ? m.danger_resetting() : m.danger_delete_everything()}
 			</Button>
 		</Dialog.Footer>
 	</Dialog.Content>

@@ -13,6 +13,7 @@
 	import CopyIcon from 'phosphor-svelte/lib/Copy';
 	import PlusIcon from 'phosphor-svelte/lib/Plus';
 	import TrashIcon from 'phosphor-svelte/lib/Trash';
+	import * as m from '$lib/paraglide/messages';
 
 	type KeyRow = {
 		id: string;
@@ -31,10 +32,10 @@
 
 	// Expiry presets → seconds (null = never expires).
 	const EXPIRY: { value: string; label: string; seconds: number | null }[] = [
-		{ value: 'never', label: 'Never', seconds: null },
-		{ value: '30d', label: '30 days', seconds: 30 * 86400 },
-		{ value: '90d', label: '90 days', seconds: 90 * 86400 },
-		{ value: '1y', label: '1 year', seconds: 365 * 86400 }
+		{ value: 'never', label: m.apikeys_expiry_never(), seconds: null },
+		{ value: '30d', label: m.apikeys_expiry_30d(), seconds: 30 * 86400 },
+		{ value: '90d', label: m.apikeys_expiry_90d(), seconds: 90 * 86400 },
+		{ value: '1y', label: m.apikeys_expiry_1y(), seconds: 365 * 86400 }
 	];
 
 	let users = $state<UserRow[]>([]);
@@ -58,7 +59,7 @@
 
 	async function loadUsers() {
 		const { data, error } = await authClient.admin.listUsers({ query: { limit: 100 } });
-		if (error) toast.error('Failed to load users');
+		if (error) toast.error(m.users_toast_load_error());
 		else users = (data?.users ?? []) as UserRow[];
 	}
 
@@ -67,7 +68,7 @@
 		const { data, error } = await api.api.admin['api-keys'].get({
 			query: filterUserId ? { userId: filterUserId } : {}
 		});
-		if (error) toast.error('Failed to load API keys');
+		if (error) toast.error(m.apikeys_toast_load_error());
 		else keys = (data ?? []) as KeyRow[];
 		loading = false;
 	}
@@ -79,7 +80,7 @@
 	async function create(e: SubmitEvent) {
 		e.preventDefault();
 		if (!ownerId) {
-			toast.error('Pick a user for the key');
+			toast.error(m.apikeys_toast_pick_user());
 			return;
 		}
 		creating = true;
@@ -91,7 +92,7 @@
 		});
 		creating = false;
 		if (error) {
-			toast.error((error.value as { message?: string })?.message ?? 'Failed to create key');
+			toast.error((error.value as { message?: string })?.message ?? m.apikeys_toast_create_error());
 			return;
 		}
 		createdKey = data?.key ?? null;
@@ -101,11 +102,11 @@
 	}
 
 	async function revoke(id: string, label: string) {
-		if (!confirm(`Revoke key "${label}"? Applications using it will stop working.`)) return;
+		if (!confirm(m.apikeys_revoke_confirm({ label }))) return;
 		const { error } = await api.api.admin['api-keys'].revoke.post({ id });
-		if (error) toast.error('Failed to revoke key');
+		if (error) toast.error(m.apikeys_toast_revoke_error());
 		else {
-			toast.success('Key revoked');
+			toast.success(m.apikeys_toast_revoked());
 			await loadKeys();
 		}
 	}
@@ -113,69 +114,69 @@
 	async function copyKey() {
 		if (!createdKey) return;
 		await navigator.clipboard.writeText(createdKey);
-		toast.success('Copied to clipboard');
+		toast.success(m.apikeys_toast_copied());
 	}
 </script>
 
-<SettingsSection title="Issue key">
+<SettingsSection title={m.apikeys_issue_title()}>
 	<form class="grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto_auto]" onsubmit={create}>
 		<div class="flex flex-col gap-1.5">
-			<Label>User</Label>
+			<Label>{m.users_role_user()}</Label>
 			<OptionSelect
 				value={ownerId}
 				items={userItems}
 				onchange={(v) => (ownerId = v)}
-				placeholder="Select user"
+				placeholder={m.apikeys_select_user()}
 				triggerClass="w-full"
 			/>
 		</div>
 		<div class="flex flex-col gap-1.5">
-			<Label for="k-name">Name</Label>
-			<Input id="k-name" bind:value={name} placeholder="e.g. Grafana" required />
+			<Label for="k-name">{m.auth_field_name()}</Label>
+			<Input id="k-name" bind:value={name} placeholder={m.apikeys_name_placeholder()} required />
 		</div>
 		<div class="flex flex-col gap-1.5">
-			<Label>Expires</Label>
+			<Label>{m.apikeys_field_expires()}</Label>
 			<OptionSelect
 				value={expiry}
 				items={EXPIRY}
 				onchange={(v) => (expiry = v)}
-				placeholder="Never"
+				placeholder={m.apikeys_expiry_never()}
 				triggerClass="w-32"
 			/>
 		</div>
 		<Button type="submit" disabled={creating}>
 			<PlusIcon class="size-4" />
-			{creating ? 'Creating…' : 'Create'}
+			{creating ? m.apikeys_creating() : m.apikeys_create()}
 		</Button>
 	</form>
 </SettingsSection>
 
-<SettingsSection title="API keys">
+<SettingsSection title={m.apikeys_list_title()}>
 	{#snippet actions()}
 		<OptionSelect
 			value={filterUserId}
-			items={[{ value: '', label: 'All users' }, ...userItems]}
+			items={[{ value: '', label: m.apikeys_all_users() }, ...userItems]}
 			onchange={(v) => {
 				filterUserId = v;
 				loadKeys();
 			}}
-			placeholder="All users"
+			placeholder={m.apikeys_all_users()}
 			triggerClass="w-48"
 		/>
 	{/snippet}
 	{#if loading}
-		<p class="text-sm text-muted-foreground">Loading API keys…</p>
+		<p class="text-sm text-muted-foreground">{m.apikeys_loading()}</p>
 	{:else if keys.length === 0}
-		<p class="text-sm text-muted-foreground">No API keys yet.</p>
+		<p class="text-sm text-muted-foreground">{m.apikeys_empty()}</p>
 	{:else}
 		<Table.Root>
 			<Table.Header>
 				<Table.Row>
-					<Table.Head>Name</Table.Head>
-					<Table.Head>Owner</Table.Head>
-					<Table.Head>Key</Table.Head>
-					<Table.Head class="w-24">Created</Table.Head>
-					<Table.Head class="w-24">Expires</Table.Head>
+					<Table.Head>{m.auth_field_name()}</Table.Head>
+					<Table.Head>{m.apikeys_col_owner()}</Table.Head>
+					<Table.Head>{m.apikeys_col_key()}</Table.Head>
+					<Table.Head class="w-24">{m.apikeys_col_created()}</Table.Head>
+					<Table.Head class="w-24">{m.apikeys_field_expires()}</Table.Head>
 					<Table.Head class="w-12"></Table.Head>
 				</Table.Row>
 			</Table.Header>
@@ -194,7 +195,7 @@
 								variant="ghost"
 								size="icon"
 								onclick={() => revoke(k.id, k.name ?? k.userEmail)}
-								aria-label="Revoke key"
+								aria-label={m.apikeys_revoke_aria()}
 							>
 								<TrashIcon class="size-4" />
 							</Button>
@@ -209,19 +210,19 @@
 <Dialog.Root open={createdKey !== null} onOpenChange={(o) => !o && (createdKey = null)}>
 	<Dialog.Content>
 		<Dialog.Header>
-			<Dialog.Title>Copy your API key</Dialog.Title>
+			<Dialog.Title>{m.apikeys_dialog_title()}</Dialog.Title>
 			<Dialog.Description>
-				This is the only time the full key is shown. Store it somewhere safe.
+				{m.apikeys_dialog_desc()}
 			</Dialog.Description>
 		</Dialog.Header>
 		<div class="flex items-center gap-2">
 			<Input readonly value={createdKey ?? ''} class="font-mono text-xs" />
-			<Button variant="outline" size="icon" onclick={copyKey} aria-label="Copy key">
+			<Button variant="outline" size="icon" onclick={copyKey} aria-label={m.apikeys_copy_aria()}>
 				<CopyIcon class="size-4" />
 			</Button>
 		</div>
 		<Dialog.Footer>
-			<Button onclick={() => (createdKey = null)}>Done</Button>
+			<Button onclick={() => (createdKey = null)}>{m.apikeys_done()}</Button>
 		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>

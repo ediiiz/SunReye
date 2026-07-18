@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
+	import * as m from '$lib/paraglide/messages';
 
 	// Shared footer for the connection settings forms: an optional test result
 	// line plus Test / Save buttons. `children` renders extra controls (e.g. a
@@ -31,9 +32,9 @@
 		<div class="sm:mr-auto">{@render children()}</div>
 	{/if}
 	<Button variant="outline" class="w-full sm:w-auto" onclick={ontest} disabled={testing}>
-		{testing ? 'Testing…' : 'Test connection'}
+		{testing ? m.conn_testing() : m.conn_test()}
 	</Button>
 	<Button class="w-full sm:w-auto" onclick={onsave} disabled={saving}>
-		{saving ? 'Saving…' : 'Save'}
+		{saving ? m.action_saving() : m.action_save()}
 	</Button>
 </div>

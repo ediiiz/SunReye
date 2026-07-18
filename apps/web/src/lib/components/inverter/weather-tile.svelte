@@ -67,33 +67,38 @@
 	     centring off) so nothing occupies the slot when weather is disabled. -->
 	<div
 		data-weather-tile
-		class="flex h-full items-center gap-4 rounded-xl border border-border/60 bg-card p-3 sm:p-4 lg:w-96 lg:shrink-0 2xl:w-120"
+		class="flex h-full flex-col justify-center gap-3 rounded-xl border border-border/60 bg-card p-3 sm:p-4 lg:w-96 lg:shrink-0 lg:flex-row lg:items-center lg:gap-4 2xl:w-120"
 	>
-		<span
-			class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 2xl:size-16"
-		>
-			<Icon class="size-7 text-primary 2xl:size-9" weight="duotone" />
-		</span>
-		<div class="flex min-w-0 flex-col gap-0.5">
-			<span class="text-3xl font-semibold tabular-nums leading-none 2xl:text-4xl">
-				{Math.round(weather.temperature)}{weather.unit}
+		<!-- Icon + temperature/location stay grouped so the forecast can drop to its
+		     own row below lg instead of colliding with the temperature at ~320px. -->
+		<div class="flex min-w-0 items-center gap-4">
+			<span
+				class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 2xl:size-16"
+			>
+				<Icon class="size-7 text-primary 2xl:size-9" weight="duotone" />
 			</span>
-			<!-- With the forecast stats on the right the condition text would crowd
-			     the tile; the icon already carries it. -->
-			{#if !weather.forecast}
-				<span class="truncate text-sm text-muted-foreground">{weather.condition}</span>
-			{/if}
-			{#if weather.label}
-				<span class="flex items-center gap-1 truncate text-xs text-muted-foreground">
-					<MapPin class="size-3 shrink-0" />
-					{weather.label}
+			<div class="flex min-w-0 flex-col gap-0.5">
+				<span class="text-3xl font-semibold tabular-nums leading-none 2xl:text-4xl">
+					{Math.round(weather.temperature)}{weather.unit}
 				</span>
-			{/if}
+				<!-- With the forecast stats on the right the condition text would crowd
+				     the tile; the icon already carries it. -->
+				{#if !weather.forecast}
+					<span class="truncate text-sm text-muted-foreground">{weather.condition}</span>
+				{/if}
+				{#if weather.label}
+					<span class="flex items-center gap-1 truncate text-xs text-muted-foreground">
+						<MapPin class="size-3 shrink-0" />
+						{weather.label}
+					</span>
+				{/if}
+			</div>
 		</div>
 		{#if weather.forecast}
 			<!-- Expected PV production (provider-agnostic server forecast) replaces
-			     the raw radiation figure when the plant is configured. -->
-			<div class="ml-auto flex shrink-0 items-center gap-4 2xl:gap-6">
+			     the raw radiation figure when the plant is configured. Pinned right
+			     only once it shares the row at lg; below that it sits on its own row. -->
+			<div class="flex shrink-0 items-center gap-4 lg:ml-auto 2xl:gap-6">
 				<div class="flex flex-col items-end">
 					<span class="text-lg font-semibold tabular-nums leading-tight 2xl:text-xl">
 						{kwh(weather.forecast.todayKwh)}
@@ -114,7 +119,7 @@
 				</div>
 			</div>
 		{:else if weather.solarRadiationSum !== null}
-			<div class="ml-auto flex shrink-0 flex-col items-end">
+			<div class="flex shrink-0 flex-col items-start lg:ml-auto lg:items-end">
 				<span class="text-sm font-medium tabular-nums 2xl:text-base">
 					{weather.solarRadiationSum.toLocaleString(undefined, { maximumFractionDigits: 1 })}
 				</span>

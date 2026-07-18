@@ -113,6 +113,14 @@
   "settings_tab_users": "Usuarios",
   "settings_tab_apikeys": "Claves API",
   "settings_tab_danger": "Zona de peligro",
+  "settings_tab_sensors": "Sensores",
+  "settings_sensors_title": "Visibilidad de sensores",
+  "settings_sensors_desc": "Oculta del panel los sensores que no usas. Los sensores ocultos se siguen registrando y publicando en MQTT y la API; solo desaparecen de la aplicación web.",
+  "settings_sensors_group_hidden": "Grupo completo oculto",
+  "settings_sensors_empty": "Aún no hay sensores disponibles.",
+  "settings_sensors_count": "{visible} de {total} visibles",
+  "toast_sensors_saved": "Visibilidad de sensores guardada",
+  "toast_sensors_error": "No se pudo guardar la visibilidad de sensores",
   "action_cancel": "Cancelar",
   "action_add": "Añadir",
   "action_remove": "Eliminar",
@@ -424,7 +432,5 @@
   "chart_custom_charts": "Gráficos personalizados",
   "chart_none_yet": "Aún no hay gráficos personalizados.",
   "chart_create_first": "Cree su primer gráfico",
-  "chart_delete_confirm": "¿Eliminar «{name}»? Esto no se puede deshacer.",
-  "chart_type_area": "Área",
-  "chart_type_line": "Línea"
+  "chart_delete_confirm": "¿Eliminar «{name}»? Esto no se puede deshacer."
 }

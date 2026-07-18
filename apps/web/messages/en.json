@@ -113,6 +113,14 @@
   "settings_tab_users": "Users",
   "settings_tab_apikeys": "API Keys",
   "settings_tab_danger": "Danger Zone",
+  "settings_tab_sensors": "Sensors",
+  "settings_sensors_title": "Sensor visibility",
+  "settings_sensors_desc": "Hide sensors you don't use from this dashboard. Hidden sensors are still recorded and published to MQTT and the API — they only disappear from the web app.",
+  "settings_sensors_group_hidden": "Whole group hidden",
+  "settings_sensors_empty": "No sensors available yet.",
+  "settings_sensors_count": "{visible} of {total} shown",
+  "toast_sensors_saved": "Sensor visibility saved",
+  "toast_sensors_error": "Failed to save sensor visibility",
   "action_cancel": "Cancel",
   "action_add": "Add",
   "action_remove": "Remove",
@@ -424,7 +432,5 @@
   "chart_custom_charts": "Custom charts",
   "chart_none_yet": "No custom charts yet.",
   "chart_create_first": "Create your first chart",
-  "chart_delete_confirm": "Delete “{name}”? This can't be undone.",
-  "chart_type_area": "Area",
-  "chart_type_line": "Line"
+  "chart_delete_confirm": "Delete “{name}”? This can't be undone."
 }

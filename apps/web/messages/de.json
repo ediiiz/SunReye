@@ -113,6 +113,14 @@
   "settings_tab_users": "Benutzer",
   "settings_tab_apikeys": "API-Schlüssel",
   "settings_tab_danger": "Gefahrenbereich",
+  "settings_tab_sensors": "Sensoren",
+  "settings_sensors_title": "Sensor-Sichtbarkeit",
+  "settings_sensors_desc": "Blende Sensoren, die du nicht nutzt, aus diesem Dashboard aus. Ausgeblendete Sensoren werden weiterhin aufgezeichnet und an MQTT und die API veröffentlicht – sie verschwinden nur aus der Web-App.",
+  "settings_sensors_group_hidden": "Gesamte Gruppe ausgeblendet",
+  "settings_sensors_empty": "Noch keine Sensoren verfügbar.",
+  "settings_sensors_count": "{visible} von {total} sichtbar",
+  "toast_sensors_saved": "Sensor-Sichtbarkeit gespeichert",
+  "toast_sensors_error": "Sensor-Sichtbarkeit konnte nicht gespeichert werden",
   "action_cancel": "Abbrechen",
   "action_add": "Hinzufügen",
   "action_remove": "Entfernen",
@@ -424,7 +432,5 @@
   "chart_custom_charts": "Benutzerdefinierte Diagramme",
   "chart_none_yet": "Noch keine benutzerdefinierten Diagramme.",
   "chart_create_first": "Erstellen Sie Ihr erstes Diagramm",
-  "chart_delete_confirm": "„{name}“ löschen? Dies kann nicht rückgängig gemacht werden.",
-  "chart_type_area": "Fläche",
-  "chart_type_line": "Linie"
+  "chart_delete_confirm": "„{name}“ löschen? Dies kann nicht rückgängig gemacht werden."
 }

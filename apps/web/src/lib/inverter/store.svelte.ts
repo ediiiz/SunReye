@@ -1,5 +1,6 @@
 import { SvelteMap } from "svelte/reactivity";
 import { api } from "$lib/api";
+import { uiPrefs } from "$lib/ui-prefs.svelte";
 import type {
   CanonicalRole,
   InverterCapabilities,
@@ -48,7 +49,19 @@ class InverterStore {
     return this.manifest?.capabilities ?? null;
   }
 
+  /**
+   * The metric catalog the UI renders — everything downstream (`byRole`,
+   * `inGroup`, `allByRole`, and both pages' direct reads) flows through here,
+   * so filtering hidden metrics/groups at this one point covers the dashboard,
+   * system page, history, controls, and power-flow. Hidden metrics keep being
+   * polled/stored/published; they're only dropped from this view.
+   */
   get metrics(): ManifestMetric[] {
+    return this.allMetrics.filter((m) => !uiPrefs.isHidden(m.key, m.group));
+  }
+
+  /** The unfiltered catalog (for the visibility settings form). */
+  get allMetrics(): ManifestMetric[] {
     return this.manifest?.metrics ?? [];
   }
 
@@ -109,6 +122,10 @@ class InverterStore {
   }
 
   async #init(): Promise<void> {
+    // Load visibility prefs so the metric getter filters from the first render;
+    // fire-and-forget — a default (nothing hidden) is the safe fallback and the
+    // reactive getter re-filters once it resolves.
+    void uiPrefs.load();
     await this.#loadManifest();
     // Seed sparklines with the last window of raw samples so they're populated
     // on load, then attach the live stream which appends from here on.

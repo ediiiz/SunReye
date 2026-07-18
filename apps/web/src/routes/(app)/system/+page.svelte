@@ -50,6 +50,22 @@
 
 	const stringRoles: CanonicalRole[] = ['pv.string.power', 'pv.string.voltage', 'pv.string.current'];
 	const phaseRoles: CanonicalRole[] = ['grid.phase.voltage', 'grid.phase.current', 'grid.phase.power'];
+
+	// Capabilities are server-derived and stay true even when a subsystem's
+	// metrics are hidden from the dashboard (Settings → Sensors). Gate each
+	// section on whether it still has *visible* metrics so hiding a group (e.g. an
+	// unconnected generator) drops its section instead of leaving an empty header.
+	const generatorMetrics = $derived(inverter.inGroup('generator'));
+	const backupMetrics = $derived(inverter.inGroup('load'));
+	const hasBatteryContent = $derived(
+		batteryRows.length > 0 || socMetric !== undefined || batteryPowerMetric !== undefined
+	);
+	const hasStringMetrics = $derived(
+		inverter.metrics.some((mtr) => mtr.role !== undefined && stringRoles.includes(mtr.role))
+	);
+	const hasPhaseMetrics = $derived(
+		inverter.metrics.some((mtr) => mtr.role !== undefined && phaseRoles.includes(mtr.role))
+	);
 </script>
 
 <div class="flex w-full flex-col gap-8 p-4 sm:p-6">
@@ -71,7 +87,7 @@
 	</section>
 
 	<div class="grid gap-6 lg:grid-cols-2">
-		{#if caps?.battery}
+		{#if caps?.battery && hasBatteryContent}
 			<SubsystemSection title={m.label_battery()} metrics={batteryRows}>
 				<BatteryBar
 					soc={socMetric ? inverter.value(socMetric.key) : undefined}
@@ -84,13 +100,13 @@
 			<SubsystemSection title={m.label_inverter()} metrics={inverterStatus} />
 		{/if}
 
-		{#if pvStrings.length > 0}
+		{#if pvStrings.length > 0 && hasStringMetrics}
 			<SubsystemSection title={m.system_solar_strings({ count: pvStrings.length })} metrics={[]}>
 				<IndexedGroup label={m.label_string()} indices={pvStrings} roles={stringRoles} />
 			</SubsystemSection>
 		{/if}
 
-		{#if caps?.grid && phases.length > 0}
+		{#if caps?.grid && phases.length > 0 && hasPhaseMetrics}
 			<SubsystemSection title={m.system_grid_phase({ count: phases.length })} metrics={[]}>
 				<IndexedGroup
 					label={m.label_phase()}
@@ -101,12 +117,12 @@
 			</SubsystemSection>
 		{/if}
 
-		{#if caps?.generator}
-			<SubsystemSection title={m.label_generator()} metrics={inverter.inGroup('generator')} />
+		{#if caps?.generator && generatorMetrics.length > 0}
+			<SubsystemSection title={m.label_generator()} metrics={generatorMetrics} />
 		{/if}
 
-		{#if caps?.backupLoad}
-			<SubsystemSection title={m.system_backup_load()} metrics={inverter.inGroup('load')} />
+		{#if caps?.backupLoad && backupMetrics.length > 0}
+			<SubsystemSection title={m.system_backup_load()} metrics={backupMetrics} />
 		{/if}
 	</div>
 </div>

@@ -376,7 +376,6 @@
   "controls_toast_update_failed": "Failed to update {name}",
   "flow_efficiency": "Eff.",
   "flow_self_use": "Self-use",
-  "flow_online": "Online",
   "weather_solar_sum": "MJ/m² sun",
   "range_1h": "1 hour",
   "range_6h": "6 hours",

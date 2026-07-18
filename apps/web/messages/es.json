@@ -9,6 +9,8 @@
   "nav_monitoring": "Monitorización",
   "nav_sign_out": "Cerrar sesión",
   "nav_signed_in": "Sesión iniciada",
+  "nav_log_in": "Iniciar sesión",
+  "access_read_only": "Solo lectura",
   "app_loading": "Cargando…",
   "app_redirecting": "Redirigiendo…",
   "app_redirecting_login": "Redirigiendo al inicio de sesión…",

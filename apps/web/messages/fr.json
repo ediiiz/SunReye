@@ -9,6 +9,8 @@
   "nav_monitoring": "Surveillance",
   "nav_sign_out": "Se déconnecter",
   "nav_signed_in": "Connecté",
+  "nav_log_in": "Se connecter",
+  "access_read_only": "Lecture seule",
   "app_loading": "Chargement…",
   "app_redirecting": "Redirection…",
   "app_redirecting_login": "Redirection vers la connexion…",

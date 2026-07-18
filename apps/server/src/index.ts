@@ -12,6 +12,7 @@ import { type CostBucket, computeCost, computeCostSeries, resolveRange } from ".
 import { energySeries } from "./energy";
 import { entitiesApi } from "./entities";
 import { queryRollup } from "./history";
+import { isPublicDashboard } from "./access-settings";
 import { buildProfileContext, initProfiles } from "./inverter";
 import { log, setupLogging } from "./logging";
 import { adminRoutes } from "./routes/admin";
@@ -187,6 +188,13 @@ const app = new Elysia()
   .get("/api/profile-status", () => ({
     needsProfile: profile === null,
     activeProfileId: profile?.id ?? null,
+  }))
+  // Public read of the anonymous-dashboard toggle. Lets the web shell decide
+  // whether a logged-out visitor gets the read-only dashboard or the login page.
+  // Exposes only the on/off boolean (already inferable by probing a read), never
+  // the rest of the access config, which stays admin-only via /api/settings/access.
+  .get("/api/access-status", async () => ({
+    publicDashboard: await isPublicDashboard(),
   }))
   // Capability manifest for the active inverter profile: capabilities + a
   // render-ready metric catalog (role, kind, range, enum labels, flow). The UI

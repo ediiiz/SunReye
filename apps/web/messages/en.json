@@ -9,6 +9,8 @@
   "nav_monitoring": "Monitoring",
   "nav_sign_out": "Sign out",
   "nav_signed_in": "Signed in",
+  "nav_log_in": "Log in",
+  "access_read_only": "Read-only",
   "app_loading": "Loading…",
   "app_redirecting": "Redirecting…",
   "app_redirecting_login": "Redirecting to login…",

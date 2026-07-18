@@ -22,6 +22,16 @@ async function needsProfile(): Promise<boolean> {
 }
 
 /**
+ * Whether the admin has enabled the anonymous read-only dashboard. Public, so a
+ * logged-out visitor can be shown the dashboard (true) or the login page (false)
+ * without a session. Mirrors the server's `publicDashboard` access toggle.
+ */
+export async function publicDashboardEnabled(): Promise<boolean> {
+  const { data } = await api.api["access-status"].get();
+  return data?.publicDashboard ?? false;
+}
+
+/**
  * Where a first-run instance must go, in strict precedence:
  * - `setup-account` — no admin exists yet → create it at `/onboarding`.
  * - `setup-profile` — admin exists but no active profile → pick one at `/setup`.

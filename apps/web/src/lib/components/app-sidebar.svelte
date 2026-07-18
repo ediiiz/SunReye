@@ -17,6 +17,7 @@
 	import CoinsIcon from 'phosphor-svelte/lib/Coins';
 	import GearIcon from 'phosphor-svelte/lib/Gear';
 	import SignOutIcon from 'phosphor-svelte/lib/SignOut';
+	import SignInIcon from 'phosphor-svelte/lib/SignIn';
 	import UserIcon from 'phosphor-svelte/lib/User';
 
 	const sessionQuery = useAppSession();
@@ -113,24 +114,38 @@
 					</Sidebar.MenuButton>
 				</Sidebar.MenuItem>
 			{/if}
-			<Sidebar.MenuItem>
-				<div
-					class="flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground group-data-[collapsible=icon]:hidden"
-				>
-					<UserIcon class="size-4 shrink-0" />
-					<span class="truncate">{userName}</span>
-				</div>
-			</Sidebar.MenuItem>
-			<Sidebar.MenuItem>
-				<Sidebar.MenuButton>
-					{#snippet child({ props })}
-						<button type="button" onclick={signOut} {...props}>
-							<SignOutIcon class="size-4" />
-							<span>{m.nav_sign_out()}</span>
-						</button>
-					{/snippet}
-				</Sidebar.MenuButton>
-			</Sidebar.MenuItem>
+			{#if $sessionQuery.data}
+				<Sidebar.MenuItem>
+					<div
+						class="flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground group-data-[collapsible=icon]:hidden"
+					>
+						<UserIcon class="size-4 shrink-0" />
+						<span class="truncate">{userName}</span>
+					</div>
+				</Sidebar.MenuItem>
+				<Sidebar.MenuItem>
+					<Sidebar.MenuButton>
+						{#snippet child({ props })}
+							<button type="button" onclick={signOut} {...props}>
+								<SignOutIcon class="size-4" />
+								<span>{m.nav_sign_out()}</span>
+							</button>
+						{/snippet}
+					</Sidebar.MenuButton>
+				</Sidebar.MenuItem>
+			{:else}
+				<!-- Anonymous read-only viewer: the footer becomes the way in. -->
+				<Sidebar.MenuItem>
+					<Sidebar.MenuButton>
+						{#snippet child({ props })}
+							<a href={resolve('/login')} onclick={closeSidebar} {...props}>
+								<SignInIcon class="size-4" />
+								<span>{m.nav_log_in()}</span>
+							</a>
+						{/snippet}
+					</Sidebar.MenuButton>
+				</Sidebar.MenuItem>
+			{/if}
 		</Sidebar.Menu>
 	</Sidebar.Footer>
 

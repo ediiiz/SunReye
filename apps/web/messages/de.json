@@ -9,6 +9,8 @@
   "nav_monitoring": "Überwachung",
   "nav_sign_out": "Abmelden",
   "nav_signed_in": "Angemeldet",
+  "nav_log_in": "Anmelden",
+  "access_read_only": "Schreibgeschützt",
   "app_loading": "Wird geladen…",
   "app_redirecting": "Weiterleitung…",
   "app_redirecting_login": "Weiterleitung zur Anmeldung…",

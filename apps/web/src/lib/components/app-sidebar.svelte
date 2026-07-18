@@ -44,11 +44,10 @@
 			: [])
 	]);
 
-	// On mobile, dismiss the overlay sheet as soon as the user picks a
-	// destination. On desktop the rail stays put — the active route stays
-	// visible and the user drives collapse themselves.
+	// The sidebar is an overlay on every viewport, so dismiss it as soon as the
+	// user picks a destination.
 	function closeSidebar() {
-		if (sidebar.isMobile) sidebar.setOpenMobile(false);
+		sidebar.setOpenMobile(false);
 	}
 
 	const userName = $derived(

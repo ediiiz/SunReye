@@ -53,7 +53,9 @@ class SidebarState {
   };
 
   toggle = () => {
-    return this.#isMobile.current ? (this.openMobile = !this.openMobile) : this.setOpen(!this.open);
+    // The sidebar is an overlay on every viewport, so the trigger and keyboard
+    // shortcut always drive the overlay open state.
+    this.setOpenMobile(!this.openMobile);
   };
 }
 

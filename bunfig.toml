@@ -2,4 +2,12 @@
 linker = "isolated"
 
 [test]
-coveragePathIgnorePatterns = ["**/dist/**", "**/node_modules/**", "**/*.test.ts"]
+# Root test runs from the repo root, so the per-app bunfig preload does not
+# apply. Load the web test-setup (Paraglide localStorage stub) here too.
+preload = ["./apps/web/src/test-setup.ts"]
+coveragePathIgnorePatterns = [
+  "**/dist/**",
+  "**/node_modules/**",
+  "**/*.test.ts",
+  "**/paraglide/**",
+]

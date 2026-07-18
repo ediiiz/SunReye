@@ -9,6 +9,7 @@
 	import { getLocale, locales, localeName, setLocale } from '$lib/i18n';
 	import * as m from '$lib/paraglide/messages';
 	import { useAppSession } from '$lib/session';
+	import { setMode, userPrefersMode } from 'mode-watcher';
 
 	const session = useAppSession();
 	const isAdmin = $derived($session.data?.user.role === 'admin');
@@ -17,6 +18,14 @@
 	// setLocale, which reloads the page (Paraglide default) so every message
 	// re-renders — hence no admin gate and no draft/save cycle.
 	const LANGUAGES = locales.map((l) => ({ value: l, label: localeName(l) }));
+
+	// Theme is a per-browser preference driven by mode-watcher (localStorage). Like
+	// language, it sits outside the draft/save cycle and has no admin gate.
+	const THEMES = [
+		{ value: 'system', label: m.theme_system() },
+		{ value: 'light', label: m.theme_light() },
+		{ value: 'dark', label: m.theme_dark() }
+	];
 
 	const HOUR_CYCLES = [
 		{ value: 'auto', label: m.clock_auto() },
@@ -80,6 +89,19 @@
 			value={getLocale()}
 			items={LANGUAGES}
 			onchange={(v) => setLocale(v as (typeof locales)[number])}
+			triggerClass="max-w-xs"
+		/>
+	</div>
+</SettingsSection>
+
+<SettingsSection title={m.settings_appearance()}>
+	<p class="text-sm text-muted-foreground">{m.settings_appearance_desc()}</p>
+	<div class="flex flex-col gap-2">
+		<Label for="theme">{m.settings_theme()}</Label>
+		<OptionSelect
+			value={userPrefersMode.current}
+			items={THEMES}
+			onchange={(v) => setMode(v as Parameters<typeof setMode>[0])}
 			triggerClass="max-w-xs"
 		/>
 	</div>

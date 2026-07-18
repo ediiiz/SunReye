@@ -199,11 +199,11 @@
 									<Skeleton class="h-2.5 w-8 rounded" />
 								{:else if kpis?.ratio}
 									<span
-										class="truncate text-[0.6rem] uppercase tracking-wide text-muted-foreground 2xl:text-xs"
+										class="min-w-0 truncate text-[0.6rem] uppercase tracking-wide text-muted-foreground 2xl:text-xs"
 									>
 										{kpis.ratio.label()}
 									</span>
-									<span class="text-xs font-semibold tabular-nums 2xl:text-sm">
+									<span class="shrink-0 whitespace-nowrap text-xs font-semibold tabular-nums 2xl:text-sm">
 										{percent(kpis.ratio.value)}%
 									</span>
 								{/if}
@@ -226,11 +226,13 @@
 									<Skeleton class="h-2.5 w-10 rounded" />
 								{:else if kpis?.money}
 									<span
-										class="truncate text-[0.6rem] uppercase tracking-wide text-muted-foreground 2xl:text-xs"
+										class="min-w-0 truncate text-[0.6rem] uppercase tracking-wide text-muted-foreground 2xl:text-xs"
 									>
 										{kpis.money.label()}
 									</span>
-									<span class={`text-xs font-semibold tabular-nums 2xl:text-sm ${kpis.money.color}`}>
+									<span
+									class={`shrink-0 whitespace-nowrap text-xs font-semibold tabular-nums 2xl:text-sm ${kpis.money.color}`}
+								>
 										{kpis.money.text}
 									</span>
 								{/if}

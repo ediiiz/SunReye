@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
+	import * as m from '$lib/paraglide/messages';
 	import RestartButton from '$lib/components/settings/restart-button.svelte';
 
 	let {
@@ -18,7 +19,9 @@
 </script>
 
 <section class="flex flex-col gap-4 border border-border p-4">
-	<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">Activate profile</h2>
+	<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+		{m.setup_activate_title()}
+	</h2>
 
 	{#if activated}
 		<div
@@ -26,26 +29,20 @@
 		>
 			<span class="mt-1.5 inline-block size-2 shrink-0 rounded-full bg-amber-500"></span>
 			<div class="flex flex-col gap-1">
-				<span class="font-medium">{profileName} activated — restart the server to finish.</span>
-				<span>
-					The active profile shapes the API, manifest, and topics built once at boot, so it takes
-					effect on the next restart.
-				</span>
+				<span class="font-medium">{m.setup_activated_msg({ name: profileName ?? '' })}</span>
+				<span>{m.setup_activated_desc()}</span>
 			</div>
 		</div>
 		<div class="flex items-center justify-end gap-2">
-			<Button variant="ghost" onclick={() => location.reload()}>I've restarted — reload</Button>
-			<RestartButton label="Restart now" />
+			<Button variant="ghost" onclick={() => location.reload()}>{m.setup_restarted_reload()}</Button>
+			<RestartButton label={m.setup_restart_now()} />
 		</div>
 	{:else}
-		<p class="text-sm text-muted-foreground">
-			Activate <span class="font-medium text-foreground">{profileName}</span> as this instance's
-			inverter. This takes effect after the next server restart.
-		</p>
+		<p class="text-sm text-muted-foreground">{m.setup_activate_desc({ name: profileName ?? '' })}</p>
 		<div class="flex justify-between">
-			<Button variant="ghost" onclick={onBack}>Back</Button>
+			<Button variant="ghost" onclick={onBack}>{m.action_back()}</Button>
 			<Button disabled={activating} onclick={onActivate}>
-				{activating ? 'Activating…' : 'Activate profile'}
+				{activating ? m.setup_activating() : m.setup_activate_title()}
 			</Button>
 		</div>
 	{/if}

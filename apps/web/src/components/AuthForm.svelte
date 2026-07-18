@@ -4,6 +4,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$lib/resolve';
 	import { Button } from '$lib/components/ui/button';
+	import * as m from '$lib/paraglide/messages';
 	import AuthField from './AuthField.svelte';
 
 	let { mode }: { mode: 'signin' | 'signup' } = $props();
@@ -11,13 +12,13 @@
 	const schema = $derived(
 		mode === 'signup'
 			? z.object({
-					name: z.string().min(2, 'Name must be at least 2 characters'),
-					email: z.email('Invalid email address'),
-					password: z.string().min(8, 'Password must be at least 8 characters')
+					name: z.string().min(2, m.auth_name_min()),
+					email: z.email(m.auth_email_invalid()),
+					password: z.string().min(8, m.auth_password_min())
 				})
 			: z.object({
-					email: z.email('Invalid email address'),
-					password: z.string().min(1, 'Password is required')
+					email: z.email(m.auth_email_invalid()),
+					password: z.string().min(1, m.auth_password_required())
 				})
 	);
 
@@ -42,7 +43,7 @@
 		const opts = {
 			onSuccess: () => goto(resolve('/')),
 			onError: (error: { error: { message?: string } }) => {
-				formError = error.error.message || 'Something went wrong. Please try again.';
+				formError = error.error.message || m.auth_error_generic();
 			}
 		};
 		if (mode === 'signup') {
@@ -58,7 +59,7 @@
 	{#if mode === 'signup'}
 		<AuthField
 			id="name"
-			label="Name"
+			label={m.auth_field_name()}
 			autocomplete="name"
 			placeholder="Ada Lovelace"
 			error={errors.name}
@@ -67,7 +68,7 @@
 	{/if}
 	<AuthField
 		id="email"
-		label="Email"
+		label={m.auth_field_email()}
 		type="email"
 		autocomplete="email"
 		placeholder="you@example.com"
@@ -76,10 +77,10 @@
 	/>
 	<AuthField
 		id="password"
-		label="Password"
+		label={m.auth_field_password()}
 		type="password"
 		autocomplete={mode === 'signup' ? 'new-password' : 'current-password'}
-		placeholder={mode === 'signup' ? 'At least 8 characters' : '••••••••'}
+		placeholder={mode === 'signup' ? m.auth_placeholder_password_new() : '••••••••'}
 		error={errors.password}
 		bind:value={password}
 	/>
@@ -90,9 +91,9 @@
 
 	<Button type="submit" class="w-full" disabled={submitting}>
 		{#if submitting}
-			{mode === 'signup' ? 'Creating account…' : 'Signing in…'}
+			{mode === 'signup' ? m.auth_creating_account() : m.auth_signing_in()}
 		{:else}
-			{mode === 'signup' ? 'Create account' : 'Sign in'}
+			{mode === 'signup' ? m.auth_create_account() : m.login_title()}
 		{/if}
 	</Button>
 </form>

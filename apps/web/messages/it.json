@@ -409,7 +409,5 @@
   "chart_custom_charts": "Grafici personalizzati",
   "chart_none_yet": "Ancora nessun grafico personalizzato.",
   "chart_create_first": "Crea il tuo primo grafico",
-  "chart_delete_confirm": "Eliminare “{name}”? L'operazione non può essere annullata.",
-  "chart_type_area": "Area",
-  "chart_type_line": "Linea"
+  "chart_delete_confirm": "Eliminare “{name}”? L'operazione non può essere annullata."
 }

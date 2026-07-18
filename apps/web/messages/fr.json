@@ -409,7 +409,5 @@
   "chart_custom_charts": "Graphiques personnalisés",
   "chart_none_yet": "Aucun graphique personnalisé pour l'instant.",
   "chart_create_first": "Créez votre premier graphique",
-  "chart_delete_confirm": "Supprimer « {name} » ? Cette action est irréversible.",
-  "chart_type_area": "Aire",
-  "chart_type_line": "Ligne"
+  "chart_delete_confirm": "Supprimer « {name} » ? Cette action est irréversible."
 }

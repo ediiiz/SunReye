@@ -409,7 +409,5 @@
   "chart_custom_charts": "Benutzerdefinierte Diagramme",
   "chart_none_yet": "Noch keine benutzerdefinierten Diagramme.",
   "chart_create_first": "Erstellen Sie Ihr erstes Diagramm",
-  "chart_delete_confirm": "„{name}“ löschen? Dies kann nicht rückgängig gemacht werden.",
-  "chart_type_area": "Fläche",
-  "chart_type_line": "Linie"
+  "chart_delete_confirm": "„{name}“ löschen? Dies kann nicht rückgängig gemacht werden."
 }

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { AreaChart, LineChart } from 'layerchart';
+	import { AreaChart } from 'layerchart';
 	import { fade } from 'svelte/transition';
 	import { curveCatmullRom } from 'd3-shape';
 	import PencilSimple from 'phosphor-svelte/lib/PencilSimple';
@@ -9,25 +9,23 @@
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import * as msg from '$lib/paraglide/messages';
 	import ChartLegend from '$lib/components/inverter/chart-legend.svelte';
+	import CustomLiveChart from '$lib/components/inverter/custom-live-chart.svelte';
 	import { api } from '$lib/api';
 	import { inverter } from '$lib/inverter/store.svelte';
 	import { tooltipLabel, xTick } from '$lib/inverter/chart-format';
-	import type { ChartType, CustomChart } from '$lib/inverter/custom-charts.svelte';
+	import type { CustomChart } from '$lib/inverter/custom-charts.svelte';
 	import type { HistoryRange } from '$lib/inverter/ranges';
 	import type { ManifestMetric } from '$lib/inverter/types';
 
 	let {
 		chart,
 		range,
-		type,
 		isAdmin = false,
 		onEdit,
 		onDelete
 	}: {
 		chart: CustomChart;
 		range: HistoryRange;
-		/** Render style, chosen by the page-level toggle (shared by all charts). */
-		type: ChartType;
 		isAdmin?: boolean;
 		onEdit?: () => void;
 		onDelete?: () => void;
@@ -121,8 +119,8 @@
 
 	// Pin the x-axis to the whole selected window so a partial day (e.g. "Today"
 	// before the day is over) still spans the full range instead of stretching to
-	// fit only the data present. Live stays auto-fit (gliding buffer).
-	const xDomain = $derived(range.live ? undefined : [range.from, range.to]);
+	// fit only the data present. Live mode uses its own gliding window (CustomLiveChart).
+	const xDomain = $derived<[Date, Date]>([range.from, range.to]);
 
 	// Axis + tooltip formatting, honouring the configured time zone / clock format.
 	const labelFmt = (v: unknown) => tooltipLabel(range, v);
@@ -157,23 +155,10 @@
 			</div>
 		{:else}
 			<div class="h-full w-full" in:fade={{ duration: 300 }}>
-				<Chart.Container {config} class="aspect-auto h-full w-full">
-					{#if type === 'line'}
-						<LineChart
-							data={chartData}
-							x="date"
-							{series}
-							{xDomain}
-							axis
-							grid
-							padding={{ top: 8, right: 8, bottom: 28, left: 44 }}
-							props={{ spline: { curve: curveCatmullRom }, xAxis: { format: xTickFormat, ticks: 4 } }}
-						>
-							{#snippet tooltip()}
-								<Chart.Tooltip labelFormatter={labelFmt} />
-							{/snippet}
-						</LineChart>
-					{:else}
+				{#if range.live}
+					<CustomLiveChart data={chartData} {series} {config} labelFormatter={labelFmt} />
+				{:else}
+					<Chart.Container {config} class="aspect-auto h-full w-full">
 						<AreaChart
 							data={chartData}
 							x="date"
@@ -192,8 +177,8 @@
 								<Chart.Tooltip labelFormatter={labelFmt} />
 							{/snippet}
 						</AreaChart>
-					{/if}
-				</Chart.Container>
+					</Chart.Container>
+				{/if}
 			</div>
 		{/if}
 	</div>

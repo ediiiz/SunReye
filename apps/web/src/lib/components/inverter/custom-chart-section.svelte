@@ -6,26 +6,14 @@
 	import * as m from '$lib/paraglide/messages';
 	import CustomChartCard from '$lib/components/inverter/custom-chart-card.svelte';
 	import CustomChartEditor from '$lib/components/inverter/custom-chart-editor.svelte';
-	import RangeSwitcher from '$lib/components/inverter/range-switcher.svelte';
 	import { useAppSession } from '$lib/session';
-	import {
-		CHART_TYPES,
-		type ChartType,
-		type CustomChart,
-		customCharts
-	} from '$lib/inverter/custom-charts.svelte';
+	import { type CustomChart, customCharts } from '$lib/inverter/custom-charts.svelte';
 	import type { HistoryRange } from '$lib/inverter/ranges';
 
 	let { range }: { range: HistoryRange } = $props();
 
 	const session = useAppSession();
 	const isAdmin = $derived($session.data?.user.role === 'admin');
-
-	// Global render style for every custom chart (view-only, shared across charts).
-	let chartType = $state<ChartType>('area');
-	const typeOptions = $derived(
-		CHART_TYPES.map((t) => ({ id: t, label: t === 'area' ? m.chart_type_area() : m.chart_type_line() }))
-	);
 
 	// Load saved charts once (idempotent).
 	customCharts.start();
@@ -67,17 +55,12 @@
 	<section class="flex flex-col gap-4">
 		<div class="flex items-center justify-between gap-3 border-b border-border py-2">
 			<h2 class="text-sm font-medium">{m.chart_custom_charts()}</h2>
-			<div class="flex items-center gap-2">
-				{#if charts.length > 0}
-					<RangeSwitcher options={typeOptions} bind:value={chartType} />
-				{/if}
-				{#if isAdmin}
-					<Button size="sm" variant="outline" onclick={openCreate}>
-						<Plus class="size-4" />
-						{m.chart_new_chart()}
-					</Button>
-				{/if}
-			</div>
+			{#if isAdmin}
+				<Button size="sm" variant="outline" onclick={openCreate}>
+					<Plus class="size-4" />
+					{m.chart_new_chart()}
+				</Button>
+			{/if}
 		</div>
 
 		{#if charts.length === 0}
@@ -96,7 +79,6 @@
 					<CustomChartCard
 						{chart}
 						{range}
-						type={chartType}
 						{isAdmin}
 						onEdit={() => openEdit(chart)}
 						onDelete={() => (pendingDelete = chart)}

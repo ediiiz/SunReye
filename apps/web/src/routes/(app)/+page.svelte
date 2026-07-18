@@ -17,7 +17,7 @@
 <div
 	class="flex flex-col gap-3 p-3 sm:gap-4 sm:p-4 lg:h-[calc(100svh-3.5rem)] lg:overflow-hidden"
 >
-	<section class="relative h-[56svh] min-h-96 shrink-0 lg:h-auto lg:min-h-0 lg:flex-1">
+	<section class="relative h-[60svh] min-h-108 shrink-0 lg:h-auto lg:min-h-0 lg:flex-1">
 		<h2 class="sr-only">{m.overview_power_flow()}</h2>
 		<PowerFlow />
 	</section>

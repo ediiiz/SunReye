@@ -45,10 +45,11 @@ export type GraphSegment = {
 
 export type PowerGraph = { hub: Pt; nodes: GraphNode[]; segments: GraphSegment[] };
 
-// Hub anchors per orientation. Vertical room differs: portrait needs space for
-// a source row above and a sink row below; landscape centres on the spine.
+// Anchors are fractions of the *safe box* — the hero minus the component's
+// caption insets — so a node centre at y=0/y=1 sits exactly one caption-stack
+// away from the hero's edge and text can never clip, however short the box.
 const HUBS: Record<Orientation, Pt> = {
-  landscape: { x: 0.5, y: 0.42 },
+  landscape: { x: 0.5, y: 0.44 },
   portrait: { x: 0.5, y: 0.5 },
 };
 
@@ -161,14 +162,12 @@ export function buildPowerGraph(
           value: power("pv.string.power", i + 1),
         }))
       : [{ id: "solar", label: m.label_solar(), value: power("pv.total.power") }];
-  const pvXs = portrait ? rowPositions(pv.length, 0.1, 0.9) : pv.map(() => 0.08);
-  // Portrait keeps the source row low enough that the caption stack above the
-  // circles (state + value + name) stays inside the box.
+  const pvXs = portrait ? rowPositions(pv.length, 0.02, 0.98) : pv.map(() => 0);
   const pvYs = portrait
-    ? pv.map(() => 0.17)
+    ? pv.map(() => 0)
     : pv.length === 1
       ? [hub.y]
-      : rowPositions(pv.length, 0.12, 0.72);
+      : rowPositions(pv.length, 0.02, 0.78);
   pv.forEach((p, i) => {
     const s = sense(
       p.value,
@@ -287,10 +286,12 @@ export function buildPowerGraph(
     });
   }
 
+  // Portrait spreads the sink row across the full safe box — phones need every
+  // pixel of width; the insets already keep the outermost captions legal.
   const bottomXs = portrait
-    ? rowPositions(bottoms.length, 0.06, 0.94)
-    : rowPositions(bottoms.length, 0.2, 0.8);
-  const bottomY = portrait ? 0.84 : 0.86;
+    ? bottoms.map((_, i) => (bottoms.length === 1 ? 0.5 : i / (bottoms.length - 1)))
+    : rowPositions(bottoms.length, 0.16, 0.84);
+  const bottomY = 1;
   bottoms.forEach((b, i) => {
     const at = { x: bottomXs[i], y: bottomY };
     const { type, ...node } = b;
@@ -306,7 +307,7 @@ export function buildPowerGraph(
   });
 
   if (caps?.grid && !portrait) {
-    const at = { x: 0.92, y: hub.y };
+    const at = { x: 1, y: hub.y };
     nodes.push({
       id: "grid",
       label: m.label_grid(),

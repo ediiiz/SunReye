@@ -27,12 +27,22 @@
 		return v === undefined ? undefined : Math.min(100, Math.max(0, v));
 	});
 
-	// Connector paths must render in real pixels, so bind the rendered size and
-	// project the fractional anchors into it. The aspect ratio picks the layout:
-	// tall boxes (phones) stack the diagram, wide ones (tablets/walls) fan it out.
+	// The hero's aspect ratio picks the layout: tall boxes (phones) stack the
+	// diagram, wide ones (tablets/walls) fan it out.
+	let ow = $state(0);
+	let oh = $state(0);
+	const orientation = $derived(ow > 0 && oh > 0 && ow / oh < 1.1 ? 'portrait' : 'landscape');
+
+	// Graph anchors are fractions of a *safe box* inset from the hero by one
+	// caption stack on each side that carries text (see power-graph.ts), so node
+	// captions can never clip however short the hero gets. Connector paths render
+	// in real pixels, so the safe box's rendered size is bound separately.
 	let w = $state(0);
 	let h = $state(0);
-	const orientation = $derived(w > 0 && h > 0 && w / h < 1.1 ? 'portrait' : 'landscape');
+	const INSETS: Record<string, string> = {
+		portrait: 'inset-x-12 top-22 bottom-22 sm:top-24 sm:bottom-24 2xl:inset-x-16 2xl:top-30 2xl:bottom-30',
+		landscape: 'inset-x-12 top-10 bottom-22 sm:bottom-24 2xl:inset-x-16 2xl:top-12 2xl:bottom-30'
+	};
 
 	const graph = $derived.by(() => buildPowerGraph(caps, power, orientation));
 
@@ -81,14 +91,17 @@
 	}
 </script>
 
-<div class="relative h-full w-full" bind:clientWidth={w} bind:clientHeight={h}>
+<div class="relative h-full w-full" bind:clientWidth={ow} bind:clientHeight={oh}>
 	<!-- Soft ambience centred on the hub — gives the wall display depth without
 	     competing with the flow lines. -->
 	<div
 		class="pointer-events-none absolute inset-0"
-		style={`background:radial-gradient(60% 55% at ${graph.hub.x * 100}% ${graph.hub.y * 100}%, color-mix(in oklab, var(--primary) 8%, transparent), transparent 75%)`}
+		style={`background:radial-gradient(60% 55% at 50% ${graph.hub.y * 100}%, color-mix(in oklab, var(--primary) 8%, transparent), transparent 75%)`}
 	></div>
 
+	<!-- Safe box: everything anchors inside these insets. -->
+	<div class={`absolute ${INSETS[orientation]}`}>
+	<div class="relative h-full w-full" bind:clientWidth={w} bind:clientHeight={h}>
 	{#if w > 0 && h > 0}
 		<svg class="absolute inset-0" width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden="true">
 			<!-- Static dotted rails first (all segments) so a later segment's idle rail
@@ -189,6 +202,8 @@
 	{#each graph.nodes as n (n.id)}
 		<PowerFlowNode node={n} soc={n.kind === 'battery' ? batterySoc : undefined} />
 	{/each}
+	</div>
+	</div>
 </div>
 
 <style>

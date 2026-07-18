@@ -102,14 +102,19 @@
 	<Sidebar.Provider>
 		<AppSidebar />
 		<Sidebar.Inset>
-			<!-- Floating overlay trigger: sits above the content (viewport-fixed) so no
-			     header row is needed. A subtle surface keeps it legible over scrolled content. -->
+			<!-- Mobile: slim header bar carries the trigger, so no horizontal gutter
+			     wastes width (scarce on phones). -->
+			<header class="flex h-12 shrink-0 items-center border-b border-border px-2 md:hidden">
+				<Sidebar.Trigger />
+			</header>
+			<!-- Desktop (md+): floating overlay trigger sits above the content
+			     (viewport-fixed); md:px-9 below reserves its top-left corner. -->
 			<Sidebar.Trigger
-				class="fixed left-4 top-4 z-50 border border-border bg-background/80 backdrop-blur"
+				class="fixed left-4 top-4 z-50 hidden border border-border bg-background/80 backdrop-blur md:flex"
 			/>
 			<!-- Horizontal padding keeps page content clear of the viewport-fixed
 			     trigger (top-left) on every route, so nothing renders under it. -->
-			<main class="min-h-0 flex-1 overflow-y-auto px-9">
+			<main class="min-h-0 flex-1 overflow-y-auto md:px-9">
 				{#key topSegment}
 					<div in:fade={contentIn}>
 						{@render children()}

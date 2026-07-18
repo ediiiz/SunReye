@@ -63,11 +63,10 @@
 </script>
 
 {#if weather && Icon}
-	<!-- Owns its fixed lg width (and the data marker the overview strip keys its
-	     centring off) so nothing occupies the slot when weather is disabled. -->
+	<!-- On lg the tile fills its column width (stretch) at its natural height so
+	     the energy cards below take the remaining column height. -->
 	<div
-		data-weather-tile
-		class="flex h-full flex-col justify-center gap-3 rounded-xl border border-border/60 bg-card p-3 sm:p-4 lg:w-96 lg:shrink-0 lg:flex-row lg:items-center lg:gap-4 2xl:w-120"
+		class="flex h-full flex-col justify-center gap-3 rounded-xl border border-border/60 bg-card p-3 sm:p-4 lg:h-auto lg:flex-row lg:items-center lg:gap-4"
 	>
 		<!-- Icon + temperature/location stay grouped so the forecast can drop to its
 		     own row below lg instead of colliding with the temperature at ~320px. -->

@@ -135,10 +135,11 @@
 </script>
 
 {#if tiles.length > 0}
-	<!-- lg+ sizes tracks by the cards actually mapped (auto-fit) so a profile
-	     without e.g. grid energy roles doesn't leave empty columns. -->
+	<!-- 2×2 on every size: the cards sit in the narrow right column on lg, so a
+	     fixed two-column grid reads better than letting them collapse to one wide
+	     column or fan out to four skinny ones. Rows split the column height. -->
 	<div
-		class="grid h-full grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-[repeat(auto-fit,minmax(13rem,1fr))]"
+		class="grid h-full grid-cols-2 gap-3 sm:gap-4 lg:auto-rows-fr"
 	>
 		{#each tiles as t (t.role)}
 			{@const value = inverter.value(t.metric.key)}

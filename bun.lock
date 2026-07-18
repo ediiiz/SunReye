@@ -11,6 +11,7 @@
       },
       "devDependencies": {
         "@SunReye/config": "workspace:*",
+        "@SunReye/inverter-core": "workspace:*",
         "@types/bun": "catalog:",
         "fallow": "^2.104.0",
         "husky": "^9.1.7",
@@ -58,7 +59,7 @@
     },
     "apps/web": {
       "name": "web",
-      "version": "0.7.1",
+      "version": "1.0.1",
       "dependencies": {
         "@SunReye/inverter-core": "workspace:*",
         "@elysiajs/eden": "^1.4.1",
@@ -167,7 +168,7 @@
     },
     "packages/profile-sdk": {
       "name": "@sunreye/profile-sdk",
-      "version": "1.5.0",
+      "version": "2.0.0",
       "bin": {
         "profile": "./dist/cli.mjs",
       },

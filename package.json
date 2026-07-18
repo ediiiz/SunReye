@@ -52,6 +52,7 @@
   },
   "devDependencies": {
     "@SunReye/config": "workspace:*",
+    "@SunReye/inverter-core": "workspace:*",
     "@types/bun": "catalog:",
     "fallow": "^2.104.0",
     "husky": "^9.1.7",

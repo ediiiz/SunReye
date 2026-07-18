@@ -3,6 +3,10 @@
   "include-component-in-tag": true,
   "plugins": [
     {
+      "type": "node-workspace",
+      "merge": false
+    },
+    {
       "type": "linked-versions",
       "groupName": "sunreye-stack",
       "components": ["server", "web", "addon"]
@@ -12,10 +16,14 @@
     ".": {
       "component": "server",
       "release-type": "node",
-      "exclude-paths": ["apps/web", "apps/docs", "packages/profile-sdk", "sunreye"]
+      "exclude-paths": ["apps/web", "apps/docs", "packages/inverter-core", "packages/profile-sdk", "sunreye"]
     },
     "apps/web": {
       "component": "web",
+      "release-type": "node"
+    },
+    "packages/inverter-core": {
+      "component": "inverter-core",
       "release-type": "node"
     },
     "packages/profile-sdk": {

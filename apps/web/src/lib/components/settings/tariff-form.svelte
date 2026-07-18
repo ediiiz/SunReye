@@ -6,6 +6,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import SettingsSection from './settings-section.svelte';
+	import ActionBar from './action-bar.svelte';
 	import PlusIcon from 'phosphor-svelte/lib/Plus';
 	import TrashIcon from 'phosphor-svelte/lib/Trash';
 	import * as m from '$lib/paraglide/messages';
@@ -106,6 +107,12 @@
 		{m.tariff_loading()}
 	</div>
 {:else}
+	<ActionBar>
+		<Button onclick={save} disabled={saving}>
+			{saving ? m.action_saving() : m.tariff_save()}
+		</Button>
+	</ActionBar>
+
 	<SettingsSection title={m.tariff_general()}>
 		<div class="grid gap-4 sm:grid-cols-3">
 			<div class="flex flex-col gap-1.5">
@@ -187,8 +194,4 @@
 			</div>
 		{/each}
 	</SettingsSection>
-
-	<div class="flex justify-end">
-		<Button onclick={save} disabled={saving}>{saving ? m.action_saving() : m.tariff_save()}</Button>
-	</div>
 {/if}

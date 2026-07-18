@@ -106,6 +106,21 @@
 		<p class="text-sm text-muted-foreground">{m.settings_subtitle()}</p>
 	</header>
 
+	{#snippet navLink(item: NavItem, extra: string)}
+		{@const Icon = item.icon}
+		{@const active = current === item.href}
+		<a
+			href={resolve(item.href)}
+			aria-current={active ? 'page' : undefined}
+			class="flex items-center rounded-md text-sm transition-colors {extra} {active
+				? 'bg-muted font-medium text-foreground'
+				: 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}"
+		>
+			<Icon class="size-4 shrink-0" weight={active ? 'fill' : 'regular'} />
+			<span class="truncate">{item.label}</span>
+		</a>
+	{/snippet}
+
 	<div class="flex flex-col gap-6 md:grid md:grid-cols-[13rem_minmax(0,1fr)] md:gap-10">
 		<!-- Desktop: grouped vertical menu. -->
 		<nav class="hidden md:block" aria-label={m.nav_settings()}>
@@ -118,18 +133,7 @@
 							{group.label}
 						</p>
 						{#each group.items as item (item.href)}
-							{@const Icon = item.icon}
-							{@const active = current === item.href}
-							<a
-								href={resolve(item.href)}
-								aria-current={active ? 'page' : undefined}
-								class="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors {active
-									? 'bg-muted font-medium text-foreground'
-									: 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}"
-							>
-								<Icon class="size-4 shrink-0" weight={active ? 'fill' : 'regular'} />
-								<span class="truncate">{item.label}</span>
-							</a>
+							{@render navLink(item, 'gap-2.5 px-2 py-1.5')}
 						{/each}
 					</div>
 				{/each}
@@ -143,18 +147,7 @@
 		>
 			<div class="flex w-max gap-1 pb-1">
 				{#each flatItems as item (item.href)}
-					{@const Icon = item.icon}
-					{@const active = current === item.href}
-					<a
-						href={resolve(item.href)}
-						aria-current={active ? 'page' : undefined}
-						class="flex shrink-0 items-center gap-2 rounded-md border px-3 py-1.5 text-sm transition-colors {active
-							? 'border-transparent bg-muted font-medium text-foreground'
-							: 'border-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground'}"
-					>
-						<Icon class="size-4 shrink-0" weight={active ? 'fill' : 'regular'} />
-						<span>{item.label}</span>
-					</a>
+					{@render navLink(item, 'shrink-0 gap-2 border border-transparent px-3 py-1.5')}
 				{/each}
 			</div>
 		</nav>

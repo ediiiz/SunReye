@@ -117,6 +117,14 @@
 	}
 </script>
 
+<FormActions {result} {testing} {saving} disabled={!cfg} ontest={test} onsave={save}>
+	{#if hasSnapshot}
+		<Button variant="ghost" size="sm" onclick={() => (snapshotOpen = true)}>
+			{m.inverter_view_snapshot()}
+		</Button>
+	{/if}
+</FormActions>
+
 {#if !cfg}
 	<div
 		class="flex h-40 items-center justify-center border border-border text-sm text-muted-foreground"
@@ -203,19 +211,6 @@
 				</div>
 			{/if}
 		</div>
-
-		<FormActions {result} {testing} {saving} ontest={test} onsave={save}>
-			{#if hasSnapshot}
-				<Button
-					variant="ghost"
-					size="sm"
-					class="w-full sm:w-auto"
-					onclick={() => (snapshotOpen = true)}
-				>
-					{m.inverter_view_snapshot()}
-				</Button>
-			{/if}
-		</FormActions>
 	</SettingsSection>
 
 	<SnapshotDialog bind:open={snapshotOpen} result={testResult} />

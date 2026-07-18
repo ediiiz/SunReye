@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
-	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { Switch } from '$lib/components/ui/switch';
 	import { Separator } from '$lib/components/ui/separator';
 	import SettingsSection from './settings-section.svelte';
+	import SaveBar from './save-bar.svelte';
 	import SolarForecastFields, { type ArrayFields } from './solar-forecast-fields.svelte';
 	import { api } from '$lib/api';
 	import { useAppSession } from '$lib/session';
@@ -114,6 +114,8 @@
 	}
 </script>
 
+<SaveBar {isAdmin} {saving} disabled={!draft} onsave={save} />
+
 <SettingsSection title={m.weather_title()}>
 	{#if !draft}
 		<p class="text-sm text-muted-foreground">{m.app_loading()}</p>
@@ -189,12 +191,5 @@
 				disabled={!isAdmin || saving}
 			/>
 		{/if}
-
-		<div class="flex items-center gap-3">
-			<Button onclick={save} disabled={!isAdmin || saving}>{saving ? m.action_saving() : m.action_save()}</Button>
-			{#if !isAdmin}
-				<span class="text-xs text-muted-foreground">{m.settings_admin_only()}</span>
-			{/if}
-		</div>
 	{/if}
 </SettingsSection>

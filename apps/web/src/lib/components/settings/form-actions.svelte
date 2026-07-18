@@ -1,15 +1,18 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
+	import ActionBar from './action-bar.svelte';
 	import * as m from '$lib/paraglide/messages';
 
-	// Shared footer for the connection settings forms: an optional test result
-	// line plus Test / Save buttons. `children` renders extra controls (e.g. a
-	// snapshot trigger) to the left of the buttons.
+	// Actions for the connection settings forms: Test + Save, an optional test
+	// result line, and extra controls (e.g. a snapshot trigger). Rendered in the
+	// shared sticky ActionBar so it sits at the top of the form like every other
+	// settings panel.
 	let {
 		result = null,
 		testing,
 		saving,
+		disabled = false,
 		ontest,
 		onsave,
 		children
@@ -17,24 +20,24 @@
 		result?: { ok: boolean; message: string } | null;
 		testing: boolean;
 		saving: boolean;
+		disabled?: boolean;
 		ontest: () => void;
 		onsave: () => void;
 		children?: Snippet;
 	} = $props();
 </script>
 
-{#if result}
-	<p class="text-sm {result.ok ? 'text-emerald-500' : 'text-destructive'}">{result.message}</p>
-{/if}
-
-<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-	{#if children}
-		<div class="sm:mr-auto">{@render children()}</div>
-	{/if}
-	<Button variant="outline" class="w-full sm:w-auto" onclick={ontest} disabled={testing}>
+<ActionBar>
+	{#snippet info()}
+		{#if result}
+			<span class={result.ok ? 'text-emerald-500' : 'text-destructive'}>{result.message}</span>
+		{/if}
+	{/snippet}
+	{#if children}{@render children()}{/if}
+	<Button variant="outline" onclick={ontest} disabled={disabled || testing}>
 		{testing ? m.conn_testing() : m.conn_test()}
 	</Button>
-	<Button class="w-full sm:w-auto" onclick={onsave} disabled={saving}>
+	<Button onclick={onsave} disabled={disabled || saving}>
 		{saving ? m.action_saving() : m.action_save()}
 	</Button>
-</div>
+</ActionBar>

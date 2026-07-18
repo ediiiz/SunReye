@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
-	import { Button } from '$lib/components/ui/button';
 	import { Switch } from '$lib/components/ui/switch';
 	import { Label } from '$lib/components/ui/label';
 	import SettingsSection from './settings-section.svelte';
+	import SaveBar from './save-bar.svelte';
 	import { inverter } from '$lib/inverter/store.svelte';
 	import type { ManifestMetric } from '$lib/inverter/types';
 	import { uiPrefs, type UiPrefs } from '$lib/ui-prefs.svelte';
@@ -79,6 +79,8 @@
 	}
 </script>
 
+<SaveBar {isAdmin} {saving} disabled={!draft} onsave={save} />
+
 <SettingsSection title={m.settings_sensors_title()}>
 	<p class="max-w-prose text-sm text-muted-foreground">{m.settings_sensors_desc()}</p>
 
@@ -87,11 +89,16 @@
 	{:else if groups.length === 0}
 		<p class="text-sm text-muted-foreground">{m.settings_sensors_empty()}</p>
 	{:else}
-		<div class="flex flex-col gap-4">
+		<!-- The catalog scrolls inside its own box so long profiles don't push the
+		     page (and the Save action) out of reach; group headers stick to the top
+		     of the box until the next group scrolls up to replace them. -->
+		<div class="max-h-[60vh] overflow-y-auto rounded-md border border-border">
 			{#each groups as group (group.id)}
 				{@const visibleCount = group.metrics.filter(isMetricVisible).length}
-				<div class="flex flex-col gap-3 border border-border p-3">
-					<div class="flex items-center justify-between gap-4">
+				<div class="border-b border-border last:border-b-0">
+					<div
+						class="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-border bg-background/95 px-3 py-2 backdrop-blur supports-backdrop-filter:bg-background/80"
+					>
 						<div class="flex flex-col gap-0.5">
 							<span class="text-sm font-medium">{group.label}</span>
 							<span class="text-xs text-muted-foreground tabular-nums">
@@ -107,9 +114,9 @@
 					</div>
 
 					{#if isGroupVisible(group.id)}
-						<div class="flex flex-col divide-y divide-border border-t border-border">
+						<div class="divide-y divide-border">
 							{#each group.metrics as metric (metric.key)}
-								<div class="flex items-center justify-between gap-4 py-2">
+								<div class="flex items-center justify-between gap-4 px-3 py-2">
 									<div class="flex min-w-0 flex-col">
 										<Label for="sensor-{metric.key}" class="truncate">{metric.label}</Label>
 										<span class="truncate font-mono text-xs text-muted-foreground">{metric.key}</span>
@@ -125,19 +132,10 @@
 							{/each}
 						</div>
 					{:else}
-						<p class="text-xs text-muted-foreground">{m.settings_sensors_group_hidden()}</p>
+						<p class="px-3 py-2 text-xs text-muted-foreground">{m.settings_sensors_group_hidden()}</p>
 					{/if}
 				</div>
 			{/each}
-		</div>
-
-		<div class="flex items-center gap-3">
-			<Button onclick={save} disabled={!isAdmin || saving}>
-				{saving ? m.action_saving() : m.action_save()}
-			</Button>
-			{#if !isAdmin}
-				<span class="text-xs text-muted-foreground">{m.settings_admin_only()}</span>
-			{/if}
 		</div>
 	{/if}
 </SettingsSection>

@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
-	import { Button } from '$lib/components/ui/button';
 	import { Label } from '$lib/components/ui/label';
 	import SettingsSection from './settings-section.svelte';
+	import SaveBar from './save-bar.svelte';
 	import OptionSelect from './option-select.svelte';
 	import { display, TIME_ZONE_AUTO, type DisplayConfig } from '$lib/display.svelte';
 	import { getLocale, locales, localeName, setLocale } from '$lib/i18n';
@@ -70,6 +70,8 @@
 	}
 </script>
 
+<SaveBar {isAdmin} {saving} disabled={!draft} onsave={save} />
+
 <SettingsSection title={m.settings_language()}>
 	<p class="text-sm text-muted-foreground">{m.settings_language_desc()}</p>
 	<div class="flex flex-col gap-2">
@@ -112,15 +114,6 @@
 		<div class="flex flex-col gap-1 border border-border p-3">
 			<span class="text-xs uppercase tracking-wide text-muted-foreground">{m.settings_preview()}</span>
 			<span class="font-mono text-sm tabular-nums">{preview}</span>
-		</div>
-
-		<div class="flex items-center gap-3">
-			<Button onclick={save} disabled={!isAdmin || saving}>
-				{saving ? m.action_saving() : m.action_save()}
-			</Button>
-			{#if !isAdmin}
-				<span class="text-xs text-muted-foreground">{m.settings_admin_only()}</span>
-			{/if}
 		</div>
 	{/if}
 </SettingsSection>

@@ -94,6 +94,8 @@
 	}
 </script>
 
+<FormActions {result} {testing} {saving} disabled={!cfg} ontest={test} onsave={save} />
+
 {#if !cfg}
 	<div class="flex h-40 items-center justify-center border border-border text-sm text-muted-foreground">
 		{m.app_loading()}
@@ -159,7 +161,5 @@
 				<Input id="ha-prefix" bind:value={cfg.haDiscoveryPrefix} class="max-w-60" />
 			</div>
 		{/if}
-
-		<FormActions {result} {testing} {saving} ontest={test} onsave={save} />
 	</SettingsSection>
 {/if}

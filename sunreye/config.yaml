@@ -30,6 +30,7 @@ ingress_port: 8099
 ingress_stream: true
 panel_icon: mdi:solar-power-variant
 panel_title: SunReye
+panel_admin: false
 
 # Optional direct LAN access (UI + API on one port), disabled by default —
 # ingress is the primary door. Third-party integrations use

@@ -6,7 +6,10 @@
 	import BatteryBar from '$lib/components/inverter/battery-bar.svelte';
 	import SubsystemSection from '$lib/components/inverter/subsystem-section.svelte';
 	import IndexedGroup from '$lib/components/inverter/indexed-group.svelte';
+	import { setPageHeader } from '$lib/page-header.svelte';
 	import * as m from '$lib/paraglide/messages';
+
+	$effect(() => setPageHeader(m.nav_system()));
 
 	const caps = $derived(inverter.capabilities);
 

@@ -8,6 +8,7 @@
 	import DateRangePicker from '$lib/components/inverter/date-range-picker.svelte';
 	import EntityHistoryCard from '$lib/components/inverter/entity-history-card.svelte';
 	import CustomChartSection from '$lib/components/inverter/custom-chart-section.svelte';
+	import { setPageHeader } from '$lib/page-header.svelte';
 	import {
 		filterMetrics,
 		groupByCategory,
@@ -25,16 +26,12 @@
 	const groups = $derived(groupByCategory(filterMetrics(chartable, search)));
 
 	const accentFor = (i: number) => `var(--color-chart-${(i % 5) + 1})`;
+
+	$effect(() => setPageHeader(m.nav_history(), m.history_subtitle()));
 </script>
 
 <div class="flex w-full flex-col gap-6 p-4 sm:p-6">
-	<div class="flex flex-wrap items-center justify-between gap-3">
-		<div>
-			<h1 class="text-lg font-semibold">{m.nav_history()}</h1>
-			<p class="text-sm text-muted-foreground">
-				{m.history_subtitle()}
-			</p>
-		</div>
+	<div class="flex flex-wrap items-center justify-end gap-3">
 		<DateRangePicker bind:range />
 	</div>
 

@@ -2,7 +2,10 @@
 	import PowerFlow from '$lib/components/inverter/power-flow-diagram.svelte';
 	import WeatherTile from '$lib/components/inverter/weather-tile.svelte';
 	import DailyEnergy from '$lib/components/inverter/daily-energy.svelte';
+	import { setPageHeader } from '$lib/page-header.svelte';
 	import * as m from '$lib/paraglide/messages';
+
+	$effect(() => setPageHeader(m.nav_overview()));
 </script>
 
 <!--
@@ -18,7 +21,7 @@
 	subsystem metrics live at /system.
 -->
 <div
-	class="flex flex-col gap-3 p-3 sm:gap-4 sm:p-4 lg:grid lg:h-svh lg:grid-cols-[1.15fr_1fr] lg:grid-rows-1 lg:overflow-hidden"
+	class="flex flex-col gap-3 p-3 sm:gap-4 sm:p-4 lg:grid lg:h-[calc(100svh-3.5rem)] lg:grid-cols-[1.15fr_1fr] lg:grid-rows-1 lg:overflow-hidden"
 >
 	<section class="relative h-[60svh] min-h-108 shrink-0 lg:h-full lg:min-h-0">
 		<h2 class="sr-only">{m.overview_power_flow()}</h2>

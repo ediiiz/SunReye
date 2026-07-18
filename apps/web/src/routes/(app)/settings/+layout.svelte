@@ -8,6 +8,7 @@
 	import { resolve, routePath } from '$lib/resolve';
 	import { useAppSession } from '$lib/session';
 	import { setSettingsStatus, type SettingsStatus } from './status-context';
+	import { setPageHeader } from '$lib/page-header.svelte';
 	import * as m from '$lib/paraglide/messages';
 	import LightningIcon from 'phosphor-svelte/lib/Lightning';
 	import WaveformIcon from 'phosphor-svelte/lib/Waveform';
@@ -98,14 +99,11 @@
 	// Only the changing panel moves; the nav rail stays put. Honour reduced motion.
 	const reduceMotion = new MediaQuery('prefers-reduced-motion: reduce');
 	const panelIn = $derived(reduceMotion.current ? { duration: 0 } : { y: 6, duration: 180 });
+
+	$effect(() => setPageHeader(m.nav_settings(), m.settings_subtitle()));
 </script>
 
 <div class="mx-auto w-full max-w-5xl p-4 sm:p-6">
-	<header class="mb-6 flex flex-col gap-1">
-		<h1 class="text-lg font-semibold">{m.nav_settings()}</h1>
-		<p class="text-sm text-muted-foreground">{m.settings_subtitle()}</p>
-	</header>
-
 	{#snippet navLink(item: NavItem, extra: string)}
 		{@const Icon = item.icon}
 		{@const active = current === item.href}

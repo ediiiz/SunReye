@@ -10,6 +10,7 @@
 	import { firstRunGate, publicDashboardEnabled, type FirstRunGate } from '$lib/setup';
 	import { inverter } from '$lib/inverter/store.svelte';
 	import { display } from '$lib/display.svelte';
+	import { pageHeader } from '$lib/page-header.svelte';
 	import * as m from '$lib/paraglide/messages';
 
 	const { children } = $props();
@@ -102,19 +103,20 @@
 	<Sidebar.Provider>
 		<AppSidebar />
 		<Sidebar.Inset>
-			<!-- Mobile: slim header bar carries the trigger, so no horizontal gutter
-			     wastes width (scarce on phones). -->
-			<header class="flex h-12 shrink-0 items-center border-b border-border px-2 md:hidden">
+			<!-- Persistent top header on every viewport: sidebar trigger + the active
+			     page's title/subtitle (set by each page via the page-header store). -->
+			<header class="flex h-14 shrink-0 items-center gap-3 border-b border-border px-4">
 				<Sidebar.Trigger />
+				<div class="flex min-w-0 flex-col">
+					<h1 class="truncate text-base font-semibold leading-tight">{pageHeader.title}</h1>
+					{#if pageHeader.subtitle}
+						<p class="truncate text-xs leading-tight text-muted-foreground">
+							{pageHeader.subtitle}
+						</p>
+					{/if}
+				</div>
 			</header>
-			<!-- Desktop (md+): floating overlay trigger sits above the content
-			     (viewport-fixed); md:px-9 below reserves its top-left corner. -->
-			<Sidebar.Trigger
-				class="fixed left-4 top-4 z-50 hidden border border-border bg-background/80 backdrop-blur md:flex"
-			/>
-			<!-- Horizontal padding keeps page content clear of the viewport-fixed
-			     trigger (top-left) on every route, so nothing renders under it. -->
-			<main class="min-h-0 flex-1 overflow-y-auto md:px-9">
+			<main class="min-h-0 flex-1 overflow-y-auto">
 				{#key topSegment}
 					<div in:fade={contentIn}>
 						{@render children()}

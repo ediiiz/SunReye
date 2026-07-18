@@ -6,6 +6,7 @@
 	import { Switch } from '$lib/components/ui/switch';
 	import ControlRow from '$lib/components/inverter/control-row.svelte';
 	import TimeOfUse from '$lib/components/inverter/time-of-use.svelte';
+	import { setPageHeader } from '$lib/page-header.svelte';
 
 	const settings = $derived(inverter.inGroup('settings').filter((m) => m.writable));
 	// Deye/Sunsynk hybrids expose a time-of-use schedule; gate the editor on the
@@ -17,16 +18,16 @@
 	// input) until the user flips this switch. Purely client-side; the backend
 	// still authorizes each command on its own.
 	let unlocked = $state(false);
+
+	$effect(() =>
+		setPageHeader(
+			m.nav_controls(),
+			m.controls_subtitle({ name: inverter.manifest?.name ?? m.controls_this_inverter() })
+		)
+	);
 </script>
 
 <div class="mx-auto flex w-full max-w-3xl flex-col gap-6 p-4 sm:p-6">
-	<header class="flex flex-col gap-1">
-		<h1 class="text-lg font-semibold">{m.nav_controls()}</h1>
-		<p class="text-sm text-muted-foreground">
-			{m.controls_subtitle({ name: inverter.manifest?.name ?? m.controls_this_inverter() })}
-		</p>
-	</header>
-
 	{#if settings.length === 0 && !hasTimeOfUse}
 		<div
 			class="flex h-40 items-center justify-center border border-border text-sm text-muted-foreground"

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/SunReye/SunReye/compare/server-v1.1.0...server-v1.1.1) (2026-07-18)
+
+
+### Miscellaneous Chores
+
+* **server:** Synchronize sunreye-stack versions
+
 ## [1.1.0](https://github.com/SunReye/SunReye/compare/server-v1.0.1...server-v1.1.0) (2026-07-18)
 
 

@@ -107,7 +107,9 @@
 			<Sidebar.Trigger
 				class="fixed left-4 top-4 z-50 border border-border bg-background/80 backdrop-blur"
 			/>
-			<main class="min-h-0 flex-1 overflow-y-auto">
+			<!-- Horizontal padding keeps page content clear of the viewport-fixed
+			     trigger (top-left) on every route, so nothing renders under it. -->
+			<main class="min-h-0 flex-1 overflow-y-auto px-9">
 				{#key topSegment}
 					<div in:fade={contentIn}>
 						{@render children()}

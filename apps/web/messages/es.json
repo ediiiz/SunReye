@@ -27,6 +27,7 @@
   "energy_autarky": "Autarquía",
   "energy_earned": "Ganado hoy",
   "energy_spent": "Gastado hoy",
+  "energy_saved": "Ahorrado hoy",
   "settings_language": "Idioma",
   "settings_language_desc": "Idioma de la interfaz para este navegador. Al cambiarlo se recarga la página.",
   "settings_datetime": "Fecha y hora",

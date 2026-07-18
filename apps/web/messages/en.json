@@ -27,6 +27,7 @@
   "energy_autarky": "Autarky",
   "energy_earned": "Earned today",
   "energy_spent": "Spent today",
+  "energy_saved": "Saved today",
   "settings_language": "Language",
   "settings_language_desc": "Interface language for this browser. Changing it reloads the page.",
   "settings_datetime": "Date & time",

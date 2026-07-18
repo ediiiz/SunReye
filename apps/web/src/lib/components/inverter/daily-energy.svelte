@@ -16,6 +16,8 @@
 		currency: string;
 		importCost: number;
 		exportEarnings: number;
+		/** Value of self-consumed solar: (load − import) priced at the grid rate. */
+		solarSavings: number;
 		/** (load − import) / load — autarky. */
 		selfSufficiency: number | null;
 		/** (production − export) / production. */
@@ -49,38 +51,52 @@
 		new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(v);
 	const percent = (v: number) => Math.round(Math.min(1, Math.max(0, v)) * 100);
 
-	/** Secondary KPI row: a ratio with a mini meter, or a signed money figure. */
+	/** Secondary KPI rows: ratios render a mini meter, money a signed figure. */
 	type Kpi =
 		| { kind: 'ratio'; label: () => string; value: number }
 		| { kind: 'money'; label: () => string; text: string; color: string };
 
-	function kpiFor(role: CanonicalRole): Kpi | undefined {
-		if (!cost) return undefined;
+	function kpisFor(role: CanonicalRole): Kpi[] {
+		if (!cost) return [];
 		switch (role) {
-			case 'production.today':
-				return cost.selfConsumption === null
-					? undefined
-					: { kind: 'ratio', label: m.energy_self_consumption, value: cost.selfConsumption };
+			case 'production.today': {
+				const rows: Kpi[] = [];
+				if (cost.selfConsumption !== null) {
+					rows.push({ kind: 'ratio', label: m.energy_self_consumption, value: cost.selfConsumption });
+				}
+				// What buying the self-consumed energy would have cost instead.
+				rows.push({
+					kind: 'money',
+					label: m.energy_saved,
+					text: `+${money(cost.solarSavings, cost.currency)}`,
+					color: 'text-emerald-500'
+				});
+				return rows;
+			}
 			case 'load.energy.today':
 				return cost.selfSufficiency === null
-					? undefined
-					: { kind: 'ratio', label: m.energy_autarky, value: cost.selfSufficiency };
+					? []
+					: [{ kind: 'ratio', label: m.energy_autarky, value: cost.selfSufficiency }];
 			case 'grid.energy.exported.today':
-				return {
-					kind: 'money',
-					label: m.energy_earned,
-					text: `+${money(cost.exportEarnings, cost.currency)}`,
-					color: 'text-emerald-500'
-				};
+				return [
+					{
+						kind: 'money',
+						label: m.energy_earned,
+						text: `+${money(cost.exportEarnings, cost.currency)}`,
+						color: 'text-emerald-500'
+					}
+				];
 			case 'grid.energy.imported.today':
-				return {
-					kind: 'money',
-					label: m.energy_spent,
-					text: `−${money(cost.importCost, cost.currency)}`,
-					color: 'text-red-500'
-				};
+				return [
+					{
+						kind: 'money',
+						label: m.energy_spent,
+						text: `−${money(cost.importCost, cost.currency)}`,
+						color: 'text-red-500'
+					}
+				];
 			default:
-				return undefined;
+				return [];
 		}
 	}
 
@@ -115,7 +131,7 @@
 		{#each tiles as t (t.role)}
 			{@const value = inverter.value(t.metric.key)}
 			{@const Icon = t.icon}
-			{@const kpi = kpiFor(t.role)}
+			{@const kpis = kpisFor(t.role)}
 			<div
 				class="flex flex-col justify-between gap-2 rounded-xl border border-border/60 bg-card p-3 sm:p-4"
 			>
@@ -141,32 +157,34 @@
 						</span>
 					{/if}
 				</span>
-				{#if kpi}
+				{#if kpis.length > 0}
 					<div class="flex flex-col gap-1">
-						<div class="flex items-baseline justify-between gap-2">
-							<span
-								class="truncate text-[0.6rem] uppercase tracking-wide text-muted-foreground 2xl:text-xs"
-							>
-								{kpi.label()}
-							</span>
-							{#if kpi.kind === 'ratio'}
-								<span class="text-xs font-semibold tabular-nums 2xl:text-sm">
-									{percent(kpi.value)}%
+						{#each kpis as kpi (kpi.kind)}
+							<div class="flex items-baseline justify-between gap-2">
+								<span
+									class="truncate text-[0.6rem] uppercase tracking-wide text-muted-foreground 2xl:text-xs"
+								>
+									{kpi.label()}
 								</span>
-							{:else}
-								<span class={`text-xs font-semibold tabular-nums 2xl:text-sm ${kpi.color}`}>
-									{kpi.text}
-								</span>
-							{/if}
-						</div>
-						{#if kpi.kind === 'ratio'}
-							<div class="h-1 overflow-hidden rounded-full bg-border/60">
-								<div
-									class={`h-full rounded-full ${t.bar}`}
-									style={`width:${percent(kpi.value)}%;transition:width 700ms ease`}
-								></div>
+								{#if kpi.kind === 'ratio'}
+									<span class="text-xs font-semibold tabular-nums 2xl:text-sm">
+										{percent(kpi.value)}%
+									</span>
+								{:else}
+									<span class={`text-xs font-semibold tabular-nums 2xl:text-sm ${kpi.color}`}>
+										{kpi.text}
+									</span>
+								{/if}
 							</div>
-						{/if}
+							{#if kpi.kind === 'ratio'}
+								<div class="h-1 overflow-hidden rounded-full bg-border/60">
+									<div
+										class={`h-full rounded-full ${t.bar}`}
+										style={`width:${percent(kpi.value)}%;transition:width 700ms ease`}
+									></div>
+								</div>
+							{/if}
+						{/each}
 					</div>
 				{/if}
 			</div>

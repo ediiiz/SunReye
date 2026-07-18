@@ -1,6 +1,6 @@
 {
-  ".": "1.0.0",
-  "apps/web": "1.0.0",
+  ".": "1.0.1",
+  "apps/web": "1.0.1",
   "packages/profile-sdk": "2.0.0",
-  "sunreye": "1.0.0"
+  "sunreye": "1.0.1"
 }

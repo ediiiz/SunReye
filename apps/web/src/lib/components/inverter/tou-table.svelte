@@ -2,6 +2,7 @@
 	import { Switch } from '$lib/components/ui/switch';
 	import { Input } from '$lib/components/ui/input';
 	import * as Table from '$lib/components/ui/table';
+	import * as msg from '$lib/paraglide/messages';
 	import type { ManifestMetric } from '$lib/inverter/types';
 	import { hhmmToLabel, labelToHhmm, type TouController } from '$lib/inverter/tou.svelte';
 
@@ -25,15 +26,15 @@
 	<Table.Root>
 		<Table.Header>
 			<Table.Row>
-				<Table.Head class="w-12">Slot</Table.Head>
-				<Table.Head>Enabled</Table.Head>
-				<Table.Head>Start</Table.Head>
-				<Table.Head>Power (W)</Table.Head>
+				<Table.Head class="w-12">{msg.tou_slot()}</Table.Head>
+				<Table.Head>{msg.label_enabled()}</Table.Head>
+				<Table.Head>{msg.tou_start()}</Table.Head>
+				<Table.Head>{msg.tou_power()}</Table.Head>
 				{#if mode !== 'soc'}
-					<Table.Head>Voltage (V)</Table.Head>
+					<Table.Head>{msg.tou_voltage()}</Table.Head>
 				{/if}
 				{#if mode !== 'voltage'}
-					<Table.Head>SOC (%)</Table.Head>
+					<Table.Head>{msg.tou_soc()}</Table.Head>
 				{/if}
 			</Table.Row>
 		</Table.Header>

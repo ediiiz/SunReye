@@ -9,6 +9,7 @@
 	import ProfileUpdatesBanner from "./profile-updates-banner.svelte";
 	import RestartButton from "./restart-button.svelte";
 	import type { ProfileUpdate, RegisteredProfile } from "./profile-types";
+	import * as m from "$lib/paraglide/messages";
 
 	let registered = $state<RegisteredProfile[]>([]);
 	let updates = $state<ProfileUpdate[]>([]);
@@ -48,10 +49,10 @@
 		const { error } = await api.api.profiles.install.post({ source: u.source, id: u.id });
 		busyId = null;
 		if (error) {
-			toast.error(`Update failed: ${String(error.value)}`);
+			toast.error(m.profiles_toast_update_failed({ error: String(error.value) }));
 			return;
 		}
-		toast.success(`Updated ${u.name} to v${u.latestVersion}`);
+		toast.success(m.profiles_toast_updated({ name: u.name, version: u.latestVersion }));
 		restartRequired = true;
 		updates = updates.filter((x) => x.id !== u.id);
 		await loadRegistered();
@@ -62,10 +63,10 @@
 		const { error } = await api.api.profiles({ id: p.id }).delete();
 		busyId = null;
 		if (error) {
-			toast.error(`Uninstall failed: ${String(error.value)}`);
+			toast.error(m.profiles_toast_uninstall_failed({ error: String(error.value) }));
 			return;
 		}
-		toast.success(`Uninstalled ${p.name}`);
+		toast.success(m.profiles_toast_uninstalled({ name: p.name }));
 		await loadRegistered();
 	}
 
@@ -74,12 +75,12 @@
 		const { data, error } = await api.api.settings["active-profile"].put({ id: p.id });
 		busyId = null;
 		if (error || !data) {
-			toast.error("Failed to set active profile");
+			toast.error(m.profiles_toast_activate_failed());
 			return;
 		}
 		restartRequired = data.restartRequired;
 		pendingActiveId = p.id;
-		toast.success(`${p.name} will be active after restart`);
+		toast.success(m.profiles_toast_will_activate({ name: p.name }));
 	}
 </script>
 
@@ -92,7 +93,7 @@
 		>
 			<span class="flex items-center gap-2">
 				<span class="inline-block size-2 shrink-0 rounded-full bg-amber-500"></span>
-				<span>Restart required to apply profile changes.</span>
+				<span>{m.profiles_restart_required()}</span>
 			</span>
 			<div class="sm:ml-auto">
 				<Button
@@ -101,7 +102,7 @@
 					class="w-full sm:w-auto"
 					onclick={() => (restartOpen = true)}
 				>
-					Restart now
+					{m.settings_restart_now()}
 				</Button>
 			</div>
 		</div>
@@ -122,21 +123,19 @@
 <Dialog.Root bind:open={restartOpen}>
 	<Dialog.Content>
 		<Dialog.Header>
-			<Dialog.Title>Restart to apply changes?</Dialog.Title>
+			<Dialog.Title>{m.profiles_restart_dialog_title()}</Dialog.Title>
 			<Dialog.Description>
 				{#if pendingProfile}
-					The server will restart to activate
-					<span class="font-medium text-foreground">{pendingProfile.name}</span>. Polling and
-					live data pause briefly while it comes back.
+					{m.profiles_restart_activate_pre()}
+					<span class="font-medium text-foreground">{pendingProfile.name}</span>{m.profiles_restart_activate_post()}
 				{:else}
-					The server will restart to apply your profile changes. Polling and live data pause
-					briefly while it comes back.
+					{m.profiles_restart_generic()}
 				{/if}
 			</Dialog.Description>
 		</Dialog.Header>
 		<Dialog.Footer>
-			<Button variant="outline" onclick={() => (restartOpen = false)}>Cancel</Button>
-			<RestartButton label="Restart now" />
+			<Button variant="outline" onclick={() => (restartOpen = false)}>{m.action_cancel()}</Button>
+			<RestartButton label={m.settings_restart_now()} />
 		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>

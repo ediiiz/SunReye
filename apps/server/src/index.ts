@@ -12,10 +12,11 @@ import { type CostBucket, computeCost, computeCostSeries, resolveRange } from ".
 import { energySeries } from "./energy";
 import { entitiesApi } from "./entities";
 import { queryRollup } from "./history";
+import { isPublicDashboard } from "./access-settings";
 import { buildProfileContext, initProfiles } from "./inverter";
 import { log, setupLogging } from "./logging";
 import { adminRoutes } from "./routes/admin";
-import { adminGuard } from "./routes/admin-guard";
+import { adminGuard, dashboardReadAllowed } from "./routes/admin-guard";
 import { customChartsRoutes } from "./routes/custom-charts";
 import { startUpdateChecks, stopUpdateChecks } from "./profiles";
 import { profileRoutes } from "./routes/profiles";
@@ -188,15 +189,32 @@ const app = new Elysia()
     needsProfile: profile === null,
     activeProfileId: profile?.id ?? null,
   }))
+  // Public read of the anonymous-dashboard toggle. Lets the web shell decide
+  // whether a logged-out visitor gets the read-only dashboard or the login page.
+  // Exposes only the on/off boolean (already inferable by probing a read), never
+  // the rest of the access config, which stays admin-only via /api/settings/access.
+  .get("/api/access-status", async () => ({
+    publicDashboard: await isPublicDashboard(),
+  }))
   // Capability manifest for the active inverter profile: capabilities + a
   // render-ready metric catalog (role, kind, range, enum labels, flow). The UI
   // builds itself from this — no per-inverter code. 503 until a profile is active.
-  .get("/api/profile", ({ status }) => manifest ?? status(503, ONBOARDING_REQUIRED))
+  .get("/api/profile", ({ status }) => manifest ?? status(503, ONBOARDING_REQUIRED), {
+    requireSession: true,
+  })
   // Live metrics stream: clients subscribe to the shared topic; the God-loop
-  // publishes every sample via `app.server.publish(METRICS_TOPIC, ...)`.
+  // publishes every sample via `app.server.publish(METRICS_TOPIC, ...)`. The
+  // upgrade runs the same read policy as the HTTP dashboard reads via the
+  // `requireSession` macro (session, or anonymous when the public dashboard is
+  // on); `open` also re-checks and closes the socket as a belt-and-braces guard.
   .ws("/ws/metrics", {
+    requireSession: true,
     response: SampleSchema,
-    open(ws) {
+    async open(ws) {
+      if (!(await dashboardReadAllowed(ws.data.request.headers))) {
+        ws.close();
+        return;
+      }
       ws.subscribe(METRICS_TOPIC);
     },
   })
@@ -219,6 +237,7 @@ const app = new Elysia()
         .limit(query.limit);
     },
     {
+      requireSession: true,
       query: t.Object({
         hours: t.Number({ default: 24, minimum: 1, maximum: 720 }),
         limit: t.Number({ default: 5000, minimum: 1, maximum: 50000 }),
@@ -247,6 +266,7 @@ const app = new Elysia()
       return rows.map((r) => ({ time: r.time.toISOString(), metric: r.metric, value: r.value }));
     },
     {
+      requireSession: true,
       query: t.Object({
         seconds: t.Number({ default: 300, minimum: 1, maximum: 3600 }),
         inverterId: t.Optional(t.String()),
@@ -280,6 +300,7 @@ const app = new Elysia()
       });
     },
     {
+      requireSession: true,
       query: t.Object({
         metric: t.String(),
         inverterId: t.Optional(t.String()),
@@ -333,6 +354,7 @@ const app = new Elysia()
       return computeCost(profile, { from, to, inverterId: query.inverterId });
     },
     {
+      requireSession: true,
       query: t.Object({
         range: t.Optional(t.Union([t.Literal("today"), t.Literal("month"), t.Literal("year")])),
         from: t.Optional(t.String()),
@@ -348,7 +370,7 @@ const app = new Elysia()
     "/api/cost/series",
     ({ query, status }) =>
       profile ? computeCostSeries(profile, seriesArgs(query)) : status(503, ONBOARDING_REQUIRED),
-    { query: seriesQuery },
+    { requireSession: true, query: seriesQuery },
   )
   // Per-period energy split (grid-vs-solar consumption, self-consumed-vs-exported
   // production) over the same window/bucket. Feeds the Costs page energy chart;
@@ -357,7 +379,7 @@ const app = new Elysia()
     "/api/energy/series",
     ({ query, status }) =>
       profile ? energySeries(profile, seriesArgs(query)) : status(503, ONBOARDING_REQUIRED),
-    { query: seriesQuery },
+    { requireSession: true, query: seriesQuery },
   )
   // Profile management: registered list, repo sources, browse/install/activate.
   .use(profileRoutes)

@@ -1,4 +1,5 @@
 import { applyComputed } from "./computed";
+import { genericSimulate } from "./generic-sim";
 import type {
   InverterProfile,
   InverterSample,
@@ -27,8 +28,9 @@ function fallback(def: MetricDef): number {
 }
 
 /**
- * A {@link InverterSource} that synthesizes samples without hardware. Delegates
- * the coherent power model to `profile.simulate` and fills the rest generically.
+ * A {@link InverterSource} that synthesizes samples without hardware. Uses the
+ * profile's own `simulate` hook when present, otherwise the generic role-based
+ * model ({@link genericSimulate}); either way the rest is filled generically.
  * Writes update simulation state so settings round-trip.
  */
 export class SimulatedInverter implements InverterSource {
@@ -46,7 +48,8 @@ export class SimulatedInverter implements InverterSource {
     const dtSec = this.lastTime === null ? 0 : (now.getTime() - this.lastTime) / 1000;
     this.lastTime = now.getTime();
 
-    const modeled = this.profile.simulate?.({ now, dtSec, state: this.state }) ?? {};
+    const ctx = { now, dtSec, state: this.state };
+    const modeled = this.profile.simulate?.(ctx) ?? genericSimulate(this.profile, ctx);
 
     const metrics: MetricValues = {};
     for (const def of this.profile.metrics) {

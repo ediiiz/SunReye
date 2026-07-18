@@ -6,6 +6,7 @@
 	import { Switch } from "$lib/components/ui/switch";
 	import SettingsSection from "./settings-section.svelte";
 	import type { Source } from "./profile-types";
+	import * as m from "$lib/paraglide/messages";
 
 	let {
 		sources,
@@ -27,8 +28,7 @@
 	// optimistically add + auto-save them (the server would otherwise reject the
 	// whole set with an opaque 400).
 	function validationError(url: string): string | null {
-		if (!url.startsWith("https://")) return "URL must be an https git URL";
-		if (!url.endsWith(".git")) return 'URL should end with ".git"';
+		if (!url.startsWith("https://")) return m.sources_url_invalid();
 		return null;
 	}
 
@@ -36,7 +36,7 @@
 		const url = newUrl.trim();
 		if (!url) return;
 		if (sources.some((s) => s.url === url)) {
-			toast.error("That source is already added");
+			toast.error(m.sources_already_added());
 			return;
 		}
 		const error = validationError(url);
@@ -49,7 +49,7 @@
 	}
 </script>
 
-<SettingsSection title="Profile repositories">
+<SettingsSection title={m.sources_title()}>
 	<div class="flex flex-col divide-y divide-border">
 		{#each sources as s (s.url)}
 			<div class="flex items-center justify-between gap-4 py-2.5">
@@ -64,21 +64,26 @@
 						checked={s.enabled}
 						disabled={saving}
 						onCheckedChange={(checked) => onToggle(s.url, checked)}
-						aria-label="Enabled"
+						aria-label={m.label_enabled()}
 					/>
-					<Button variant="ghost" size="sm" disabled={saving} onclick={() => onRemove(s.url)}>
-						Remove
-					</Button>
+					{#if s.official}
+						<!-- Protected: the official source can be disabled but not removed. -->
+						<span class="text-xs uppercase tracking-wide text-muted-foreground">{m.sources_default()}</span>
+					{:else}
+						<Button variant="ghost" size="sm" disabled={saving} onclick={() => onRemove(s.url)}>
+							{m.action_remove()}
+						</Button>
+					{/if}
 				</div>
 			</div>
 		{/each}
 		{#if sources.length === 0}
-			<p class="py-2.5 text-sm text-muted-foreground">No repositories configured.</p>
+			<p class="py-2.5 text-sm text-muted-foreground">{m.sources_none()}</p>
 		{/if}
 	</div>
 	<div class="flex flex-col gap-2 sm:flex-row sm:items-end">
 		<div class="flex min-w-0 flex-1 flex-col gap-1.5">
-			<Label for="new-source">Add repository (https git URL)</Label>
+			<Label for="new-source">{m.sources_add_label()}</Label>
 			<Input
 				id="new-source"
 				bind:value={newUrl}
@@ -87,6 +92,6 @@
 				onkeydown={(e) => e.key === "Enter" && add()}
 			/>
 		</div>
-		<Button variant="outline" class="w-full sm:w-auto" disabled={saving} onclick={add}>Add</Button>
+		<Button variant="outline" class="w-full sm:w-auto" disabled={saving} onclick={add}>{m.action_add()}</Button>
 	</div>
 </SettingsSection>

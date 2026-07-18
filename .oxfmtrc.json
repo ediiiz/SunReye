@@ -1,3 +1,9 @@
 {
-  "ignorePatterns": ["**/*.md", "**/*.mdx", "**/*.json", "**/*.jsonc"]
+  "ignorePatterns": [
+    "**/*.md",
+    "**/*.mdx",
+    "**/*.json",
+    "**/*.jsonc",
+    "bunfig.toml"
+  ]
 }

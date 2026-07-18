@@ -2,12 +2,13 @@
 	import { toast } from 'svelte-sonner';
 	import { Button } from '$lib/components/ui/button';
 	import { restartServer } from '$lib/setup';
+	import * as m from '$lib/paraglide/messages';
 
 	// Triggers a supervised server restart and waits for it to come back (then the
 	// page reloads). Shared by the onboarding activate step and the settings
 	// "restart required" banner.
 	let {
-		label = 'Restart server',
+		label = m.settings_restart_server(),
 		variant = 'default',
 		size = 'default'
 	}: {
@@ -23,10 +24,10 @@
 		const ok = await restartServer();
 		// On success the page reloads, so we only reach here on failure.
 		restarting = false;
-		if (!ok) toast.error('Server did not come back — restart the process manually, then reload.');
+		if (!ok) toast.error(m.settings_restart_failed());
 	}
 </script>
 
 <Button {variant} {size} disabled={restarting} onclick={restart}>
-	{restarting ? 'Restarting…' : label}
+	{restarting ? m.settings_restart_restarting() : label}
 </Button>

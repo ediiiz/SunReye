@@ -2,6 +2,7 @@
 	import CaretDown from 'phosphor-svelte/lib/CaretDown';
 	import MagnifyingGlass from 'phosphor-svelte/lib/MagnifyingGlass';
 	import { inverter } from '$lib/inverter/store.svelte';
+	import * as m from '$lib/paraglide/messages';
 	import { Input } from '$lib/components/ui/input';
 	import * as Collapsible from '$lib/components/ui/collapsible';
 	import DateRangePicker from '$lib/components/inverter/date-range-picker.svelte';
@@ -29,9 +30,9 @@
 <div class="flex w-full flex-col gap-6 p-4 sm:p-6">
 	<div class="flex flex-wrap items-center justify-between gap-3">
 		<div>
-			<h1 class="text-lg font-semibold">History</h1>
+			<h1 class="text-lg font-semibold">{m.nav_history()}</h1>
 			<p class="text-sm text-muted-foreground">
-				Live and historical trends for every entity.
+				{m.history_subtitle()}
 			</p>
 		</div>
 		<DateRangePicker bind:range />
@@ -41,7 +42,7 @@
 		<MagnifyingGlass
 			class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
 		/>
-		<Input placeholder="Search entities…" bind:value={search} class="pl-9" />
+		<Input placeholder={m.history_search_placeholder()} bind:value={search} class="pl-9" />
 	</div>
 
 	{#if chartable.length > 0}
@@ -52,13 +53,13 @@
 		<div
 			class="flex h-40 items-center justify-center border border-border text-sm text-muted-foreground"
 		>
-			Waiting for the inverter profile…
+			{m.history_waiting_profile()}
 		</div>
 	{:else if groups.length === 0}
 		<div
 			class="flex h-40 items-center justify-center border border-border text-sm text-muted-foreground"
 		>
-			No entities match “{search}”.
+			{m.history_no_match({ query: search })}
 		</div>
 	{:else}
 		{#each groups as [category, metrics] (category)}

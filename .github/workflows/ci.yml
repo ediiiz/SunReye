@@ -45,6 +45,13 @@ jobs:
       - name: Type check
         run: bun run check-types
 
+      # Every in-progress non-base locale must match en's keyset (missing/stale
+      # keys fail). Empty locales (de/es/it/fr ship empty) are reported pending,
+      # not failed — see apps/web/scripts/i18n-lint.ts.
+      - name: i18n message lint
+        working-directory: apps/web
+        run: bun run i18n:lint
+
       # Production schema changes ship as committed, journaled migrations
       # (packages/db/src/migrations). Fail when the drizzle schema drifted from
       # the journal — i.e. someone changed src/schema without running

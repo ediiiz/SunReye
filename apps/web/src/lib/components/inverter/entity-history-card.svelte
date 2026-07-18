@@ -8,6 +8,7 @@
 	import DivergingArea from '$lib/components/inverter/diverging-area.svelte';
 	import AnimatedNumber from '$lib/components/inverter/animated-number.svelte';
 	import { api } from '$lib/api';
+	import * as m from '$lib/paraglide/messages';
 	import { inverter } from '$lib/inverter/store.svelte';
 	import { fractionDigits } from '$lib/inverter/format';
 	import { inView } from '$lib/actions/in-view';
@@ -109,7 +110,7 @@
 				<Skeleton class="h-full w-full" />
 			{:else if chartData.length === 0}
 				<div class="flex h-full items-center justify-center text-sm text-muted-foreground">
-					No data for this range yet
+					{m.chart_no_data()}
 				</div>
 			{:else}
 				<Chart.Container

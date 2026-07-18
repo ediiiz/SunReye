@@ -2,10 +2,10 @@
  * Compat layer types shared by every inverter profile.
  *
  * A profile is a data-only description of an inverter's Modbus map plus an
- * optional simulation hook. Profiles ship as their own packages
- * (e.g. `@SunReye/inverter-deye-sg05lp3`) and register themselves into the
- * runtime registry, so new inverters can be "downloaded" without touching
- * the core engine.
+ * optional simulation hook. No profile ships in the core; they are authored with
+ * `@sunreye/profile-sdk`, published to a git repo (the official one is a baked-in
+ * default source), and downloaded into the runtime registry — so new inverters
+ * are added without touching the core engine.
  */
 
 import type { ControlExpr } from "./profile-data";

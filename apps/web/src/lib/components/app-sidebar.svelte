@@ -9,12 +9,15 @@
 	import { authClient } from '$lib/auth-client';
 	import { useAppSession } from '$lib/session';
 	import { inverter } from '$lib/inverter/store.svelte';
+	import * as m from '$lib/paraglide/messages';
 	import GaugeIcon from 'phosphor-svelte/lib/Gauge';
+	import CpuIcon from 'phosphor-svelte/lib/Cpu';
 	import ChartLineIcon from 'phosphor-svelte/lib/ChartLine';
 	import SlidersIcon from 'phosphor-svelte/lib/SlidersHorizontal';
 	import CoinsIcon from 'phosphor-svelte/lib/Coins';
 	import GearIcon from 'phosphor-svelte/lib/Gear';
 	import SignOutIcon from 'phosphor-svelte/lib/SignOut';
+	import SignInIcon from 'phosphor-svelte/lib/SignIn';
 	import UserIcon from 'phosphor-svelte/lib/User';
 
 	const sessionQuery = useAppSession();
@@ -32,11 +35,12 @@
 	type NavItem = { href: Pathname; label: string; icon: Component };
 
 	const items = $derived<NavItem[]>([
-		{ href: '/', label: 'Overview', icon: GaugeIcon },
-		{ href: '/history', label: 'History', icon: ChartLineIcon },
-		{ href: '/costs', label: 'Costs', icon: CoinsIcon },
+		{ href: '/', label: m.nav_overview(), icon: GaugeIcon },
+		{ href: '/system', label: m.nav_system(), icon: CpuIcon },
+		{ href: '/history', label: m.nav_history(), icon: ChartLineIcon },
+		{ href: '/costs', label: m.nav_costs(), icon: CoinsIcon },
 		...(isAdmin && (inverter.capabilities?.controls.length ?? 0) > 0
-			? ([{ href: '/controls', label: 'Controls', icon: SlidersIcon }] satisfies NavItem[])
+			? ([{ href: '/controls', label: m.nav_controls(), icon: SlidersIcon }] satisfies NavItem[])
 			: [])
 	]);
 
@@ -50,7 +54,7 @@
 	const userName = $derived(
 		$sessionQuery.data?.user?.name ||
 			$sessionQuery.data?.user?.email?.split('@')[0] ||
-			'Signed in'
+			m.nav_signed_in()
 	);
 
 	async function signOut() {
@@ -67,7 +71,7 @@
 				<span class="truncate text-xs text-muted-foreground">
 					{inverter.manifest
 						? `${inverter.manifest.manufacturer} · ${inverter.manifest.name}`
-						: 'Loading…'}
+						: m.app_loading()}
 				</span>
 			</div>
 		</div>
@@ -75,7 +79,7 @@
 
 	<Sidebar.Content>
 		<Sidebar.Group>
-			<Sidebar.GroupLabel>Monitoring</Sidebar.GroupLabel>
+			<Sidebar.GroupLabel>{m.nav_monitoring()}</Sidebar.GroupLabel>
 			<Sidebar.GroupContent>
 				<Sidebar.Menu>
 					{#each items as item (item.href)}
@@ -100,34 +104,48 @@
 		<Sidebar.Menu>
 			{#if isAdmin}
 				<Sidebar.MenuItem>
-					<Sidebar.MenuButton isActive={current === '/settings'}>
+					<Sidebar.MenuButton isActive={current === '/settings' || current.startsWith('/settings/')}>
 						{#snippet child({ props })}
 							<a href={resolve('/settings')} onclick={closeSidebar} {...props}>
 								<GearIcon class="size-4" />
-								<span>Settings</span>
+								<span>{m.nav_settings()}</span>
 							</a>
 						{/snippet}
 					</Sidebar.MenuButton>
 				</Sidebar.MenuItem>
 			{/if}
-			<Sidebar.MenuItem>
-				<div
-					class="flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground group-data-[collapsible=icon]:hidden"
-				>
-					<UserIcon class="size-4 shrink-0" />
-					<span class="truncate">{userName}</span>
-				</div>
-			</Sidebar.MenuItem>
-			<Sidebar.MenuItem>
-				<Sidebar.MenuButton>
-					{#snippet child({ props })}
-						<button type="button" onclick={signOut} {...props}>
-							<SignOutIcon class="size-4" />
-							<span>Sign out</span>
-						</button>
-					{/snippet}
-				</Sidebar.MenuButton>
-			</Sidebar.MenuItem>
+			{#if $sessionQuery.data}
+				<Sidebar.MenuItem>
+					<div
+						class="flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground group-data-[collapsible=icon]:hidden"
+					>
+						<UserIcon class="size-4 shrink-0" />
+						<span class="truncate">{userName}</span>
+					</div>
+				</Sidebar.MenuItem>
+				<Sidebar.MenuItem>
+					<Sidebar.MenuButton>
+						{#snippet child({ props })}
+							<button type="button" onclick={signOut} {...props}>
+								<SignOutIcon class="size-4" />
+								<span>{m.nav_sign_out()}</span>
+							</button>
+						{/snippet}
+					</Sidebar.MenuButton>
+				</Sidebar.MenuItem>
+			{:else}
+				<!-- Anonymous read-only viewer: the footer becomes the way in. -->
+				<Sidebar.MenuItem>
+					<Sidebar.MenuButton>
+						{#snippet child({ props })}
+							<a href={resolve('/login')} onclick={closeSidebar} {...props}>
+								<SignInIcon class="size-4" />
+								<span>{m.nav_log_in()}</span>
+							</a>
+						{/snippet}
+					</Sidebar.MenuButton>
+				</Sidebar.MenuItem>
+			{/if}
 		</Sidebar.Menu>
 	</Sidebar.Footer>
 

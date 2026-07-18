@@ -5,13 +5,6 @@
 // pull in the db/drizzle dependency just for a type.
 import { api } from "$lib/api";
 
-/**
- * Render styles for the global Area/Line view toggle on the history page. This
- * is a view-only choice applied to all custom charts, not persisted per chart.
- */
-export const CHART_TYPES = ["area", "line"] as const;
-export type ChartType = (typeof CHART_TYPES)[number];
-
 /** How many metrics one chart may overlay (mirrors MAX_CHART_METRICS). */
 export const MAX_CHART_METRICS = 8;
 

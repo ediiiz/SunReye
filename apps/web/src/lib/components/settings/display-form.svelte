@@ -1,27 +1,34 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
-	import { Button } from '$lib/components/ui/button';
 	import { Label } from '$lib/components/ui/label';
 	import SettingsSection from './settings-section.svelte';
+	import SaveBar from './save-bar.svelte';
 	import OptionSelect from './option-select.svelte';
 	import { display, TIME_ZONE_AUTO, type DisplayConfig } from '$lib/display.svelte';
+	import { getLocale, locales, localeName, setLocale } from '$lib/i18n';
+	import * as m from '$lib/paraglide/messages';
 	import { useAppSession } from '$lib/session';
 
 	const session = useAppSession();
 	const isAdmin = $derived($session.data?.user.role === 'admin');
 
+	// Language is a per-browser preference (localStorage). Switching calls
+	// setLocale, which reloads the page (Paraglide default) so every message
+	// re-renders — hence no admin gate and no draft/save cycle.
+	const LANGUAGES = locales.map((l) => ({ value: l, label: localeName(l) }));
+
 	const HOUR_CYCLES = [
-		{ value: 'auto', label: 'Automatic (locale)' },
-		{ value: '24h', label: '24-hour (14:05)' },
-		{ value: '12h', label: '12-hour (2:05 PM)' }
+		{ value: 'auto', label: m.clock_auto() },
+		{ value: '24h', label: m.clock_24h() },
+		{ value: '12h', label: m.clock_12h() }
 	];
 
 	// System zones (~hundreds) plus the "follow the viewer" sentinel. `undefined`
 	// timeZone in Intl means the runtime zone, which is exactly what auto renders.
 	const SYSTEM_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
 	const ZONES = [
-		{ value: TIME_ZONE_AUTO, label: `Automatic (${SYSTEM_ZONE})` },
+		{ value: TIME_ZONE_AUTO, label: m.zone_auto({ zone: SYSTEM_ZONE }) },
 		...(typeof Intl.supportedValuesOf === 'function'
 			? Intl.supportedValuesOf('timeZone').map((z) => ({ value: z, label: z }))
 			: [])
@@ -58,21 +65,34 @@
 		saving = true;
 		const ok = await display.save(draft);
 		saving = false;
-		if (ok) toast.success('Display preferences saved');
-		else toast.error('Failed to save display preferences');
+		if (ok) toast.success(m.toast_display_saved());
+		else toast.error(m.toast_display_error());
 	}
 </script>
 
-<SettingsSection title="Date & time">
+<SaveBar {isAdmin} {saving} disabled={!draft} onsave={save} />
+
+<SettingsSection title={m.settings_language()}>
+	<p class="text-sm text-muted-foreground">{m.settings_language_desc()}</p>
+	<div class="flex flex-col gap-2">
+		<Label for="language">{m.settings_language()}</Label>
+		<OptionSelect
+			value={getLocale()}
+			items={LANGUAGES}
+			onchange={(v) => setLocale(v as (typeof locales)[number])}
+			triggerClass="max-w-xs"
+		/>
+	</div>
+</SettingsSection>
+
+<SettingsSection title={m.settings_datetime()}>
 	{#if !draft}
-		<p class="text-sm text-muted-foreground">Loading…</p>
+		<p class="text-sm text-muted-foreground">{m.app_loading()}</p>
 	{:else}
-		<p class="text-sm text-muted-foreground">
-			How timestamps render across charts and history. Applies to everyone using this instance.
-		</p>
+		<p class="text-sm text-muted-foreground">{m.settings_datetime_desc()}</p>
 
 		<div class="flex flex-col gap-2">
-			<Label for="hour-cycle">Clock format</Label>
+			<Label for="hour-cycle">{m.settings_clock_format()}</Label>
 			<OptionSelect
 				value={draft.hourCycle}
 				items={HOUR_CYCLES}
@@ -82,7 +102,7 @@
 		</div>
 
 		<div class="flex flex-col gap-2">
-			<Label for="time-zone">Time zone</Label>
+			<Label for="time-zone">{m.settings_time_zone()}</Label>
 			<OptionSelect
 				value={draft.timeZone}
 				items={ZONES}
@@ -92,17 +112,8 @@
 		</div>
 
 		<div class="flex flex-col gap-1 border border-border p-3">
-			<span class="text-xs uppercase tracking-wide text-muted-foreground">Preview</span>
+			<span class="text-xs uppercase tracking-wide text-muted-foreground">{m.settings_preview()}</span>
 			<span class="font-mono text-sm tabular-nums">{preview}</span>
-		</div>
-
-		<div class="flex items-center gap-3">
-			<Button onclick={save} disabled={!isAdmin || saving}>
-				{saving ? 'Saving…' : 'Save'}
-			</Button>
-			{#if !isAdmin}
-				<span class="text-xs text-muted-foreground">Only admins can change this setting.</span>
-			{/if}
 		</div>
 	{/if}
 </SettingsSection>

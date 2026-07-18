@@ -13,9 +13,9 @@ The core of the "inverter is data" design is a small in-memory **profile registr
 (`packages/inverter-core/src/registry.ts`) — a `Map<string, InverterProfile>`. Profiles get
 into it two ways:
 
-1. **Code profiles** (first-party npm packages like `@SunReye/inverter-deye-sg05lp3`)
-   self-register via a side-effecting import that calls `registerProfile()`. These may carry
-   a real `simulate` function and closures.
+1. **Code profiles** (first-party npm packages) can self-register via a side-effecting import
+   that calls `registerProfile()` and may carry a real `simulate` function and closures. None
+   ship in the core today — profiles are authored with `@sunreye/profile-sdk` and downloaded.
 2. **Data profiles** (downloaded) are read from the database, validated, **hydrated** into
    the same `InverterProfile` shape, and registered.
 
@@ -41,7 +41,7 @@ view sent to the browser and the API.
 Profile resolution is asynchronous and runs in `initProfiles()` before any routes, manifest,
 or MQTT topics are built:
 
-1. Built-in packages self-register (import side effects).
+1. Any code profiles self-register (import side effects) — none in the core today.
 2. `loadInstalledProfiles()` reads every `installed_profiles` row, **re-validates** it (a
    stored row may predate a schema change), hydrates and registers it; an invalid row is
    logged and skipped so one bad download can't take the server down.

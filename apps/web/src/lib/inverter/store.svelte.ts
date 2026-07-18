@@ -1,5 +1,6 @@
 import { SvelteMap } from "svelte/reactivity";
 import { api } from "$lib/api";
+import { uiPrefs } from "$lib/ui-prefs.svelte";
 import type {
   CanonicalRole,
   InverterCapabilities,
@@ -14,7 +15,14 @@ const WINDOW_MS = 5 * 60 * 1000;
 /** Hard per-metric point cap so a faster-than-1 Hz feed can't grow unbounded. */
 const MAX_POINTS = 5000;
 
+/** Reconnect backoff: first retry, then doubling, capped. */
+const RECONNECT_BASE_MS = 500;
+const RECONNECT_MAX_MS = 30_000;
+
 type Status = "idle" | "connecting" | "live" | "closed";
+
+/** The live-metrics socket handle (Eden `EdenWS`). */
+type MetricsSocket = ReturnType<typeof api.ws.metrics.subscribe>;
 
 /**
  * Single source of truth for the active inverter on the client. Holds the
@@ -31,14 +39,29 @@ class InverterStore {
   // reactive on get/set — SvelteMap tracks per-key mutations so sparklines
   // update the instant a new point lands.
   #series = new SvelteMap<string, LivePoint[]>();
-  #ws: { close: () => void } | null = null;
+  #ws: MetricsSocket | null = null;
   #started = false;
+  #reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  #reconnectAttempts = 0;
+  #onVisibility: (() => void) | null = null;
 
   get capabilities(): InverterCapabilities | null {
     return this.manifest?.capabilities ?? null;
   }
 
+  /**
+   * The metric catalog the UI renders — everything downstream (`byRole`,
+   * `inGroup`, `allByRole`, and both pages' direct reads) flows through here,
+   * so filtering hidden metrics/groups at this one point covers the dashboard,
+   * system page, history, controls, and power-flow. Hidden metrics keep being
+   * polled/stored/published; they're only dropped from this view.
+   */
   get metrics(): ManifestMetric[] {
+    return this.allMetrics.filter((m) => !uiPrefs.isHidden(m.key, m.group));
+  }
+
+  /** The unfiltered catalog (for the visibility settings form). */
+  get allMetrics(): ManifestMetric[] {
     return this.manifest?.metrics ?? [];
   }
 
@@ -73,10 +96,36 @@ class InverterStore {
   start(): void {
     if (this.#started) return;
     this.#started = true;
+    if (typeof document !== "undefined") {
+      this.#onVisibility = () => this.#handleVisibility();
+      document.addEventListener("visibilitychange", this.#onVisibility);
+    }
     void this.#init();
   }
 
+  /**
+   * On tab hide, close the socket so the browser doesn't buffer a backlog of 1 Hz
+   * samples to flush (and animate through) on return. On show, reconnect and
+   * backfill so the buffers jump straight to the newest data instead of replaying
+   * the gap. A tab that was only briefly hidden simply reconnects immediately.
+   */
+  #handleVisibility(): void {
+    if (typeof document === "undefined") return;
+    if (document.visibilityState === "hidden") {
+      this.#teardownSocket();
+      this.status = "idle";
+    } else if (this.#started && this.#ws === null) {
+      this.#clearReconnectTimer();
+      this.#reconnectAttempts = 0;
+      void this.#reconnect();
+    }
+  }
+
   async #init(): Promise<void> {
+    // Load visibility prefs so the metric getter filters from the first render;
+    // fire-and-forget — a default (nothing hidden) is the safe fallback and the
+    // reactive getter re-filters once it resolves.
+    void uiPrefs.load();
     await this.#loadManifest();
     // Seed sparklines with the last window of raw samples so they're populated
     // on load, then attach the live stream which appends from here on.
@@ -140,9 +189,14 @@ class InverterStore {
   }
 
   #connect(): void {
+    // Drop any prior socket first; its handlers are identity-guarded on `#ws`, so
+    // once it's no longer the current socket they become no-ops (no stray
+    // reconnect from a superseded connection).
+    this.#teardownSocket();
     this.status = "connecting";
     const ws = api.ws.metrics.subscribe();
     ws.subscribe((message: { data: unknown }) => {
+      if (this.#ws !== ws) return; // superseded socket flushing late
       const sample = message.data as LiveSample;
       this.latest = sample;
       this.status = "live";
@@ -153,13 +207,63 @@ class InverterStore {
         this.#series.set(key, this.#trim(next));
       }
     });
+    ws.on("open", () => {
+      if (this.#ws !== ws) return;
+      this.#reconnectAttempts = 0; // healthy connection resets backoff
+    });
+    ws.on("close", () => {
+      if (this.#ws !== ws) return; // intentional/superseded close — don't retry
+      this.#ws = null;
+      this.status = "connecting";
+      this.#scheduleReconnect();
+    });
+    // Surface transport errors as a close so the single reconnect path handles them.
+    ws.on("error", () => ws.close());
     this.#ws = ws;
   }
 
-  /** Close the stream (call on shell teardown). */
+  /** Reconnect after an unexpected drop: backfill the gap, then reopen the stream. */
+  async #reconnect(): Promise<void> {
+    if (!this.#started) return;
+    // Backfill first so the buffers land on the newest data; nothing stale is
+    // queued because the socket was closed while we were away.
+    await this.#backfill();
+    if (!this.#started) return;
+    this.#connect();
+  }
+
+  #scheduleReconnect(): void {
+    if (this.#reconnectTimer !== null || !this.#started) return;
+    const delay = Math.min(RECONNECT_MAX_MS, RECONNECT_BASE_MS * 2 ** this.#reconnectAttempts);
+    this.#reconnectAttempts += 1;
+    this.#reconnectTimer = setTimeout(() => {
+      this.#reconnectTimer = null;
+      void this.#reconnect();
+    }, delay);
+  }
+
+  #clearReconnectTimer(): void {
+    if (this.#reconnectTimer !== null) {
+      clearTimeout(this.#reconnectTimer);
+      this.#reconnectTimer = null;
+    }
+  }
+
+  /** Close the current socket without scheduling a reconnect (identity-guarded). */
+  #teardownSocket(): void {
+    const ws = this.#ws;
+    this.#ws = null; // clear first so the socket's close handler no-ops
+    ws?.close();
+  }
+
+  /** Close the stream and detach listeners (call on shell teardown). */
   stop(): void {
-    this.#ws?.close();
-    this.#ws = null;
+    this.#clearReconnectTimer();
+    this.#teardownSocket();
+    if (this.#onVisibility && typeof document !== "undefined") {
+      document.removeEventListener("visibilitychange", this.#onVisibility);
+      this.#onVisibility = null;
+    }
     this.#started = false;
     this.status = "closed";
   }

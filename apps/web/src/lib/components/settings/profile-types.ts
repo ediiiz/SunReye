@@ -11,7 +11,9 @@ export type RegisteredProfile = {
   version?: string;
 };
 
-export type Source = { url: string; label?: string; enabled: boolean };
+// `official` marks the protected default source (disable-but-not-remove). The
+// server tags it on read, so the web doesn't re-derive the URL check.
+export type Source = { url: string; label?: string; enabled: boolean; official?: boolean };
 
 /** An installed profile with a newer release waiting in its source repo. */
 export type ProfileUpdate = {

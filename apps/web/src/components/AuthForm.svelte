@@ -4,6 +4,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$lib/resolve';
 	import { Button } from '$lib/components/ui/button';
+	import * as m from '$lib/paraglide/messages';
 	import AuthField from './AuthField.svelte';
 
 	let { mode }: { mode: 'signin' | 'signup' } = $props();
@@ -11,13 +12,13 @@
 	const schema = $derived(
 		mode === 'signup'
 			? z.object({
-					name: z.string().min(2, 'Name must be at least 2 characters'),
-					email: z.email('Invalid email address'),
-					password: z.string().min(8, 'Password must be at least 8 characters')
+					name: z.string().min(2, m.auth_name_min()),
+					email: z.email(m.auth_email_invalid()),
+					password: z.string().min(8, m.auth_password_min())
 				})
 			: z.object({
-					email: z.email('Invalid email address'),
-					password: z.string().min(1, 'Password is required')
+					email: z.email(m.auth_email_invalid()),
+					password: z.string().min(1, m.auth_password_required())
 				})
 	);
 
@@ -39,18 +40,44 @@
 		}
 		errors = {};
 		submitting = true;
-		const opts = {
-			onSuccess: () => goto(resolve('/')),
-			onError: (error: { error: { message?: string } }) => {
-				formError = error.error.message || 'Something went wrong. Please try again.';
-			}
-		};
-		if (mode === 'signup') {
-			await authClient.signUp.email({ name, email, password }, opts);
-		} else {
-			await authClient.signIn.email({ email, password }, opts);
+		const { error } =
+			mode === 'signup'
+				? await authClient.signUp.email({ name, email, password })
+				: await authClient.signIn.email({ email, password });
+		if (error) {
+			formError = error.message || m.auth_error_generic();
+			submitting = false;
+			return;
 		}
+		// Wait until the reactive session store reflects the new cookie before
+		// navigating. Better Auth refreshes `useSession()` asynchronously (a delayed
+		// signal after sign-in), so navigating immediately races that refresh: the
+		// `(app)` guard reads a stale `data: null` and bounces straight back here,
+		// which is why the first login used to need a second try or a reload.
+		await waitForSession();
+		goto(resolve('/'));
 		submitting = false;
+	}
+
+	/** Resolve once `useSession()` reports an authenticated session (or we time out). */
+	function waitForSession(timeoutMs = 3000): Promise<void> {
+		// Kick a fresh fetch (updates the shared store) and settle as soon as it lands.
+		void authClient.getSession({ query: { disableCookieCache: true } });
+		const session = authClient.useSession();
+		return new Promise((done) => {
+			let settled = false;
+			const finish = () => {
+				if (settled) return;
+				settled = true;
+				unsubscribe();
+				clearTimeout(timer);
+				done();
+			};
+			const timer = setTimeout(finish, timeoutMs);
+			const unsubscribe = session.subscribe((s) => {
+				if (s.data) finish();
+			});
+		});
 	}
 </script>
 
@@ -58,7 +85,7 @@
 	{#if mode === 'signup'}
 		<AuthField
 			id="name"
-			label="Name"
+			label={m.auth_field_name()}
 			autocomplete="name"
 			placeholder="Ada Lovelace"
 			error={errors.name}
@@ -67,7 +94,7 @@
 	{/if}
 	<AuthField
 		id="email"
-		label="Email"
+		label={m.auth_field_email()}
 		type="email"
 		autocomplete="email"
 		placeholder="you@example.com"
@@ -76,10 +103,10 @@
 	/>
 	<AuthField
 		id="password"
-		label="Password"
+		label={m.auth_field_password()}
 		type="password"
 		autocomplete={mode === 'signup' ? 'new-password' : 'current-password'}
-		placeholder={mode === 'signup' ? 'At least 8 characters' : '••••••••'}
+		placeholder={mode === 'signup' ? m.auth_placeholder_password_new() : '••••••••'}
 		error={errors.password}
 		bind:value={password}
 	/>
@@ -90,9 +117,9 @@
 
 	<Button type="submit" class="w-full" disabled={submitting}>
 		{#if submitting}
-			{mode === 'signup' ? 'Creating account…' : 'Signing in…'}
+			{mode === 'signup' ? m.auth_creating_account() : m.auth_signing_in()}
 		{:else}
-			{mode === 'signup' ? 'Create account' : 'Sign in'}
+			{mode === 'signup' ? m.auth_create_account() : m.login_title()}
 		{/if}
 	</Button>
 </form>

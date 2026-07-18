@@ -1,3 +1,4 @@
+import { isOfficialSource } from "@SunReye/db/profiles";
 import { listProfiles } from "@SunReye/inverter-core";
 import { Elysia, t } from "elysia";
 import { getActiveProfileOrNull } from "../inverter";
@@ -20,21 +21,34 @@ export const profileRoutes = new Elysia({ name: "profile-routes" })
   // Registered profiles (built-in + DB-installed) with active/installed/version.
   // A profile registered but absent from `installed_profiles` is a built-in
   // (shipped in-repo), which the UI badges "Built in".
-  .get("/api/profiles", async () => {
-    const activeId = getActiveProfileOrNull()?.id ?? null;
-    const installed = new Map((await listInstalled()).map((p) => [p.id, p]));
-    return listProfiles().map((p) => ({
-      id: p.id,
-      name: p.name,
-      manufacturer: p.manufacturer,
-      active: p.id === activeId,
-      installed: installed.has(p.id),
-      builtin: !installed.has(p.id),
-      version: installed.get(p.id)?.version,
-    }));
-  })
-  // Repo sources: public read (just URLs), admin write.
-  .get("/api/settings/profile-sources", () => getProfileSources())
+  .get(
+    "/api/profiles",
+    async () => {
+      const activeId = getActiveProfileOrNull()?.id ?? null;
+      const installed = new Map((await listInstalled()).map((p) => [p.id, p]));
+      return listProfiles().map((p) => ({
+        id: p.id,
+        name: p.name,
+        manufacturer: p.manufacturer,
+        active: p.id === activeId,
+        installed: installed.has(p.id),
+        builtin: !installed.has(p.id),
+        version: installed.get(p.id)?.version,
+      }));
+    },
+    { requireAdmin: true },
+  )
+  // Repo sources: admin read + write (config surface). Each source is tagged
+  // `official` (the protected default) so the UI can hide its Remove action
+  // without re-deriving the check client-side.
+  .get(
+    "/api/settings/profile-sources",
+    async () => {
+      const { sources } = await getProfileSources();
+      return { sources: sources.map((s) => ({ ...s, official: isOfficialSource(s.url) })) };
+    },
+    { requireAdmin: true },
+  )
   .put(
     "/api/settings/profile-sources",
     async ({ body, status }) => {

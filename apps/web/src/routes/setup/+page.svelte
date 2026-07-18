@@ -12,6 +12,7 @@
 	import ActivateStep from '$lib/components/setup/activate-step.svelte';
 	import ProfileStep from '$lib/components/setup/profile-step.svelte';
 	import { firstRunGate } from '$lib/setup';
+	import * as m from '$lib/paraglide/messages';
 	import { useAppSession } from '$lib/session';
 
 	const sessionQuery = useAppSession();
@@ -57,16 +58,16 @@
 		const { error } = await api.api.settings['active-profile'].put({ id: selectedId });
 		activating = false;
 		if (error) {
-			toast.error(`Failed to activate profile: ${String(error.value)}`);
+			toast.error(m.setup_activate_failed({ error: String(error.value) }));
 			return;
 		}
 		activated = true;
 	}
 
-	const steps: { key: Step; label: string }[] = [
-		{ key: 'profile', label: 'Profile' },
-		{ key: 'connect', label: 'Connection' },
-		{ key: 'activate', label: 'Activate' }
+	const steps: { key: Step; label: () => string }[] = [
+		{ key: 'profile', label: m.setup_step_profile },
+		{ key: 'connect', label: m.setup_step_connection },
+		{ key: 'activate', label: m.setup_step_activate }
 	];
 	const currentStep = $derived(steps.findIndex((s) => s.key === step));
 </script>
@@ -81,9 +82,9 @@
 		<div class="flex flex-col items-center gap-3 text-center">
 			<Logo class="size-12 text-primary" />
 			<div>
-				<h1 class="text-xl font-semibold tracking-tight">Set up your inverter</h1>
+				<h1 class="text-xl font-semibold tracking-tight">{m.setup_title()}</h1>
 				<p class="text-sm text-muted-foreground">
-					Choose a profile, test the connection, then activate it.
+					{m.setup_subtitle()}
 				</p>
 			</div>
 		</div>
@@ -127,7 +128,7 @@
 							? 'text-muted-foreground'
 							: 'font-medium text-foreground'}"
 					>
-						{s.label}
+						{s.label()}
 					</span>
 				</li>
 			{/each}
@@ -143,8 +144,8 @@
 		{:else if step === 'connect'}
 			<InverterForm profileId={selectedId ?? undefined} />
 			<div class="flex justify-between">
-				<Button variant="ghost" onclick={() => (step = 'profile')}>Back</Button>
-				<Button onclick={() => (step = 'activate')}>Continue</Button>
+				<Button variant="ghost" onclick={() => (step = 'profile')}>{m.action_back()}</Button>
+				<Button onclick={() => (step = 'activate')}>{m.action_continue()}</Button>
 			</div>
 		{:else}
 			<ActivateStep

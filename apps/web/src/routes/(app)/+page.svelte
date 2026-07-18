@@ -1,114 +1,37 @@
 <script lang="ts">
-	import { inverter } from '$lib/inverter/store.svelte';
-	import { formatValue } from '$lib/inverter/format';
-	import type { CanonicalRole, ManifestMetric } from '$lib/inverter/types';
-	import Kpi from '$lib/components/inverter/kpi.svelte';
 	import PowerFlow from '$lib/components/inverter/power-flow-diagram.svelte';
-	import BatteryBar from '$lib/components/inverter/battery-bar.svelte';
-	import SubsystemSection from '$lib/components/inverter/subsystem-section.svelte';
-	import IndexedGroup from '$lib/components/inverter/indexed-group.svelte';
-
-	const caps = $derived(inverter.capabilities);
-
-	const KPI_DEFS: { role: CanonicalRole; accent: string; diverging?: boolean }[] = [
-		{ role: 'pv.total.power', accent: 'var(--color-chart-1)' },
-		{ role: 'battery.power', accent: 'var(--color-chart-3)' },
-		{ role: 'grid.power', accent: 'var(--color-chart-4)', diverging: true },
-		{ role: 'load.power', accent: 'var(--color-chart-5)' }
-	];
-
-	const kpis = $derived(
-		KPI_DEFS.map((d) => ({ ...d, metric: inverter.byRole(d.role) })).filter(
-			(k): k is typeof k & { metric: ManifestMetric } => k.metric !== undefined
-		)
-	);
-
-	const socMetric = $derived(inverter.byRole('battery.soc'));
-	const batteryPowerMetric = $derived(inverter.byRole('battery.power'));
-	const batteryRows = $derived(
-		inverter.inGroup('battery').filter((m) => m.role !== 'battery.soc' && m.role !== 'battery.power')
-	);
-
-	const inverterStatus = $derived(
-		(
-			[
-				'inverter.status',
-				'inverter.relay_status',
-				'inverter.temperature.dc',
-				'inverter.temperature.ac'
-			] as CanonicalRole[]
-		)
-			.map((r) => inverter.byRole(r))
-			.filter((m): m is ManifestMetric => m !== undefined)
-	);
-
-	const pvStrings = $derived(Array.from({ length: caps?.pvStrings ?? 0 }, (_, i) => i + 1));
-	const phases = $derived(Array.from({ length: caps?.phases ?? 0 }, (_, i) => i + 1));
-
-	const stringRoles: CanonicalRole[] = ['pv.string.power', 'pv.string.voltage', 'pv.string.current'];
-	const phaseRoles: CanonicalRole[] = ['grid.phase.voltage', 'grid.phase.current', 'grid.phase.power'];
+	import WeatherTile from '$lib/components/inverter/weather-tile.svelte';
+	import DailyEnergy from '$lib/components/inverter/daily-energy.svelte';
+	import * as m from '$lib/paraglide/messages';
 </script>
 
-<div class="flex w-full flex-col gap-8 p-4 sm:p-6">
-	<section class="flex flex-col gap-3">
-		<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">Power flow</h2>
+<!--
+	Kiosk overview — the most important live values at a glance. The power-flow
+	hero fills the free space and adapts its schematic to the box's aspect ratio
+	(stacked on phones, fanned out on wide screens). On lg+ (tablets, desktops,
+	wall displays) the page pins to the viewport minus the 3.5rem header and
+	never scrolls: hero on top, one strip of weather + daily-energy tiles below.
+	Phones scroll naturally: hero first, then the tiles. Detailed subsystem
+	metrics live at /system.
+-->
+<div
+	class="flex flex-col gap-3 p-3 sm:gap-4 sm:p-4 lg:h-[calc(100svh-3.5rem)] lg:overflow-hidden"
+>
+	<section class="relative h-[60svh] min-h-108 shrink-0 lg:h-auto lg:min-h-0 lg:flex-1">
+		<h2 class="sr-only">{m.overview_power_flow()}</h2>
 		<PowerFlow />
 	</section>
 
-	<section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
-		{#each kpis as k (k.role)}
-			{@const v = inverter.value(k.metric.key)}
-			<div class="min-w-0 border border-border">
-				<Kpi
-					label={k.metric.label}
-					value={v}
-					text={formatValue(k.metric, v)}
-					unit={k.metric.unit ?? ''}
-					points={inverter.series(k.metric.key)}
-					accent={k.accent}
-					diverging={k.diverging ?? false}
-				/>
-			</div>
-		{/each}
-	</section>
-
-	<div class="grid gap-6 lg:grid-cols-2">
-		{#if caps?.battery}
-			<SubsystemSection title="Battery" metrics={batteryRows}>
-				<BatteryBar
-					soc={socMetric ? inverter.value(socMetric.key) : undefined}
-					power={batteryPowerMetric ? inverter.value(batteryPowerMetric.key) : undefined}
-				/>
-			</SubsystemSection>
-		{/if}
-
-		{#if inverterStatus.length > 0}
-			<SubsystemSection title="Inverter" metrics={inverterStatus} />
-		{/if}
-
-		{#if pvStrings.length > 0}
-			<SubsystemSection title={`Solar · ${pvStrings.length} strings`} metrics={[]}>
-				<IndexedGroup label="String" indices={pvStrings} roles={stringRoles} />
-			</SubsystemSection>
-		{/if}
-
-		{#if caps?.grid && phases.length > 0}
-			<SubsystemSection title={`Grid · ${phases.length}-phase`} metrics={[]}>
-				<IndexedGroup
-					label="Phase"
-					indices={phases}
-					roles={phaseRoles}
-					columns="sm:grid-cols-2 lg:grid-cols-3"
-				/>
-			</SubsystemSection>
-		{/if}
-
-		{#if caps?.generator}
-			<SubsystemSection title="Generator" metrics={inverter.inGroup('generator')} />
-		{/if}
-
-		{#if caps?.backupLoad}
-			<SubsystemSection title="Backup load" metrics={inverter.inGroup('load')} />
-		{/if}
+	<!-- The weather tile renders nothing when disabled — no wrapper may claim its
+	     slot, or the strip shows a ghost gap. Without the tile the energy cards
+	     are capped and centred; with it they stretch to fill the row (`:has()`
+	     via group-has, no JS). -->
+	<div class="group flex shrink-0 flex-col gap-3 sm:gap-4 lg:flex-row lg:justify-center">
+		<WeatherTile />
+		<div
+			class="w-full min-w-0 lg:max-w-4xl lg:group-has-data-weather-tile:max-w-none lg:group-has-data-weather-tile:flex-1 2xl:max-w-5xl"
+		>
+			<DailyEnergy />
+		</div>
 	</div>
 </div>

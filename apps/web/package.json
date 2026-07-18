@@ -9,8 +9,10 @@
     "build": "vite build",
     "build:static": "SVELTEKIT_ADAPTER=static vite build && bun scripts/relativize-fallback.ts",
     "preview": "PORT=4173 node build/index.js",
-    "prepare": "svelte-kit sync || echo ''",
-    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "paraglide": "bun scripts/compile-i18n.ts",
+    "i18n:lint": "bun scripts/i18n-lint.ts",
+    "prepare": "bun scripts/compile-i18n.ts && (svelte-kit sync || echo '')",
+    "check": "bun scripts/compile-i18n.ts && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "test": "bun test src"
   },
@@ -18,6 +20,7 @@
     "@SunReye/inverter-core": "workspace:*",
     "@elysiajs/eden": "^1.4.1",
     "better-auth": "catalog:",
+    "d3-scale": "^4.0.2",
     "d3-shape": "^3.2.0",
     "dotenv": "catalog:",
     "zod": "catalog:"
@@ -25,6 +28,7 @@
   "devDependencies": {
     "@SunReye/config": "workspace:*",
     "@fontsource-variable/geist-mono": "^5.2.8",
+    "@inlang/paraglide-js": "^2.22.0",
     "@internationalized/date": "^3.12.0",
     "@sveltejs/adapter-auto": "^7.0.1",
     "@sveltejs/adapter-node": "^5.5.4",
@@ -32,6 +36,7 @@
     "@sveltejs/kit": "^2.58.0",
     "@sveltejs/vite-plugin-svelte": "^7.0.0",
     "@tailwindcss/vite": "^4.3.1",
+    "@types/d3-scale": "^4.0.9",
     "@types/d3-shape": "^3.1.8",
     "bits-ui": "^2.16.3",
     "clsx": "^2.1.1",

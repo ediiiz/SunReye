@@ -9,6 +9,7 @@
 	import GroupedProfileList from '$lib/components/settings/grouped-profile-list.svelte';
 	import StatusBadge from '$lib/components/settings/status-badge.svelte';
 	import type { RegisteredProfile } from '$lib/components/settings/profile-types';
+	import * as m from '$lib/paraglide/messages';
 
 	let {
 		profiles,
@@ -32,7 +33,7 @@
 			<span class="flex flex-wrap items-center gap-1.5 text-sm font-medium">
 				<span class="wrap-break-word">{p.name}</span>
 				{#if p.builtin}
-					<StatusBadge label="Built in" />
+					<StatusBadge label={m.badge_builtin()} />
 				{/if}
 			</span>
 			<span class="text-xs text-muted-foreground">
@@ -55,9 +56,9 @@
 					>
 						<Check class="size-4" weight="bold" />
 					</span>
-					Selected
+					{m.profile_selected()}
 				{:else}
-					Select
+					{m.profile_select()}
 				{/if}
 			</Button>
 		</div>
@@ -65,27 +66,23 @@
 {/snippet}
 
 <section class="flex flex-col gap-4 border border-border p-4">
-	<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">Select a profile</h2>
+	<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+		{m.setup_select_profile()}
+	</h2>
 
-	<GroupedProfileList
-		{profiles}
-		row={profileRow}
-		emptyLabel="No profiles available. Add an external source below to download one."
-	/>
+	<GroupedProfileList {profiles} row={profileRow} emptyLabel={m.setup_no_profiles()} />
 
 	<Collapsible.Root bind:open={showSources}>
 		<div class="flex flex-col gap-3 border border-dashed border-border p-4">
 			<div class="flex flex-col gap-1">
-				<p class="text-sm font-medium">Don't see your inverter?</p>
-				<p class="text-xs text-muted-foreground">
-					Download more profiles from an external repository.
-				</p>
+				<p class="text-sm font-medium">{m.setup_no_inverter_q()}</p>
+				<p class="text-xs text-muted-foreground">{m.setup_download_more()}</p>
 			</div>
 			<Collapsible.Trigger>
 				{#snippet child({ props })}
 					<Button variant="outline" size="sm" class="w-full sm:w-auto" {...props}>
 						<Plus class="size-4" />
-						{showSources ? 'Hide profile sources' : 'Add a profile source'}
+						{showSources ? m.setup_hide_sources() : m.setup_add_source()}
 					</Button>
 				{/snippet}
 			</Collapsible.Trigger>
@@ -96,6 +93,6 @@
 	</Collapsible.Root>
 
 	<div class="flex justify-end">
-		<Button disabled={!selectedId} onclick={onContinue}>Continue</Button>
+		<Button disabled={!selectedId} onclick={onContinue}>{m.action_continue()}</Button>
 	</div>
 </section>

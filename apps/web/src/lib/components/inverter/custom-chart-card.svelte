@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { AreaChart, LineChart } from 'layerchart';
+	import { AreaChart, Area, Highlight } from 'layerchart';
 	import { fade } from 'svelte/transition';
 	import { curveCatmullRom } from 'd3-shape';
 	import PencilSimple from 'phosphor-svelte/lib/PencilSimple';
@@ -7,26 +7,28 @@
 	import { Button } from '$lib/components/ui/button';
 	import * as Chart from '$lib/components/ui/chart';
 	import { Skeleton } from '$lib/components/ui/skeleton';
+	import * as msg from '$lib/paraglide/messages';
 	import ChartLegend from '$lib/components/inverter/chart-legend.svelte';
+	import CustomLiveChart from '$lib/components/inverter/custom-live-chart.svelte';
+	import ChartYAxes from '$lib/components/inverter/chart-y-axes.svelte';
+	import CustomChartTooltip from '$lib/components/inverter/custom-chart-tooltip.svelte';
 	import { api } from '$lib/api';
 	import { inverter } from '$lib/inverter/store.svelte';
 	import { tooltipLabel, xTick } from '$lib/inverter/chart-format';
-	import type { ChartType, CustomChart } from '$lib/inverter/custom-charts.svelte';
+	import { groupSeriesByUnit, domainFor, normalizeSeries, type Datum } from '$lib/inverter/chart-axes';
+	import type { CustomChart } from '$lib/inverter/custom-charts.svelte';
 	import type { HistoryRange } from '$lib/inverter/ranges';
 	import type { ManifestMetric } from '$lib/inverter/types';
 
 	let {
 		chart,
 		range,
-		type,
 		isAdmin = false,
 		onEdit,
 		onDelete
 	}: {
 		chart: CustomChart;
 		range: HistoryRange;
-		/** Render style, chosen by the page-level toggle (shared by all charts). */
-		type: ChartType;
 		isAdmin?: boolean;
 		onEdit?: () => void;
 		onDelete?: () => void;
@@ -45,12 +47,12 @@
 
 	// Overlaid series, one colour each (cycles the 5 chart accents).
 	const colorFor = (i: number) => `var(--color-chart-${(i % 5) + 1})`;
-	type Datum = Record<string, number | Date>;
 	const series = $derived(
 		resolved.map((m, i) => ({
 			key: m.key,
 			label: m.label,
 			color: colorFor(i),
+			unit: m.unit ?? '',
 			value: (d: Datum) => (d[m.key] as number | undefined) ?? null
 		}))
 	);
@@ -120,12 +122,33 @@
 
 	// Pin the x-axis to the whole selected window so a partial day (e.g. "Today"
 	// before the day is over) still spans the full range instead of stretching to
-	// fit only the data present. Live stays auto-fit (gliding buffer).
-	const xDomain = $derived(range.live ? undefined : [range.from, range.to]);
+	// fit only the data present. Live mode uses its own gliding window (CustomLiveChart).
+	const xDomain = $derived<[Date, Date]>([range.from, range.to]);
 
 	// Axis + tooltip formatting, honouring the configured time zone / clock format.
 	const labelFmt = (v: unknown) => tooltipLabel(range, v);
 	const xTickFormat = (v: unknown) => xTick(range, v);
+
+	// Mixed units get independent left/right axes; series then plot on a normalized
+	// [0,1] scale so a small-magnitude metric (efficiency) isn't drowned by a large
+	// one (power). Single-unit charts keep the plain filled area on one axis.
+	const grouping = $derived(groupSeriesByUnit(series));
+	const leftDomain = $derived(domainFor(historical, grouping.left));
+	const rightDomain = $derived(grouping.dualAxis ? domainFor(historical, grouping.right) : null);
+	const plotSeries = $derived(
+		grouping.dualAxis
+			? [
+					...normalizeSeries(grouping.left, leftDomain),
+					...normalizeSeries(grouping.right, rightDomain ?? [0, 1])
+				]
+			: series
+	);
+
+	// AreaChart's `marks` context isn't exposed in the public types; type just the
+	// fields the dual-axis marks snippet reads.
+	type MarksContext = {
+		context: { height: number; series: { visibleSeries: { key: string }[] } };
+	};
 </script>
 
 <section class="flex flex-col gap-3 border border-border p-4">
@@ -133,10 +156,10 @@
 		<h3 class="truncate text-sm font-medium">{chart.name}</h3>
 		{#if isAdmin}
 			<div class="flex items-center gap-1">
-				<Button variant="ghost" size="icon" aria-label="Edit chart" onclick={() => onEdit?.()}>
+				<Button variant="ghost" size="icon" aria-label={msg.chart_edit_chart()} onclick={() => onEdit?.()}>
 					<PencilSimple class="size-4" />
 				</Button>
-				<Button variant="ghost" size="icon" aria-label="Delete chart" onclick={() => onDelete?.()}>
+				<Button variant="ghost" size="icon" aria-label={msg.chart_delete_chart()} onclick={() => onDelete?.()}>
 					<Trash class="size-4" />
 				</Button>
 			</div>
@@ -146,33 +169,58 @@
 	<div class="h-64 w-full">
 		{#if resolved.length === 0}
 			<div class="flex h-full items-center justify-center text-sm text-muted-foreground">
-				None of this chart's metrics are available in the active profile.
+				{msg.chart_none_available()}
 			</div>
 		{:else if !range.live && loading}
 			<Skeleton class="h-full w-full" />
 		{:else if chartData.length === 0}
 			<div class="flex h-full items-center justify-center text-sm text-muted-foreground">
-				No data for this range yet
+				{msg.chart_no_data()}
 			</div>
 		{:else}
 			<div class="h-full w-full" in:fade={{ duration: 300 }}>
-				<Chart.Container {config} class="aspect-auto h-full w-full">
-					{#if type === 'line'}
-						<LineChart
+				{#if range.live}
+					<CustomLiveChart data={chartData} {series} {config} labelFormatter={labelFmt} />
+				{:else if grouping.dualAxis}
+					<Chart.Container {config} class="aspect-auto h-full w-full">
+						<AreaChart
 							data={chartData}
 							x="date"
-							{series}
+							series={plotSeries}
 							{xDomain}
-							axis
-							grid
-							padding={{ top: 8, right: 8, bottom: 28, left: 44 }}
-							props={{ spline: { curve: curveCatmullRom }, xAxis: { format: xTickFormat, ticks: 4 } }}
+							yDomain={[0, 1]}
+							seriesLayout="overlap"
+							axis="x"
+							grid={false}
+							highlight={false}
+							padding={{ top: 8, right: 44, bottom: 28, left: 44 }}
+							props={{ xAxis: { format: xTickFormat, ticks: 4 } }}
 						>
-							{#snippet tooltip()}
-								<Chart.Tooltip labelFormatter={labelFmt} />
+							{#snippet marks({ context }: MarksContext)}
+								<ChartYAxes
+									height={context.height}
+									left={leftDomain}
+									right={rightDomain}
+									leftUnit={grouping.leftUnit}
+									rightUnit={grouping.rightUnit}
+								/>
+								{#each context.series.visibleSeries as s (s.key)}
+									<Area
+										seriesKey={s.key}
+										curve={curveCatmullRom}
+										fillOpacity={0}
+										line={{ 'stroke-width': 1.5 }}
+									/>
+								{/each}
+								<Highlight points lines />
 							{/snippet}
-						</LineChart>
-					{:else}
+							{#snippet tooltip()}
+								<CustomChartTooltip {series} labelFormatter={labelFmt} />
+							{/snippet}
+						</AreaChart>
+					</Chart.Container>
+				{:else}
+					<Chart.Container {config} class="aspect-auto h-full w-full">
 						<AreaChart
 							data={chartData}
 							x="date"
@@ -188,11 +236,11 @@
 							}}
 						>
 							{#snippet tooltip()}
-								<Chart.Tooltip labelFormatter={labelFmt} />
+								<CustomChartTooltip {series} labelFormatter={labelFmt} />
 							{/snippet}
 						</AreaChart>
-					{/if}
-				</Chart.Container>
+					</Chart.Container>
+				{/if}
 			</div>
 		{/if}
 	</div>
@@ -201,7 +249,9 @@
 
 	{#if missing.length > 0}
 		<p class="text-xs text-muted-foreground">
-			{missing.length} metric{missing.length > 1 ? 's' : ''} unavailable in the active profile.
+			{missing.length === 1
+				? msg.chart_metrics_unavailable_one({ count: missing.length })
+				: msg.chart_metrics_unavailable_other({ count: missing.length })}
 		</p>
 	{/if}
 </section>

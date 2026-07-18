@@ -10,6 +10,7 @@
 	import SettingsSection from "./settings-section.svelte";
 	import SnapshotDialog from "./snapshot-dialog.svelte";
 	import StatusBadge from "./status-badge.svelte";
+	import * as m from "$lib/paraglide/messages";
 
 	type Transport = "tcp" | "rtu-over-tcp";
 	type InverterConfig = {
@@ -72,8 +73,11 @@
 			? {
 					ok: testResult.ok,
 					message: testResult.ok
-						? `Connection OK — ${testResult.metricCount} metrics in ${testResult.durationMs} ms`
-						: `Failed: ${testResult.error}`,
+						? m.inverter_test_ok({
+								count: testResult.metricCount ?? 0,
+								ms: testResult.durationMs ?? 0,
+							})
+						: m.conn_test_failed({ error: testResult.error ?? "" }),
 				}
 			: null,
 	);
@@ -97,7 +101,7 @@
 		testing = false;
 		testResult = data ?? {
 			ok: false,
-			error: error ? String(error.value) : "Request failed",
+			error: error ? String(error.value) : m.conn_request_failed(),
 		};
 		// On success, surface the captured snapshot for a plausibility check.
 		if (testResult.ok && (testResult.metrics?.length ?? 0) > 0) snapshotOpen = true;
@@ -108,28 +112,36 @@
 		saving = true;
 		const { error } = await api.api.settings.inverter.put(cfg);
 		saving = false;
-		if (error) toast.error("Failed to save inverter settings");
-		else toast.success("Inverter settings saved");
+		if (error) toast.error(m.inverter_toast_error());
+		else toast.success(m.inverter_toast_saved());
 	}
 </script>
+
+<FormActions {result} {testing} {saving} disabled={!cfg} ontest={test} onsave={save}>
+	{#if hasSnapshot}
+		<Button variant="ghost" size="sm" onclick={() => (snapshotOpen = true)}>
+			{m.inverter_view_snapshot()}
+		</Button>
+	{/if}
+</FormActions>
 
 {#if !cfg}
 	<div
 		class="flex h-40 items-center justify-center border border-border text-sm text-muted-foreground"
 	>
-		Loading…
+		{m.app_loading()}
 	</div>
 {:else}
-	<SettingsSection title="Connection">
+	<SettingsSection title={m.inverter_connection()}>
 		{#snippet actions()}
 			{#if status}
 				<StatusBadge
 					ok={status.connected}
 					label={status.simulate
-						? "Simulated"
+						? m.inverter_status_simulated()
 						: status.connected
-							? "Connected"
-							: "Disconnected"}
+							? m.status_connected()
+							: m.inverter_status_disconnected()}
 				/>
 			{/if}
 		{/snippet}
@@ -138,9 +150,8 @@
 			<p
 				class="border border-border bg-muted/40 p-2.5 text-xs text-muted-foreground"
 			>
-				Running in simulation mode (set by the <code>INVERTER_SIMULATE</code> environment
-				variable). Connection settings below are saved but not used until simulation is
-				turned off.
+				{m.inverter_simulate_pre()} <code>INVERTER_SIMULATE</code>
+				{m.inverter_simulate_post()}
 			</p>
 		{/if}
 
@@ -154,7 +165,7 @@
 				<Input id="port" type="number" bind:value={cfg.port} />
 			</div>
 			<div class="flex flex-col gap-1.5">
-				<Label>Transport</Label>
+				<Label>{m.inverter_transport()}</Label>
 				<Select.Root
 					type="single"
 					value={cfg.transport}
@@ -175,11 +186,11 @@
 				<Input id="unit" type="number" bind:value={cfg.unitId} />
 			</div>
 			<div class="flex flex-col gap-1.5">
-				<Label for="timeout">Timeout (ms)</Label>
+				<Label for="timeout">{m.inverter_timeout()}</Label>
 				<Input id="timeout" type="number" bind:value={cfg.timeoutMs} />
 			</div>
 			<div class="flex flex-col gap-1.5">
-				<Label for="poll">Poll interval (ms)</Label>
+				<Label for="poll">{m.inverter_poll_interval()}</Label>
 				<Input
 					id="poll"
 					type="number"
@@ -190,29 +201,16 @@
 			</div>
 			{#if status}
 				<div class="flex flex-col gap-1.5">
-					<Label>Active profile</Label>
+					<Label>{m.inverter_active_profile()}</Label>
 					<div
 						class="flex h-9 items-center px-1 text-sm text-muted-foreground"
 					>
 						{status.profile ?? "—"}
-						<span class="ml-2 text-xs">(change requires restart)</span>
+						<span class="ml-2 text-xs">{m.inverter_change_requires_restart()}</span>
 					</div>
 				</div>
 			{/if}
 		</div>
-
-		<FormActions {result} {testing} {saving} ontest={test} onsave={save}>
-			{#if hasSnapshot}
-				<Button
-					variant="ghost"
-					size="sm"
-					class="w-full sm:w-auto"
-					onclick={() => (snapshotOpen = true)}
-				>
-					View snapshot
-				</Button>
-			{/if}
-		</FormActions>
 	</SettingsSection>
 
 	<SnapshotDialog bind:open={snapshotOpen} result={testResult} />

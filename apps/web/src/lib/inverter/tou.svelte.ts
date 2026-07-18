@@ -2,6 +2,7 @@ import { SvelteMap, SvelteSet } from "svelte/reactivity";
 import { toast } from "svelte-sonner";
 import { api } from "$lib/api";
 import { inverter } from "$lib/inverter/store.svelte";
+import * as m from "$lib/paraglide/messages";
 import type { ManifestMetric } from "$lib/inverter/types";
 
 /**
@@ -109,7 +110,7 @@ export class TouController {
       if (error) throw error;
       toast.success(`${label} → ${value}`);
     } catch {
-      toast.error(`Failed to update ${label}`);
+      toast.error(m.tou_toast_update_failed({ label }));
       this.#pending.delete(key);
     } finally {
       this.#busy.delete(key);

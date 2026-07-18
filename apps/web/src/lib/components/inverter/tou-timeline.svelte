@@ -1,5 +1,6 @@
 <script lang="ts">
 	import TouSlotEditor from './tou-slot-editor.svelte';
+	import * as msg from '$lib/paraglide/messages';
 	import {
 		hhmmToMinutes,
 		hhmmToLabel,
@@ -145,10 +146,10 @@
 					? 'border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20'
 					: 'border-sky-500/40 bg-sky-500/10 hover:bg-sky-500/20',
 				fillClass: grid ? 'bg-amber-500/25' : 'bg-sky-500/25',
-				label: layout.realAxis ? minutesToLabel(p.startMin) : `Slot ${p.slot.index}`,
+				label: layout.realAxis ? minutesToLabel(p.startMin) : msg.tou_slot_n({ index: p.slot.index }),
 				showLabel: p.widthPct > 10,
 				showTarget: p.widthPct > 7,
-				title: `Slot ${p.slot.index}${range} · ${useVoltage ? 'Target' : 'SOC'} ${target}${unit}${grid ? ' · grid charge' : ''}`
+				title: `${msg.tou_slot_n({ index: p.slot.index })}${range} · ${useVoltage ? msg.tou_target_label() : 'SOC'} ${target}${unit}${grid ? ` · ${msg.tou_grid_charge_lower()}` : ''}`
 			};
 		});
 	});
@@ -238,17 +239,17 @@
 		<div class="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 text-xs text-muted-foreground">
 			<span class="flex items-center gap-1.5">
 				<span class="size-2.5 rounded-sm border border-amber-500/40 bg-amber-500/25"></span>
-				Grid charge to target
+				{msg.tou_legend_grid_charge()}
 			</span>
 			<span class="flex items-center gap-1.5">
 				<span class="size-2.5 rounded-sm border border-sky-500/40 bg-sky-500/25"></span>
-				Discharge to target
+				{msg.tou_legend_discharge()}
 			</span>
 			<span class="flex items-center gap-1.5">
 				<span class="h-2.5 w-0.5 bg-foreground/70"></span>
-				Now
+				{msg.tou_now()}
 			</span>
-			<span>Bar height = target {mode === 'voltage' ? 'voltage' : 'SOC'}</span>
+			<span>{mode === 'voltage' ? msg.tou_bar_height_voltage() : msg.tou_bar_height_soc()}</span>
 		</div>
 	</div>
 
@@ -265,10 +266,10 @@
 					: 'border-border hover:bg-muted'}"
 			>
 				<span class="size-2 rounded-full {chip.grid ? 'bg-amber-500' : 'bg-sky-500'}"></span>
-				<span>Slot {chip.slot.index}</span>
+				<span>{msg.tou_slot_n({ index: chip.slot.index })}</span>
 				<span class="tabular-nums text-muted-foreground">{chip.time}</span>
 				{#if activeIndex === chip.slot.index}
-					<span class="text-[10px] font-medium text-primary">now</span>
+					<span class="text-[10px] font-medium text-primary">{msg.tou_now_short()}</span>
 				{/if}
 			</button>
 		{/each}

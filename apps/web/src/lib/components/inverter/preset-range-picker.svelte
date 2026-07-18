@@ -6,6 +6,7 @@
 	import type { DateRange } from 'bits-ui';
 	import { Button } from '$lib/components/ui/button';
 	import * as Popover from '$lib/components/ui/popover';
+	import * as m from '$lib/paraglide/messages';
 	import { RangeCalendar } from '$lib/components/ui/range-calendar';
 
 	// Presentational shell shared by the History and Costs range pickers: a trigger
@@ -85,13 +86,13 @@
 	{#if onStep}
 		<!-- Segmented control: arrows + trigger share one border-box, 32px tall to
 		     match a `size="sm"` outline button. Corners squared, centre divided. -->
-		<div class="flex h-8 items-center border border-input" role="group" aria-label="Select range">
+		<div class="flex h-8 items-center border border-input" role="group" aria-label={m.range_select_aria()}>
 			<Button
 				variant="ghost"
 				size="icon"
 				class="h-full w-8 rounded-none"
 				onclick={() => onStep(-1)}
-				aria-label="Previous day"
+				aria-label={m.range_prev_day()}
 			>
 				<CaretLeft class="size-4" />
 			</Button>
@@ -114,7 +115,7 @@
 				class="h-full w-8 rounded-none"
 				onclick={() => onStep(1)}
 				disabled={!canStepForward}
-				aria-label="Next day"
+				aria-label={m.range_next_day()}
 			>
 				<CaretRight class="size-4" />
 			</Button>

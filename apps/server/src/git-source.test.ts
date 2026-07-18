@@ -104,4 +104,15 @@ describe("git-source", () => {
   test("rejects a non-https, non-file URL", async () => {
     await expect(syncRepo("ssh://git@example.com/x.git")).rejects.toThrow(/only https/);
   });
+
+  test("serializes concurrent syncs of the same URL (no lock race)", async () => {
+    // Two git processes in the same clone dir race on .git/*.lock. Fire a burst
+    // of overlapping syncs; serialization must let them all succeed on the same
+    // dir rather than one blowing up with "Another git process seems to be
+    // running".
+    const dirs = await Promise.all(Array.from({ length: 5 }, () => syncRepo(originUrl)));
+    expect(new Set(dirs).size).toBe(1);
+    const index = await readIndex(dirs[0] as string);
+    expect(index.profiles[0]?.id).toBe("acme-test");
+  });
 });

@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import { api } from '$lib/api';
+	import * as m from '$lib/paraglide/messages';
 	import AvailableProfilesBrowser from './available-profiles-browser.svelte';
 	import ProfileSourcesEditor from './profile-sources-editor.svelte';
 	import type { AvailableProfile, Source } from './profile-types';
@@ -34,7 +35,7 @@
 		if (typeof value === 'string') return value;
 		if (value && typeof value === 'object' && 'error' in value && typeof value.error === 'string')
 			return value.error;
-		return 'Unknown error';
+		return m.error_unknown();
 	}
 
 	// Persist optimistically: apply `next` locally, save, and roll back to the
@@ -48,7 +49,7 @@
 		savingSources = false;
 		if (error) {
 			sources = prev;
-			toast.error(`Failed to save sources: ${errorMessage(error.value)}`);
+			toast.error(m.profiles_toast_save_failed({ error: errorMessage(error.value) }));
 		}
 	}
 
@@ -68,7 +69,7 @@
 		const { data, error } = await api.api.profiles.available.get();
 		browsing = false;
 		if (error || !data) {
-			toast.error('Failed to browse profiles');
+			toast.error(m.profiles_toast_browse_failed());
 			return;
 		}
 		available = data.profiles as AvailableProfile[];
@@ -79,10 +80,10 @@
 		const { error } = await api.api.profiles.install.post({ source: p.source, id: p.id });
 		busyId = null;
 		if (error) {
-			toast.error(`Install failed: ${String(error.value)}`);
+			toast.error(m.profiles_toast_install_failed({ error: String(error.value) }));
 			return;
 		}
-		toast.success(`Downloaded ${p.name}`);
+		toast.success(m.profiles_toast_download_success({ name: p.name }));
 		onInstalled?.(p.id);
 		await browse();
 	}

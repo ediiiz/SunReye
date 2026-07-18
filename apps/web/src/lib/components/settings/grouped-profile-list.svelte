@@ -5,14 +5,15 @@
 	import * as Collapsible from "$lib/components/ui/collapsible";
 	import { Input } from "$lib/components/ui/input";
 	import type { RegisteredProfile } from "./profile-types";
+	import * as m from "$lib/paraglide/messages";
 
 	let {
 		profiles,
 		row,
 		exclude,
 		pinned,
-		searchPlaceholder = "Search profiles…",
-		emptyLabel = "No profiles available."
+		searchPlaceholder = m.profiles_search_placeholder(),
+		emptyLabel = m.profiles_none_available()
 	}: {
 		profiles: RegisteredProfile[];
 		/** Renders one profile; its root element is a direct child of a `divide-y` group. */
@@ -59,7 +60,7 @@
 	</div>
 
 	{#if groups.length === 0}
-		<p class="py-2 text-sm text-muted-foreground">No profiles match “{search}”.</p>
+		<p class="py-2 text-sm text-muted-foreground">{m.profiles_no_match({ query: search })}</p>
 	{:else}
 		<div class="flex flex-col gap-1">
 			{#each groups as [manufacturer, list] (manufacturer)}

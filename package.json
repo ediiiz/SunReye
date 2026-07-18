@@ -71,6 +71,9 @@
     ],
     "**/*.{ts,tsx,js,jsx,svelte,json,jsonc}": [
       "sh -c 'bunx fallow audit --gate new-only --quiet'"
+    ],
+    "apps/web/messages/*.json": [
+      "sh -c 'cd apps/web && bun run i18n:lint'"
     ]
   },
   "packageManager": "bun@1.3.13",

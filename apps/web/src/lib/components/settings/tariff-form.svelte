@@ -6,8 +6,10 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import SettingsSection from './settings-section.svelte';
+	import ActionBar from './action-bar.svelte';
 	import PlusIcon from 'phosphor-svelte/lib/Plus';
 	import TrashIcon from 'phosphor-svelte/lib/Trash';
+	import * as m from '$lib/paraglide/messages';
 
 	type Band = {
 		name: string;
@@ -24,13 +26,13 @@
 	};
 
 	const WEEKDAYS = [
-		{ n: 1, label: 'Mon' },
-		{ n: 2, label: 'Tue' },
-		{ n: 3, label: 'Wed' },
-		{ n: 4, label: 'Thu' },
-		{ n: 5, label: 'Fri' },
-		{ n: 6, label: 'Sat' },
-		{ n: 7, label: 'Sun' }
+		{ n: 1, label: m.tariff_day_mon() },
+		{ n: 2, label: m.tariff_day_tue() },
+		{ n: 3, label: m.tariff_day_wed() },
+		{ n: 4, label: m.tariff_day_thu() },
+		{ n: 5, label: m.tariff_day_fri() },
+		{ n: 6, label: m.tariff_day_sat() },
+		{ n: 7, label: m.tariff_day_sun() }
 	];
 
 	let tariff = $state<Tariff | null>(null);
@@ -95,42 +97,48 @@
 		};
 		const { error } = await api.api.settings.tariff.put(payload);
 		saving = false;
-		if (error) toast.error('Failed to save tariff');
-		else toast.success('Tariff saved');
+		if (error) toast.error(m.tariff_toast_error());
+		else toast.success(m.tariff_toast_saved());
 	}
 </script>
 
 {#if loading || !tariff}
 	<div class="flex h-40 items-center justify-center border border-border text-sm text-muted-foreground">
-		Loading tariff…
+		{m.tariff_loading()}
 	</div>
 {:else}
-	<SettingsSection title="General">
+	<ActionBar>
+		<Button onclick={save} disabled={saving}>
+			{saving ? m.action_saving() : m.tariff_save()}
+		</Button>
+	</ActionBar>
+
+	<SettingsSection title={m.tariff_general()}>
 		<div class="grid gap-4 sm:grid-cols-3">
 			<div class="flex flex-col gap-1.5">
-				<Label for="currency">Currency (ISO)</Label>
+				<Label for="currency">{m.tariff_currency()}</Label>
 				<Input id="currency" maxlength={3} bind:value={tariff.currency} class="uppercase" />
 			</div>
 			<div class="flex flex-col gap-1.5">
-				<Label for="standing">Standing charge / month</Label>
+				<Label for="standing">{m.tariff_standing_charge()}</Label>
 				<Input id="standing" type="number" step="0.01" bind:value={tariff.standingChargeMonthly} />
 			</div>
 			<div class="flex flex-col gap-1.5">
-				<Label for="feedin">Feed-in / kWh</Label>
+				<Label for="feedin">{m.tariff_feed_in()}</Label>
 				<Input id="feedin" type="number" step="0.001" bind:value={tariff.export.feedInPerKwh} />
 			</div>
 		</div>
 	</SettingsSection>
 
-	<SettingsSection title="Import price">
+	<SettingsSection title={m.tariff_import_price()}>
 		{#snippet actions()}
 			<Button variant="ghost" size="sm" onclick={addBand}>
-				<PlusIcon class="size-4" /> Add band
+				<PlusIcon class="size-4" /> {m.tariff_add_band()}
 			</Button>
 		{/snippet}
 
 		<div class="flex flex-col gap-1.5">
-			<Label for="default-price">Default price / kWh</Label>
+			<Label for="default-price">{m.tariff_default_price()}</Label>
 			<Input
 				id="default-price"
 				type="number"
@@ -139,13 +147,13 @@
 				class="max-w-40"
 			/>
 			<span class="text-xs text-muted-foreground">
-				Applied to any hour not covered by a time-of-use band below.
+				{m.tariff_default_price_desc()}
 			</span>
 		</div>
 
 		{#if tariff.import.bands.length === 0}
 			<p class="text-sm text-muted-foreground">
-				Flat rate — every hour uses the default price. Add a band for time-of-use pricing.
+				{m.tariff_flat_rate_desc()}
 			</p>
 		{/if}
 
@@ -153,22 +161,22 @@
 			<div class="flex flex-col gap-3 border border-border p-3">
 				<div class="flex items-end gap-3">
 					<div class="flex flex-1 flex-col gap-1.5">
-						<Label>Name</Label>
+						<Label>{m.auth_field_name()}</Label>
 						<Input bind:value={band.name} />
 					</div>
 					<div class="flex w-28 flex-col gap-1.5">
-						<Label>Price / kWh</Label>
+						<Label>{m.tariff_price()}</Label>
 						<Input type="number" step="0.001" bind:value={band.pricePerKwh} />
 					</div>
 					<div class="flex w-20 flex-col gap-1.5">
-						<Label>From (h)</Label>
+						<Label>{m.tariff_from_h()}</Label>
 						<Input type="number" min="0" max="23" bind:value={band.startHour} />
 					</div>
 					<div class="flex w-20 flex-col gap-1.5">
-						<Label>To (h)</Label>
+						<Label>{m.tariff_to_h()}</Label>
 						<Input type="number" min="1" max="24" bind:value={band.endHour} />
 					</div>
-					<Button variant="ghost" size="icon" onclick={() => removeBand(i)} aria-label="Remove band">
+					<Button variant="ghost" size="icon" onclick={() => removeBand(i)} aria-label={m.tariff_remove_band()}>
 						<TrashIcon class="size-4" />
 					</Button>
 				</div>
@@ -186,8 +194,4 @@
 			</div>
 		{/each}
 	</SettingsSection>
-
-	<div class="flex justify-end">
-		<Button onclick={save} disabled={saving}>{saving ? 'Saving…' : 'Save tariff'}</Button>
-	</div>
 {/if}

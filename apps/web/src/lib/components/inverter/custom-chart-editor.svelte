@@ -7,6 +7,7 @@
 	import { Label } from '$lib/components/ui/label';
 	import { Checkbox } from '$lib/components/ui/checkbox';
 	import { ScrollArea } from '$lib/components/ui/scroll-area';
+	import * as m from '$lib/paraglide/messages';
 	import { inverter } from '$lib/inverter/store.svelte';
 	import { filterMetrics, groupByCategory, isChartable } from '$lib/inverter/ranges';
 	import {
@@ -74,28 +75,28 @@
 <Dialog.Root bind:open>
 	<Dialog.Content class="max-h-[90vh] gap-0 overflow-hidden sm:max-w-lg">
 		<Dialog.Header>
-			<Dialog.Title>{chart ? 'Edit chart' : 'New chart'}</Dialog.Title>
+			<Dialog.Title>{chart ? m.chart_edit_chart() : m.chart_new_chart()}</Dialog.Title>
 			<Dialog.Description>
-				Overlay up to {MAX_CHART_METRICS} metrics on a single chart.
+				{m.chart_editor_desc({ count: MAX_CHART_METRICS })}
 			</Dialog.Description>
 		</Dialog.Header>
 
 		<div class="flex flex-col gap-4 py-4">
 			<div class="flex flex-col gap-2">
-				<Label for="chart-name">Name</Label>
-				<Input id="chart-name" bind:value={name} placeholder="e.g. PV strings" />
+				<Label for="chart-name">{m.chart_name_label()}</Label>
+				<Input id="chart-name" bind:value={name} placeholder={m.chart_name_placeholder()} />
 			</div>
 
 			<div class="flex flex-col gap-2">
 				<div class="flex items-center justify-between">
-					<Label>Metrics</Label>
+					<Label>{m.chart_metrics_label()}</Label>
 					<span class="text-xs text-muted-foreground">{selected.size}/{MAX_CHART_METRICS}</span>
 				</div>
 				<div class="relative">
 					<MagnifyingGlass
 						class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
 					/>
-					<Input placeholder="Search metrics…" bind:value={search} class="pl-9" />
+					<Input placeholder={m.chart_search_metrics()} bind:value={search} class="pl-9" />
 				</div>
 				<ScrollArea class="h-64 border border-border">
 					<div class="flex flex-col p-1">
@@ -123,7 +124,7 @@
 							{/each}
 						{:else}
 							<div class="px-2 py-6 text-center text-sm text-muted-foreground">
-								No metrics match “{search}”.
+								{m.chart_no_metrics_match({ query: search })}
 							</div>
 						{/each}
 					</div>
@@ -136,8 +137,8 @@
 		</div>
 
 		<Dialog.Footer>
-			<Button variant="outline" onclick={() => (open = false)}>Cancel</Button>
-			<Button disabled={!canSave} onclick={save}>{saving ? 'Saving…' : 'Save'}</Button>
+			<Button variant="outline" onclick={() => (open = false)}>{m.action_cancel()}</Button>
+			<Button disabled={!canSave} onclick={save}>{saving ? m.action_saving() : m.action_save()}</Button>
 		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>

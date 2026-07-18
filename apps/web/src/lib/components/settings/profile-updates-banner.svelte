@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Button } from "$lib/components/ui/button";
 	import type { ProfileUpdate } from "./profile-types";
+	import * as m from "$lib/paraglide/messages";
 
 	let {
 		updates,
@@ -20,8 +21,9 @@
 	>
 		<span class="flex items-center gap-2 font-medium">
 			<span class="inline-block size-2 shrink-0 rounded-full bg-sky-500"></span>
-			{updates.length}
-			{updates.length === 1 ? "profile update" : "profile updates"} available
+			{updates.length === 1
+				? m.profiles_updates_available_one({ count: updates.length })
+				: m.profiles_updates_available_other({ count: updates.length })}
 		</span>
 		<div class="flex flex-col divide-y divide-sky-500/20">
 			{#each updates as u (u.source + u.id)}
@@ -41,7 +43,7 @@
 						disabled={busyId === u.id}
 						onclick={() => onUpdate(u)}
 					>
-						Update to v{u.latestVersion}
+						{m.profiles_update_to({ version: u.latestVersion })}
 					</Button>
 				</div>
 			{/each}

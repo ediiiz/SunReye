@@ -53,3 +53,6 @@ coverage
 tmp
 temp
 core
+
+# Personal notes / drafts
+.notes

@@ -8,7 +8,6 @@ import {
   buildManifest,
   createInverter,
   entityConstraint,
-  getProfile,
   hydrateProfile,
   metricByKey,
   parseProfileData,
@@ -23,11 +22,10 @@ import type {
   ManifestMetric,
   MetricDef,
 } from "@SunReye/inverter-core";
-// Side-effect import: installing the package self-registers its profile into
-// the inverter-core registry. Add more `@SunReye/inverter-*` imports here to
-// ship additional inverter support in the box; downloaded profiles are loaded
-// from the database by `loadInstalledProfiles` at boot.
-import "@SunReye/inverter-deye-sg05lp3";
+// No inverter profile ships in the box: the core is profile-agnostic. Profiles
+// are installed from a repo source (the official one is baked in by default) and
+// loaded from the database by `loadInstalledProfiles` at boot. A fresh install
+// therefore boots onboarding-only until the admin installs and activates one.
 import { readSetting } from "./app-settings";
 import { log } from "./logging";
 import { dropLegacyDefaultSource } from "./profiles";
@@ -104,7 +102,21 @@ export async function initProfiles(): Promise<InverterProfile | null> {
     activeProfile = null;
     return null;
   }
-  activeProfile = getProfile(id);
+  // The saved id may point at a profile that's no longer available — e.g. an
+  // upgrade that dropped a formerly built-in package (the id lives in
+  // app_settings, not the installedProfiles table, so it isn't reloaded). Don't
+  // crash the whole server on a stale id: degrade to onboarding-only so the
+  // admin can reinstall it from a source.
+  const resolved = tryGetProfile(id);
+  if (!resolved) {
+    logger.warn(
+      'active inverter profile "{id}" is not installed — booting onboarding-only (reinstall it from a profile source, then restart)',
+      { id },
+    );
+    activeProfile = null;
+    return null;
+  }
+  activeProfile = resolved;
   return activeProfile;
 }
 

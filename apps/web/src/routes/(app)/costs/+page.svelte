@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { fade } from 'svelte/transition';
+	import Info from 'phosphor-svelte/lib/Info';
 	import { api } from '$lib/api';
+	import * as m from '$lib/paraglide/messages';
+	import * as Popover from '$lib/components/ui/popover';
 	import CostRangePicker from '$lib/components/inverter/cost-range-picker.svelte';
 	import CostBarChart from '$lib/components/inverter/cost-bar-chart.svelte';
 	import EnergySplitChart from '$lib/components/inverter/energy-split-chart.svelte';
@@ -17,14 +20,9 @@
 		gridOnlyCost: number;
 		savings: number;
 		solarSavings: number;
+		selfConsumedKwh: number;
 		selfSufficiency: number | null;
 		selfConsumption: number | null;
-		byDay: {
-			date: string;
-			importCost: number;
-			exportEarnings: number;
-			net: number;
-		}[];
 		byBand: { name: string; importKwh: number; cost: number }[];
 	};
 
@@ -93,86 +91,139 @@
 		}).format(v);
 	const kwh = (v: number) => `${v.toLocaleString(undefined, { maximumFractionDigits: 1 })} kWh`;
 	const pct = (v: number | null) => (v === null ? '—' : `${Math.round(v * 100)}%`);
+	const price = (v: number) =>
+		new Intl.NumberFormat(undefined, {
+			style: 'currency',
+			currency: cost?.currency ?? 'EUR',
+			minimumFractionDigits: 2,
+			maximumFractionDigits: 3
+		}).format(v);
 
-	// byDay bar chart scaling (net cost per day, signed).
-	const maxAbs = $derived(Math.max(1e-9, ...(cost?.byDay ?? []).map((d) => Math.abs(d.net))));
-	// byDay dates are typed as `YYYY-MM-DD`, but at runtime may arrive as a Date or
-	// timestamp. Parse a bare date at local midnight so it isn't shifted a day in
-	// negative UTC offsets; hand everything else straight to `new Date`. Fall back
-	// to the raw value rather than rendering "Invalid Date".
-	const dayLabel = (iso: string) => {
-		const d =
-			typeof iso === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(iso)
-				? new Date(`${iso}T00:00:00`)
-				: new Date(iso);
-		return Number.isNaN(d.getTime())
-			? String(iso ?? '')
-			: d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+	// Solar Saving breakdown: self-consumed kWh × effective grid price = saving.
+	// The effective price is the saving spread over the self-consumed energy, so
+	// it stays band-accurate without the server returning a separate price.
+	const solarSavingBreakdown = $derived.by(() => {
+		if (!cost || cost.selfConsumedKwh <= 0) return null;
+		return `${kwh(cost.selfConsumedKwh)} × ${price(cost.solarSavings / cost.selfConsumedKwh)}`;
+	});
+
+	// Localized caption for the contextual charts, keyed by the picked preset id
+	// (mirrors the English captions baked into $lib/cost/ranges). Falls back to the
+	// range's own caption for any id without a dedicated message.
+	const CAPTIONS: Record<string, () => string> = {
+		today: m.costs_caption_today,
+		'7d': m.costs_caption_last_7d,
+		month: m.costs_caption_this_month,
+		lastMonth: m.range_12mo,
+		year: m.range_12mo,
+		custom: m.costs_caption_custom
 	};
+	const caption = $derived(CAPTIONS[range.id]?.() ?? range.chart.caption);
 </script>
 
 <div class="flex w-full flex-col gap-6 p-4 sm:p-6">
 	<div class="flex flex-wrap items-center justify-between gap-3">
 		<div>
-			<h1 class="text-lg font-semibold">Costs</h1>
-			<p class="text-sm text-muted-foreground">Energy priced with your tariff.</p>
+			<h1 class="text-lg font-semibold">{m.nav_costs()}</h1>
+			<p class="text-sm text-muted-foreground">{m.costs_subtitle()}</p>
 		</div>
 		<CostRangePicker bind:range />
 	</div>
 
 	{#if loading && !cost}
 		<div class="flex h-40 items-center justify-center border border-border text-sm text-muted-foreground">
-			Loading costs…
+			{m.costs_loading()}
 		</div>
 	{:else if cost}
 		{@const c = cost}
 		<!-- Headline tiles -->
 		<div
-			class="grid gap-px border border-border bg-border sm:grid-cols-2 lg:grid-cols-3"
+			class="grid gap-px border border-border bg-border sm:grid-cols-2 lg:grid-cols-4"
 			transition:fade={{ duration: 200 }}
 		>
-			{#snippet tile(label: string, value: string, sub?: string, accent?: string)}
+			{#snippet tile(t: {
+				label: string;
+				value: string;
+				sub?: string;
+				accent?: string;
+				explain: string;
+			})}
 				<div class="flex flex-col gap-1 bg-background px-4 py-3">
-					<span class="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">
-						{label}
-					</span>
-					<span class="text-2xl font-semibold tabular-nums {accent ?? ''}">{value}</span>
-					{#if sub}<span class="text-xs text-muted-foreground">{sub}</span>{/if}
+					<div class="flex items-center gap-1.5">
+						<span
+							class="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground"
+						>
+							{t.label}
+						</span>
+						<Popover.Root>
+							<Popover.Trigger
+								class="text-muted-foreground/70 transition-colors hover:text-foreground"
+								aria-label={m.costs_tile_info_aria({ label: t.label })}
+							>
+								<Info class="size-3.5" weight="bold" />
+							</Popover.Trigger>
+							<Popover.Content class="max-w-xs text-xs leading-relaxed">
+								{t.explain}
+							</Popover.Content>
+						</Popover.Root>
+					</div>
+					<span class="text-2xl font-semibold tabular-nums {t.accent ?? ''}">{t.value}</span>
+					{#if t.sub}<span class="text-xs text-muted-foreground">{t.sub}</span>{/if}
 				</div>
 			{/snippet}
 
-			{@render tile(
-				'Total cost',
-				money(c.net),
-				`incl. ${money(c.standingCharge)} standing`,
-				c.net < 0 ? 'text-emerald-500' : ''
-			)}
-			{@render tile('Grid import', money(c.importCost), kwh(c.importKwh))}
-			{@render tile('Export earnings', money(c.exportEarnings), kwh(c.exportKwh))}
-			{@render tile(
-				'Solar savings',
-				money(c.solarSavings),
-				'self-consumed × grid price',
-				c.solarSavings > 0 ? 'text-emerald-500' : ''
-			)}
-			{@render tile('Savings vs grid-only', money(c.savings), `incl. ${money(c.exportEarnings)} export`)}
-
-			<!-- Efficiency: two ratios in one tile so the 6-tile grid stays square. -->
-			<div class="flex flex-col gap-1 bg-background px-4 py-3">
-				<span class="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground">
-					Efficiency
-				</span>
-				<div class="flex gap-6">
-					<div class="flex flex-col">
-						<span class="text-2xl font-semibold tabular-nums">{pct(c.selfSufficiency)}</span>
-						<span class="text-xs text-muted-foreground">self-sufficiency</span>
-					</div>
-					<div class="flex flex-col">
-						<span class="text-2xl font-semibold tabular-nums">{pct(c.selfConsumption)}</span>
-						<span class="text-xs text-muted-foreground">self-consumption</span>
-					</div>
-				</div>
-			</div>
+			{@render tile({
+				label: m.costs_tile_grid_cost(),
+				value: money(c.importCost + c.standingCharge),
+				sub: m.costs_sub_grid_cost({ imported: money(c.importCost), standing: money(c.standingCharge) }),
+				explain: m.costs_tile_grid_cost_explain()
+			})}
+			{@render tile({
+				label: m.costs_tile_effective_cost(),
+				value: money(c.net),
+				sub: m.costs_sub_effective_cost({ amount: money(c.exportEarnings) }),
+				accent: c.net < 0 ? 'text-emerald-500' : '',
+				explain: m.costs_tile_effective_cost_explain()
+			})}
+			{@render tile({
+				label: m.costs_tile_grid_import(),
+				value: money(c.importCost),
+				sub: m.costs_sub_grid_import({ energy: kwh(c.importKwh) }),
+				explain: m.costs_tile_grid_import_explain()
+			})}
+			{@render tile({
+				label: m.costs_tile_grid_export(),
+				value: money(c.exportEarnings),
+				sub: m.costs_sub_grid_export({ energy: kwh(c.exportKwh) }),
+				accent: c.exportEarnings > 0 ? 'text-emerald-500' : '',
+				explain: m.costs_tile_grid_export_explain()
+			})}
+			{@render tile({
+				label: m.costs_tile_solar_saving(),
+				value: money(c.solarSavings),
+				sub: solarSavingBreakdown ?? m.costs_sub_self_consumed(),
+				accent: c.solarSavings > 0 ? 'text-emerald-500' : '',
+				explain: m.costs_tile_solar_saving_explain()
+			})}
+			{@render tile({
+				label: m.costs_tile_total_savings(),
+				value: money(c.savings),
+				sub: m.costs_sub_total_savings({ amount: money(c.exportEarnings) }),
+				accent: c.savings > 0 ? 'text-emerald-500' : '',
+				explain: m.costs_tile_total_savings_explain()
+			})}
+			{@render tile({
+				label: m.costs_tile_self_sufficiency(),
+				value: pct(c.selfSufficiency),
+				sub: m.costs_sub_self_sufficiency(),
+				explain: m.costs_tile_self_sufficiency_explain()
+			})}
+			{@render tile({
+				label: m.costs_tile_self_consumption(),
+				value: pct(c.selfConsumption),
+				sub: m.costs_sub_self_consumption(),
+				explain: m.costs_tile_self_consumption_explain()
+			})}
 		</div>
 
 		<!-- Contextual total-cost bars. Window/granularity follow the picked range
@@ -183,7 +234,7 @@
 				transition:fade={{ duration: 200 }}
 			>
 				<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-					Total cost — {range.chart.caption}
+					{m.costs_total_cost()} — {caption}
 				</h2>
 				<CostBarChart points={series.points} bucket={series.bucket} currency={c.currency} />
 			</section>
@@ -191,34 +242,7 @@
 
 		<!-- Energy split (grid-vs-solar, self-consumed-vs-exported), same range as above.
 		     Owns its own section + fade and hides itself when the range has no energy. -->
-		<EnergySplitChart chart={range.chart} caption={range.chart.caption} />
-
-		<!-- Daily net cost — finer per-day detail than the "one level up" chart for
-		     month/year presets. Hidden entirely when the range has no days. -->
-		{#if c.byDay.length > 0}
-			<section
-				class="flex flex-col gap-3 border border-border p-4"
-				transition:fade={{ duration: 200 }}
-			>
-				<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-					Net cost per day
-				</h2>
-				<div class="flex flex-col gap-1.5">
-					{#each c.byDay as d (d.date)}
-						<div class="flex items-center gap-3 text-xs">
-							<span class="w-16 shrink-0 text-muted-foreground">{dayLabel(d.date)}</span>
-							<div class="flex h-4 flex-1 items-center">
-								<div
-									class="h-full {d.net < 0 ? 'bg-emerald-500/70' : 'bg-primary/70'}"
-									style="width: {(Math.abs(d.net) / maxAbs) * 100}%"
-								></div>
-							</div>
-							<span class="w-20 shrink-0 text-right tabular-nums">{money(d.net)}</span>
-						</div>
-					{/each}
-				</div>
-			</section>
-		{/if}
+		<EnergySplitChart chart={range.chart} {caption} />
 
 		<!-- Import by band -->
 		{#if c.byBand.length > 0}
@@ -227,7 +251,7 @@
 				transition:fade={{ duration: 200 }}
 			>
 				<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-					Import by tariff band
+					{m.costs_import_by_band()}
 				</h2>
 				<div class="flex flex-col gap-1.5 text-sm">
 					{#each c.byBand as b (b.name)}

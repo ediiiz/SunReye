@@ -3,6 +3,7 @@
 	import { repoLabel } from "./repo-label";
 	import StatusBadge from "./status-badge.svelte";
 	import type { AvailableProfile, Source } from "./profile-types";
+	import * as m from "$lib/paraglide/messages";
 
 	let {
 		profile,
@@ -34,13 +35,13 @@
 	<div class="shrink-0">
 		{#if profile.updateAvailable}
 			<Button size="sm" disabled={busyId === profile.id} onclick={() => onInstall(profile)}>
-				Update to v{profile.version}
+				{m.profiles_update_to({ version: profile.version })}
 			</Button>
 		{:else if profile.installed}
-			<StatusBadge ok label={`Installed v${profile.installedVersion}`} />
+			<StatusBadge ok label={m.profiles_installed_v({ version: profile.installedVersion ?? "" })} />
 		{:else}
 			<Button size="sm" disabled={busyId === profile.id} onclick={() => onInstall(profile)}>
-				Download
+				{m.profiles_download()}
 			</Button>
 		{/if}
 	</div>

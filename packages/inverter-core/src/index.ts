@@ -3,6 +3,7 @@ export { decode, encodeWord, registerWidth } from "./codec";
 export { ModbusInverter, planReads } from "./driver";
 export { applyComputed } from "./computed";
 export { SimulatedInverter } from "./simulator";
+export { genericSimulate } from "./generic-sim";
 export {
   registerProfile,
   unregisterProfile,

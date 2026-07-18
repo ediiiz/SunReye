@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { BarChart } from 'layerchart';
 	import * as Chart from '$lib/components/ui/chart';
+	import * as m from '$lib/paraglide/messages';
 	import ChartLegend from '$lib/components/inverter/chart-legend.svelte';
 	import { COST_X_TICKS, periodLabel, type CostBucket } from '$lib/cost/ranges';
 
@@ -30,19 +31,19 @@
 	const series: Series[] = [
 		{
 			key: 'importCost',
-			label: 'Grid usage',
+			label: m.chart_grid_usage(),
 			color: 'var(--color-energy-grid)',
 			value: (d) => d.importCost
 		},
 		{
 			key: 'standingCharge',
-			label: 'Standing charge',
+			label: m.chart_standing_charge(),
 			color: 'var(--color-cost-standing)',
 			value: (d) => d.standingCharge
 		},
 		{
 			key: 'exportEarnings',
-			label: 'Export earnings',
+			label: m.chart_export_earnings(),
 			color: 'var(--color-energy-export)',
 			value: (d) => -d.exportEarnings
 		}
@@ -89,7 +90,7 @@
 							<div
 								class="mt-0.5 flex basis-full items-center justify-between gap-4 border-t border-border/50 pt-1.5 leading-none"
 							>
-								<span class="text-muted-foreground">Net</span>
+								<span class="text-muted-foreground">{m.chart_net()}</span>
 								<span class="font-mono font-medium tabular-nums text-foreground">
 									{money(payload.reduce((sum, p) => sum + Number(p.value ?? 0), 0))}
 								</span>

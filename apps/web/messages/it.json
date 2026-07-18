@@ -454,5 +454,15 @@
   "chart_custom_charts": "Grafici personalizzati",
   "chart_none_yet": "Ancora nessun grafico personalizzato.",
   "chart_create_first": "Crea il tuo primo grafico",
-  "chart_delete_confirm": "Eliminare “{name}”? L'operazione non può essere annullata."
+  "chart_delete_confirm": "Eliminare “{name}”? L'operazione non può essere annullata.",
+  "chart_from_battery": "Dalla batteria",
+  "chart_from_solar": "Dal solare",
+  "weather_forecast_title": "Previsione solare",
+  "weather_forecast_power": "Potenza prevista",
+  "weather_forecast_peak": "Picco",
+  "overview_detail_consumption": "Consumo per fonte (oggi)",
+  "overview_detail_production": "Produzione (oggi)",
+  "overview_detail_feed_in": "Immissione (oggi)",
+  "overview_detail_purchase": "Acquisto dalla rete (oggi)",
+  "overview_no_data_today": "Ancora nessun dato oggi"
 }

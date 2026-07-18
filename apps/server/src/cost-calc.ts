@@ -13,6 +13,9 @@ export interface HourEnergy {
   export: number;
   load: number;
   production: number;
+  /** Battery discharge counter delta — carried for the energy split only; NOT
+   *  priced by {@link allocateCost} (money math never reads it). */
+  batteryDischarge: number;
 }
 
 const AVG_DAYS_PER_MONTH = 30.4375;

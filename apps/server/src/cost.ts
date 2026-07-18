@@ -36,6 +36,7 @@ const ENERGY_FIELDS = {
   export: "grid.energy.exported.total",
   load: "load.energy.total",
   production: "production.total",
+  batteryDischarge: "battery.energy.discharged.total",
 } as const satisfies Record<keyof Omit<HourEnergy, "time">, CanonicalRole>;
 
 export type EnergyField = keyof Omit<HourEnergy, "time">;
@@ -66,6 +67,7 @@ const ENERGY_TODAY_FIELDS = {
   export: "grid.energy.exported.today",
   load: "load.energy.today",
   production: "production.today",
+  batteryDischarge: "battery.energy.discharged.today",
 } as const satisfies Record<EnergyField, CanonicalRole>;
 
 /** {@link EnergyField} → the {@link EnergyTotals} kWh key it feeds. */
@@ -74,6 +76,7 @@ const TODAY_TOTALS_FIELD = {
   export: "exportKwh",
   load: "loadKwh",
   production: "productionKwh",
+  batteryDischarge: "batteryDischargeKwh",
 } as const satisfies Record<EnergyField, keyof EnergyTotals>;
 
 /** Whether two Dates fall on the same local (server-tz) calendar day. */
@@ -222,6 +225,7 @@ async function fetchBucketEnergy(
       export: 0,
       load: 0,
       production: 0,
+      batteryDischarge: 0,
     };
     hour[field] += Math.max(0, max - prior);
     byBucket.set(time.getTime(), hour);

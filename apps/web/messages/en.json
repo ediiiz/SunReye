@@ -454,5 +454,15 @@
   "chart_custom_charts": "Custom charts",
   "chart_none_yet": "No custom charts yet.",
   "chart_create_first": "Create your first chart",
-  "chart_delete_confirm": "Delete “{name}”? This can't be undone."
+  "chart_delete_confirm": "Delete “{name}”? This can't be undone.",
+  "chart_from_battery": "From battery",
+  "chart_from_solar": "From solar",
+  "weather_forecast_title": "Solar forecast",
+  "weather_forecast_power": "Expected power",
+  "weather_forecast_peak": "Peak",
+  "overview_detail_consumption": "Consumption by source (today)",
+  "overview_detail_production": "Production (today)",
+  "overview_detail_feed_in": "Feed-in (today)",
+  "overview_detail_purchase": "Grid purchase (today)",
+  "overview_no_data_today": "No data yet today"
 }

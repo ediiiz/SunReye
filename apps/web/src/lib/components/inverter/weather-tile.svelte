@@ -111,11 +111,11 @@
 		<span class="flex shrink-0 items-center gap-4 lg:ml-auto 2xl:gap-6">
 			<span class="flex flex-col items-end">
 				<span class="text-lg font-semibold tabular-nums leading-tight 2xl:text-xl">
-					{kwh(forecast.todayKwh)}
+					{kwh(forecast.remainingTodayKwh)}
 					<span class="text-xs font-normal text-muted-foreground">kWh</span>
 				</span>
 				<span class="text-[0.6rem] uppercase tracking-wide text-muted-foreground">
-					{m.weather_forecast_today()}
+					{m.weather_forecast_remaining()}
 				</span>
 			</span>
 			<span class="flex flex-col items-end">
@@ -145,7 +145,7 @@
 		<SolarForecastDialog
 			hourly={forecast.hourly}
 			todayKwh={forecast.todayKwh}
-			tomorrowKwh={forecast.tomorrowKwh}
+			remainingTodayKwh={forecast.remainingTodayKwh}
 			triggerClass={TRIGGER_CLASS}
 		>
 			{#snippet trigger()}

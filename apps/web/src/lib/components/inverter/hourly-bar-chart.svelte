@@ -14,7 +14,8 @@
 		series,
 		unit,
 		xTicks = 6,
-		empty
+		empty,
+		layout = 'stack'
 	}: {
 		/** Rows already carrying a formatted x-axis `label` (e.g. "14:00"). */
 		data: T[];
@@ -25,6 +26,9 @@
 		xTicks?: number;
 		/** Empty-state copy shown when every series is all-zero. */
 		empty: string;
+		/** `stack` sums series per band; `overlap` draws them on the same band (later
+		 *  series in front — e.g. a translucent predicted behind a solid actual). */
+		layout?: 'stack' | 'overlap';
 	} = $props();
 
 	const config: Chart.ChartConfig = $derived(
@@ -42,7 +46,7 @@
 				{data}
 				x="label"
 				{series}
-				seriesLayout="stack"
+				seriesLayout={layout}
 				bandPadding={0.2}
 				stackPadding={2}
 				padding={{ top: 8, right: 8, bottom: 20, left: 40 }}

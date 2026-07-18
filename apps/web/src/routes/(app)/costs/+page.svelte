@@ -90,6 +90,7 @@
 			currency: cost?.currency ?? 'EUR'
 		}).format(v);
 	const kwh = (v: number) => `${v.toLocaleString(undefined, { maximumFractionDigits: 1 })} kWh`;
+	const pct = (v: number | null) => (v === null ? '—' : `${Math.round(v * 100)}%`);
 	const price = (v: number) =>
 		new Intl.NumberFormat(undefined, {
 			style: 'currency',
@@ -137,7 +138,7 @@
 		{@const c = cost}
 		<!-- Headline tiles -->
 		<div
-			class="grid gap-px border border-border bg-border sm:grid-cols-2 lg:grid-cols-3"
+			class="grid gap-px border border-border bg-border sm:grid-cols-2 lg:grid-cols-4"
 			transition:fade={{ duration: 200 }}
 		>
 			{#snippet tile(t: {
@@ -210,6 +211,18 @@
 				sub: m.costs_sub_total_savings({ amount: money(c.exportEarnings) }),
 				accent: c.savings > 0 ? 'text-emerald-500' : '',
 				explain: m.costs_tile_total_savings_explain()
+			})}
+			{@render tile({
+				label: m.costs_tile_self_sufficiency(),
+				value: pct(c.selfSufficiency),
+				sub: m.costs_sub_self_sufficiency(),
+				explain: m.costs_tile_self_sufficiency_explain()
+			})}
+			{@render tile({
+				label: m.costs_tile_self_consumption(),
+				value: pct(c.selfConsumption),
+				sub: m.costs_sub_self_consumption(),
+				explain: m.costs_tile_self_consumption_explain()
 			})}
 		</div>
 

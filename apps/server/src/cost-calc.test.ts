@@ -20,6 +20,7 @@ const hour = (iso: string, e: Partial<Omit<HourEnergy, "time">>): HourEnergy => 
   export: 0,
   load: 0,
   production: 0,
+  batteryDischarge: 0,
   ...e,
 });
 
@@ -62,6 +63,18 @@ describe("allocateCost", () => {
     expect(r.importCost).toBe(0);
     expect(r.selfSufficiency).toBeNull();
     expect(r.selfConsumption).toBeNull();
+  });
+
+  test("battery discharge is carried but never priced (money unchanged)", () => {
+    const base = allocateCost([hour("2024-01-01T10:00:00", { import: 2 })], tariff, 1);
+    const withBattery = allocateCost(
+      [hour("2024-01-01T10:00:00", { import: 2, batteryDischarge: 5 })],
+      tariff,
+      1,
+    );
+    expect(withBattery.importCost).toBe(base.importCost);
+    expect(withBattery.net).toBe(base.net);
+    expect(withBattery.gridOnlyCost).toBe(base.gridOnlyCost);
   });
 
   test("groups by local day", () => {

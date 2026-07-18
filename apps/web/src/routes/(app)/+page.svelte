@@ -23,7 +23,7 @@
 	</section>
 
 	<div class="flex shrink-0 flex-col gap-3 sm:gap-4 lg:flex-row">
-		<div class="lg:w-80 lg:shrink-0 2xl:w-96">
+		<div class="lg:w-96 lg:shrink-0 2xl:w-120">
 			<WeatherTile />
 		</div>
 		<div class="min-w-0 lg:flex-1">

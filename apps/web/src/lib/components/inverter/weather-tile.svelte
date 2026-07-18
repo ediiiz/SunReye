@@ -11,6 +11,13 @@
 	import { api } from '$lib/api';
 	import * as m from '$lib/paraglide/messages';
 
+	type SolarForecast = {
+		provider: string;
+		todayKwh: number;
+		remainingTodayKwh: number;
+		tomorrowKwh: number;
+	};
+
 	type Weather = {
 		temperature: number;
 		unit: string;
@@ -18,7 +25,10 @@
 		icon: string;
 		solarRadiationSum: number | null;
 		label: string;
+		forecast: SolarForecast | null;
 	};
+
+	const kwh = (v: number) => v.toLocaleString(undefined, { maximumFractionDigits: 1 });
 
 	const ICONS: Record<string, Component> = {
 		clear: Sun,
@@ -63,7 +73,11 @@
 			<span class="text-3xl font-semibold tabular-nums leading-none 2xl:text-4xl">
 				{Math.round(weather.temperature)}{weather.unit}
 			</span>
-			<span class="truncate text-sm text-muted-foreground">{weather.condition}</span>
+			<!-- With the forecast stats on the right the condition text would crowd
+			     the tile; the icon already carries it. -->
+			{#if !weather.forecast}
+				<span class="truncate text-sm text-muted-foreground">{weather.condition}</span>
+			{/if}
 			{#if weather.label}
 				<span class="flex items-center gap-1 truncate text-xs text-muted-foreground">
 					<MapPin class="size-3 shrink-0" />
@@ -71,7 +85,30 @@
 				</span>
 			{/if}
 		</div>
-		{#if weather.solarRadiationSum !== null}
+		{#if weather.forecast}
+			<!-- Expected PV production (provider-agnostic server forecast) replaces
+			     the raw radiation figure when the plant is configured. -->
+			<div class="ml-auto flex shrink-0 items-center gap-4 2xl:gap-6">
+				<div class="flex flex-col items-end">
+					<span class="text-lg font-semibold tabular-nums leading-tight 2xl:text-xl">
+						{kwh(weather.forecast.todayKwh)}
+						<span class="text-xs font-normal text-muted-foreground">kWh</span>
+					</span>
+					<span class="text-[0.6rem] uppercase tracking-wide text-muted-foreground">
+						{m.weather_forecast_today()}
+					</span>
+				</div>
+				<div class="flex flex-col items-end">
+					<span class="text-lg font-medium tabular-nums leading-tight text-muted-foreground 2xl:text-xl">
+						{kwh(weather.forecast.tomorrowKwh)}
+						<span class="text-xs font-normal">kWh</span>
+					</span>
+					<span class="text-[0.6rem] uppercase tracking-wide text-muted-foreground">
+						{m.weather_forecast_tomorrow()}
+					</span>
+				</div>
+			</div>
+		{:else if weather.solarRadiationSum !== null}
 			<div class="ml-auto flex shrink-0 flex-col items-end">
 				<span class="text-sm font-medium tabular-nums 2xl:text-base">
 					{weather.solarRadiationSum.toLocaleString(undefined, { maximumFractionDigits: 1 })}

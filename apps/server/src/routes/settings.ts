@@ -12,6 +12,7 @@ import { getAccess, setAccess } from "../access-settings";
 import { getDisplay, setDisplay } from "../display-settings";
 import * as runtime from "../runtime";
 import { getTariff, setTariff } from "../settings";
+import { fetchSolarForecast } from "../solar-forecast";
 import { fetchWeather } from "../weather";
 import { getWeatherConfig, setWeatherConfig } from "../weather-settings";
 import { adminGuard } from "./admin-guard";
@@ -141,8 +142,18 @@ export const settingsRoutes = new Elysia({ name: "settings-routes" })
     { requireAdmin: true, body: t.Unknown() },
   )
   // Current weather for the configured location (Open-Meteo, server-proxied +
-  // cached). Rides the dashboard read policy so the kiosk view shows it too;
-  // `null` when weather is disabled/unconfigured or the upstream is unavailable.
-  .get("/api/weather", async () => (await fetchWeather(await getWeatherConfig())) ?? null, {
-    requireSession: true,
-  });
+  // cached), plus the PV production forecast when configured. Rides the
+  // dashboard read policy so the kiosk view shows it too; `null` when weather
+  // is disabled/unconfigured or the upstream is unavailable.
+  .get(
+    "/api/weather",
+    async () => {
+      const config = await getWeatherConfig();
+      const [reading, forecast] = await Promise.all([
+        fetchWeather(config),
+        fetchSolarForecast(config),
+      ]);
+      return reading ? { ...reading, forecast } : null;
+    },
+    { requireSession: true },
+  );

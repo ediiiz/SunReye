@@ -5,7 +5,9 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { Switch } from '$lib/components/ui/switch';
+	import { Separator } from '$lib/components/ui/separator';
 	import SettingsSection from './settings-section.svelte';
+	import SolarForecastFields, { type ArrayFields } from './solar-forecast-fields.svelte';
 	import { api } from '$lib/api';
 	import { useAppSession } from '$lib/session';
 	import * as m from '$lib/paraglide/messages';
@@ -13,18 +15,30 @@
 	const session = useAppSession();
 	const isAdmin = $derived($session.data?.user.role === 'admin');
 
+	type PvArray = { kwp: number; tilt: number; azimuth: number };
 	type WeatherConfig = {
 		enabled: boolean;
 		latitude: number | null;
 		longitude: number | null;
 		label: string;
+		forecast: {
+			enabled: boolean;
+			provider: string;
+			arrays: PvArray[];
+			tempCoefficient: number;
+			systemLoss: number;
+		};
 	};
 
 	let draft = $state<WeatherConfig | null>(null);
 	let saving = $state(false);
-	// Bound to text inputs so a half-typed "-" or "" doesn't coerce to 0.
+	// All numeric fields are bound as text so a half-typed "-" or "" doesn't
+	// coerce to 0; parsed once on save.
 	let latText = $state('');
 	let lonText = $state('');
+	let tempCoeffText = $state('');
+	let lossText = $state('');
+	let arrayTexts = $state<ArrayFields[]>([]);
 
 	onMount(async () => {
 		const { data } = await api.api.settings.weather.get();
@@ -32,30 +46,64 @@
 			draft = data as WeatherConfig;
 			latText = draft.latitude?.toString() ?? '';
 			lonText = draft.longitude?.toString() ?? '';
+			tempCoeffText = draft.forecast.tempCoefficient.toString();
+			lossText = draft.forecast.systemLoss.toString();
+			arrayTexts = draft.forecast.arrays.map((a) => ({
+				kwp: a.kwp.toString(),
+				tilt: a.tilt.toString(),
+				azimuth: a.azimuth.toString()
+			}));
 		}
 	});
 
-	function parseCoord(text: string): number | null {
+	function parseNum(text: string): number | null {
 		const t = text.trim();
 		if (t === '') return null;
 		const n = Number(t);
 		return Number.isFinite(n) ? n : null;
 	}
 
+	/** Parse the forecast inputs, or null (with a toast) when any is invalid. */
+	function parseForecast(): { arrays: PvArray[]; tempCoefficient: number; systemLoss: number } | null {
+		const arrays: PvArray[] = [];
+		for (const t of arrayTexts) {
+			const kwp = parseNum(t.kwp);
+			const tilt = parseNum(t.tilt);
+			const azimuth = parseNum(t.azimuth);
+			if (kwp === null || tilt === null || azimuth === null) return null;
+			arrays.push({ kwp, tilt, azimuth });
+		}
+		const tempCoefficient = parseNum(tempCoeffText);
+		const systemLoss = parseNum(lossText);
+		if (tempCoefficient === null || systemLoss === null) return null;
+		return { arrays, tempCoefficient, systemLoss };
+	}
+
 	async function save() {
 		if (!draft) return;
-		const latitude = parseCoord(latText);
-		const longitude = parseCoord(lonText);
+		const latitude = parseNum(latText);
+		const longitude = parseNum(lonText);
 		if (draft.enabled && (latitude === null || longitude === null)) {
 			toast.error(m.weather_toast_invalid_coords());
 			return;
 		}
+		const forecast = parseForecast();
+		if (!forecast) {
+			toast.error(m.weather_forecast_toast_invalid());
+			return;
+		}
+
 		saving = true;
 		const { data, error } = await api.api.settings.weather.put({
 			enabled: draft.enabled,
 			latitude,
 			longitude,
-			label: draft.label
+			label: draft.label,
+			forecast: {
+				enabled: draft.forecast.enabled,
+				provider: draft.forecast.provider,
+				...forecast
+			}
 		});
 		saving = false;
 		if (error) toast.error(m.weather_toast_error());
@@ -117,6 +165,30 @@
 				maxlength={120}
 			/>
 		</div>
+
+		<Separator />
+
+		<div class="flex flex-col gap-1">
+			<div class="flex items-center justify-between gap-4">
+				<Label for="forecast-enabled">{m.weather_forecast_enable()}</Label>
+				<Switch
+					id="forecast-enabled"
+					checked={draft.forecast.enabled}
+					disabled={!isAdmin || saving}
+					onCheckedChange={(v) => draft && (draft.forecast.enabled = v)}
+				/>
+			</div>
+			<p class="text-sm text-muted-foreground">{m.weather_forecast_desc()}</p>
+		</div>
+
+		{#if draft.forecast.enabled}
+			<SolarForecastFields
+				bind:arrays={arrayTexts}
+				bind:tempCoeff={tempCoeffText}
+				bind:loss={lossText}
+				disabled={!isAdmin || saving}
+			/>
+		{/if}
 
 		<div class="flex items-center gap-3">
 			<Button onclick={save} disabled={!isAdmin || saving}>{saving ? m.action_saving() : m.action_save()}</Button>

@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.1.0](https://github.com/SunReye/SunReye/compare/server-v1.0.1...server-v1.1.0) (2026-07-18)
+
+
+### Features
+
+* **server:** add battery/solar/grid 3-way consumption split to energy series ([a543e00](https://github.com/SunReye/SunReye/commit/a543e006f5daf6dc588d8c9b8dcaa1362d2499a4))
+
+
+### Bug Fixes
+
+* **server:** use *.today registers for current-day energy split and cost KPIs ([d7f61b4](https://github.com/SunReye/SunReye/commit/d7f61b46266bc0194cb1ffd36e53ed022a28d54e))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * devDependencies
+    * @SunReye/inverter-core bumped to 1.0.0
+
 ## [1.0.1](https://github.com/SunReye/SunReye/compare/server-v1.0.0...server-v1.0.1) (2026-07-18)
 
 

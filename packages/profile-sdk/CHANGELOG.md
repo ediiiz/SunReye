@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.0](https://github.com/SunReye/SunReye/compare/profile-sdk-v1.5.0...profile-sdk-v2.0.0) (2026-07-18)
+
+
+### ⚠ BREAKING CHANGES
+
+* no inverter profile ships in the box. Existing installs keep their installed/active profile; new installs must install one from a profile source before the full dashboard comes online.
+
+### Features
+
+* remove bundled SG05 profile; ship profile-agnostic core ([440fcd2](https://github.com/SunReye/SunReye/commit/440fcd2f252e1ac822eacef8ae3ad14e7685c916))
+
 ## [1.5.0](https://github.com/SunReye/SunReye/compare/profile-sdk-v1.4.0...profile-sdk-v1.5.0) (2026-07-13)
 
 

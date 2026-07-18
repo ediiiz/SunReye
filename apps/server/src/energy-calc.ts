@@ -18,6 +18,10 @@ export interface EnergyTotals {
   exportKwh: number;
   loadKwh: number;
   productionKwh: number;
+  /** Battery discharge counter delta — raw energy the battery sent out (to load,
+   *  charge losses, or export). Subdivides the on-site consumption figure into a
+   *  battery slice; 0 when the profile maps no battery-discharge role. */
+  batteryDischargeKwh: number;
 }
 
 /** One period of energy flows, split for stacked-bar display. */
@@ -26,8 +30,18 @@ export interface PeriodEnergy extends EnergyTotals {
   bucket: string;
   /** Consumption served by the grid: min(import, load) → "from grid". */
   gridToLoadKwh: number;
-  /** Consumption served on-site: max(0, load − import) → "from solar/battery". */
+  /** Consumption served on-site: max(0, load − import) → "from solar+battery"
+   *  (combined). Subdivided by {@link batteryToLoadKwh} + {@link solarDirectToLoadKwh},
+   *  which sum back to this figure. */
   solarToLoadKwh: number;
+  /** On-site consumption served from the battery: min(batteryDischarge,
+   *  solarToLoad) → "from battery". Clamped so it never exceeds the on-site
+   *  figure; 0 when no battery-discharge data. */
+  batteryToLoadKwh: number;
+  /** On-site consumption served directly from solar: max(0, solarToLoad −
+   *  batteryToLoad) → "from solar". Equals the full on-site figure when there is
+   *  no battery-discharge data. */
+  solarDirectToLoadKwh: number;
   /** Production used on-site: max(0, production − export) → "used on-site". */
   selfConsumedKwh: number;
   /** Production sent to the grid: export → "exported". */
@@ -38,11 +52,38 @@ export interface PeriodEnergy extends EnergyTotals {
   selfConsumption: number | null;
 }
 
+/**
+ * Overlay live current-day energy on a period's `*.total`-delta totals: every
+ * field present in `today` replaces the delta-derived value, while fields absent
+ * from `today` keep it. Pure — returns a fresh object and never mutates either
+ * input. Lets the in-progress day be sourced from the live `*.today` registers
+ * (which lead the coarse cross-bucket counter delta) while older, complete
+ * periods keep the `*.total` delta as their source of truth. A field carrying an
+ * explicit `0` in `today` still overrides — only `undefined` (absent) is skipped.
+ */
+export function applyTodayOverride(
+  totals: EnergyTotals,
+  today: Partial<EnergyTotals>,
+): EnergyTotals {
+  return {
+    importKwh: today.importKwh ?? totals.importKwh,
+    exportKwh: today.exportKwh ?? totals.exportKwh,
+    loadKwh: today.loadKwh ?? totals.loadKwh,
+    productionKwh: today.productionKwh ?? totals.productionKwh,
+    batteryDischargeKwh: today.batteryDischargeKwh ?? totals.batteryDischargeKwh,
+  };
+}
+
 /** Derive the display splits and ratios for one period's summed energy. */
 export function derivePeriodEnergy(bucket: string, totals: EnergyTotals): PeriodEnergy {
-  const { importKwh, exportKwh, loadKwh, productionKwh } = totals;
+  const { importKwh, exportKwh, loadKwh, productionKwh, batteryDischargeKwh } = totals;
   const gridToLoadKwh = Math.min(importKwh, loadKwh);
   const solarToLoadKwh = Math.max(0, loadKwh - importKwh);
+  // Subdivide the on-site figure: the battery can only serve up to what was
+  // consumed on-site (its raw discharge may also cover charge losses or export),
+  // so clamp to solarToLoad; the remainder is direct solar. Guard negatives.
+  const batteryToLoadKwh = Math.min(Math.max(0, batteryDischargeKwh), solarToLoadKwh);
+  const solarDirectToLoadKwh = Math.max(0, solarToLoadKwh - batteryToLoadKwh);
   const selfConsumedKwh = Math.max(0, productionKwh - exportKwh);
   return {
     bucket,
@@ -50,8 +91,11 @@ export function derivePeriodEnergy(bucket: string, totals: EnergyTotals): Period
     exportKwh,
     loadKwh,
     productionKwh,
+    batteryDischargeKwh,
     gridToLoadKwh,
     solarToLoadKwh,
+    batteryToLoadKwh,
+    solarDirectToLoadKwh,
     selfConsumedKwh,
     exportedKwh: exportKwh,
     selfSufficiency: loadKwh > 0 ? clamp01(solarToLoadKwh / loadKwh) : null,

@@ -312,7 +312,7 @@ function controlRefs(expr: ControlExpr): string[] {
  * Rewrite one concrete {@link ComputeExpr} with `removed` keys dropped. A
  * removed key in a *variadic* list (`sum`, `combine.add/sub`, `ratio.num/den`)
  * is pruned — semantically identical to what the author would hand-type. A
- * removed key in a *fixed-arity* expr (`diff`, `scale`), or one whose removal
+ * removed key in a *fixed-arity* expr (`diff`, `scale`, `clamp`), or one whose removal
  * would empty a required list, throws instead: shrinking there would silently
  * change the number (e.g. an emptied `ratio.den` reads a constant 0), so we
  * refuse loudly rather than ship a wrong value. Returns a fresh expr when it
@@ -340,6 +340,9 @@ function pruneComputeExpr(expr: ComputeExpr, removed: Set<string>, metricKey: st
   }
   if ("scale" in expr) {
     return removed.has(expr.scale[0]) ? fail(expr.scale[0], "fixed-arity scale") : expr;
+  }
+  if ("clamp" in expr) {
+    return removed.has(expr.clamp.key) ? fail(expr.clamp.key, "single-key clamp") : expr;
   }
   if ("combine" in expr) {
     const sub = expr.combine.sub ?? [];

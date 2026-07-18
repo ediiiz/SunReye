@@ -52,7 +52,7 @@
 
 	const graph = $derived.by(() => buildPowerGraph(caps, power, orientation, has));
 
-	type Line = { id: string; type: 'DC' | 'AC'; flow: Flow; color: string; dur: number; d: string; pill: Pt };
+	type Line = { id: string; flow: Flow; color: string; dur: number; d: string };
 
 	/** Segment pts → SVG path: 2 pts line, 3 quadratic, 4 cubic (see power-graph). */
 	function toPath(px: Pt[]): string {
@@ -62,29 +62,16 @@
 		return `M ${c[0]} L ${c[1]}`;
 	}
 
-	/** Point at t = 0.5 along the segment — anchors the DC/AC pill to the bend. */
-	function midpoint(px: Pt[]): Pt {
-		const mix = (ws: number[]) => ({
-			x: px.reduce((a, p, i) => a + p.x * ws[i], 0),
-			y: px.reduce((a, p, i) => a + p.y * ws[i], 0)
-		});
-		if (px.length === 4) return mix([0.125, 0.375, 0.375, 0.125]);
-		if (px.length === 3) return mix([0.25, 0.5, 0.25]);
-		return mix([0.5, 0.5]);
-	}
-
 	const lines = $derived.by<Line[]>(() => {
 		if (w === 0 || h === 0) return [];
 		return graph.segments.map((s) => {
 			const px = s.pts.map((p) => ({ x: p.x * w, y: p.y * h }));
 			return {
 				id: s.id,
-				type: s.type,
 				flow: s.flow,
 				color: s.color,
 				dur: flowDuration(s.value),
-				d: toPath(px),
-				pill: midpoint(px)
+				d: toPath(px)
 			};
 		});
 	});
@@ -139,21 +126,11 @@
 				{/if}
 			{/each}
 		</svg>
-
-		<!-- Connector-type pills (DC / AC) at each segment's bend. -->
-		{#each lines as l (`pill-${l.id}`)}
-			<span
-				class="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-border/70 bg-background/90 px-1.5 py-px text-[0.55rem] font-medium uppercase tracking-wide text-muted-foreground"
-				style={`left:${l.pill.x}px;top:${l.pill.y}px`}
-			>
-				{l.type}
-			</span>
-		{/each}
 	{/if}
 
-	<!-- Inverter hub. Only the circle is centred on the anchor; the metric and
-	     caption pills float above/below it on translucent backdrops so connector
-	     rails can pass underneath without colliding with text. -->
+	<!-- Inverter hub. Only the circle is centred on the anchor; the metric pill
+	     floats above it on a translucent backdrop so connector rails can pass
+	     underneath without colliding with text. -->
 	<div
 		class="absolute -translate-x-1/2 -translate-y-1/2"
 		style={`left:${graph.hub.x * 100}%;top:${graph.hub.y * 100}%`}
@@ -191,17 +168,6 @@
 		>
 			<span class="hub-ring absolute -inset-1 rounded-full border border-primary/50"></span>
 			<CpuIcon class="size-7 text-primary sm:size-8 2xl:size-10" weight="duotone" />
-		</div>
-		<div
-			class="absolute left-1/2 top-full mt-2.5 flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full border border-border/60 bg-background/85 px-2.5 py-1 leading-tight backdrop-blur-[2px]"
-		>
-			<span
-				class={`size-1.5 shrink-0 rounded-full ${inverter.status === 'live' ? 'bg-emerald-500' : 'bg-muted-foreground'}`}
-			></span>
-			<span class="text-xs font-semibold 2xl:text-sm">{msg.label_inverter()}</span>
-			<span class="text-[0.62rem] text-muted-foreground 2xl:text-xs">
-				{inverter.status === 'live' ? msg.flow_online() : msg.status_connecting()}
-			</span>
 		</div>
 	</div>
 

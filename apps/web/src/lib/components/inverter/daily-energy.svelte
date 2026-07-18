@@ -10,6 +10,24 @@
 	import * as m from '$lib/paraglide/messages';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import AnimatedNumber from './animated-number.svelte';
+	import EnergyDetailDialog from './energy-detail-dialog.svelte';
+
+	// Per-card detail dialog: which stacked-bar chart the tile opens, plus its
+	// title. Keyed by role; only the four energy roles map a variant.
+	const DETAIL: Record<
+		string,
+		{ variant: 'consumption' | 'production' | 'feedin' | 'purchase'; title: () => string }
+	> = {
+		'production.today': { variant: 'production', title: m.overview_detail_production },
+		'load.energy.today': { variant: 'consumption', title: m.overview_detail_consumption },
+		'grid.energy.exported.today': { variant: 'feedin', title: m.overview_detail_feed_in },
+		'grid.energy.imported.today': { variant: 'purchase', title: m.overview_detail_purchase }
+	};
+
+	// Card surface + interactive/focus affordances. The whole tile is the dialog
+	// trigger (a <button>), so it gets Enter/Space activation for free.
+	const CARD_CLASS =
+		'flex w-full flex-col gap-2 rounded-xl border border-border/60 bg-card p-3 text-left transition-colors hover:border-border hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-4';
 
 	// The slice of /api/cost?range=today the cards render: money that flowed
 	// through the meter plus the two ratio KPIs the server already derives.
@@ -135,88 +153,92 @@
 </script>
 
 {#if tiles.length > 0}
-	<!-- lg+ sizes tracks by the cards actually mapped (auto-fit) so a profile
-	     without e.g. grid energy roles doesn't leave empty columns. -->
-	<div
-		class="grid h-full grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-[repeat(auto-fit,minmax(13rem,1fr))]"
-	>
+	<!-- 2×2 on every size: the cards sit in the narrow right column on lg, so a
+	     fixed two-column grid reads better than letting them collapse to one wide
+	     column or fan out to four skinny ones. Cards are content-sized (natural
+	     height) and the grid top-aligns in its column — on tall viewports the
+	     empty space falls below the cards instead of inflating them. -->
+	<div class="grid grid-cols-2 gap-3 sm:gap-4">
 		{#each tiles as t (t.role)}
 			{@const value = inverter.value(t.metric.key)}
 			{@const Icon = t.icon}
 			{@const slots = SLOTS[t.role] ?? { ratio: false, money: false }}
 			{@const kpis = cost ? kpisFor(t.role, cost) : null}
-			<div
-				class="flex flex-col justify-between gap-2 rounded-xl border border-border/60 bg-card p-3 sm:p-4"
-			>
-				<div class="flex items-start justify-between gap-2">
-					<span
-						class="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground sm:text-xs 2xl:text-sm"
-					>
-						{t.label()}
+			{@const detail = DETAIL[t.role]}
+			<EnergyDetailDialog variant={detail.variant} title={detail.title()} triggerClass={CARD_CLASS}>
+				{#snippet trigger()}
+					<span class="flex items-start justify-between gap-2">
+						<span
+							class="text-[0.65rem] font-medium uppercase tracking-wider text-muted-foreground sm:text-xs 2xl:text-sm"
+						>
+							{t.label()}
+						</span>
+						<span
+							class="flex size-8 shrink-0 items-center justify-center rounded-lg {t.tint} 2xl:size-10"
+						>
+							<Icon class="size-4.5 {t.accent} 2xl:size-5" weight="duotone" />
+						</span>
 					</span>
-					<span
-						class="flex size-8 shrink-0 items-center justify-center rounded-lg {t.tint} 2xl:size-10"
-					>
-						<Icon class="size-4.5 {t.accent} 2xl:size-5" weight="duotone" />
+					<span class="text-2xl font-semibold tabular-nums leading-none xl:text-3xl">
+						{#if value === undefined}
+							<Skeleton class="h-7 w-20 rounded xl:h-8" />
+						{:else}
+							<AnimatedNumber {value} unit={t.metric.unit ?? ''} />
+							<span class="ml-1 text-sm font-normal text-muted-foreground 2xl:text-base">
+								{t.metric.unit ?? ''}
+							</span>
+						{/if}
 					</span>
-				</div>
-				<span class="text-2xl font-semibold tabular-nums leading-none xl:text-3xl 2xl:text-4xl">
-					{#if value === undefined}
-						<Skeleton class="h-7 w-20 rounded xl:h-8 2xl:h-10" />
-					{:else}
-						<AnimatedNumber {value} unit={t.metric.unit ?? ''} />
-						<span class="ml-1 text-sm font-normal text-muted-foreground 2xl:text-base">
-							{t.metric.unit ?? ''}
+					<!-- Fixed slots (ratio row · meter · money row): every card reserves
+					     the same heights so rows align, even when a slot is empty. -->
+					{#if slots.ratio || slots.money}
+						<span class="flex flex-col gap-1">
+							<span class="flex min-h-3.5 items-baseline justify-between gap-2 2xl:min-h-4">
+								{#if kpis === null && slots.ratio}
+									<Skeleton class="h-2.5 w-24 rounded" />
+									<Skeleton class="h-2.5 w-8 rounded" />
+								{:else if kpis?.ratio}
+									<span
+										class="truncate text-[0.6rem] uppercase tracking-wide text-muted-foreground 2xl:text-xs"
+									>
+										{kpis.ratio.label()}
+									</span>
+									<span class="text-xs font-semibold tabular-nums 2xl:text-sm">
+										{percent(kpis.ratio.value)}%
+									</span>
+								{/if}
+							</span>
+							<span
+								class="block h-1 overflow-hidden rounded-full {slots.ratio ? 'bg-border/60' : ''}"
+							>
+								{#if kpis === null && slots.ratio}
+									<Skeleton class="h-full w-full rounded-full" />
+								{:else if kpis?.ratio}
+									<span
+										class={`block h-full rounded-full ${t.bar}`}
+										style={`width:${percent(kpis.ratio.value)}%;transition:width 700ms ease`}
+									></span>
+								{/if}
+							</span>
+							<span class="flex min-h-3.5 items-baseline justify-between gap-2 2xl:min-h-4">
+								{#if kpis === null && slots.money}
+									<Skeleton class="h-2.5 w-24 rounded" />
+									<Skeleton class="h-2.5 w-10 rounded" />
+								{:else if kpis?.money}
+									<span
+										class="truncate text-[0.6rem] uppercase tracking-wide text-muted-foreground 2xl:text-xs"
+									>
+										{kpis.money.label()}
+									</span>
+									<span class={`text-xs font-semibold tabular-nums 2xl:text-sm ${kpis.money.color}`}>
+										{kpis.money.text}
+									</span>
+								{/if}
+							</span>
 						</span>
 					{/if}
-				</span>
-				<!-- Fixed slots (ratio row · meter · money row): every card reserves
-				     the same heights so rows align, even when a slot is empty. -->
-				{#if slots.ratio || slots.money}
-					<div class="flex flex-col gap-1">
-						<div class="flex min-h-3.5 items-baseline justify-between gap-2 2xl:min-h-4">
-							{#if kpis === null && slots.ratio}
-								<Skeleton class="h-2.5 w-24 rounded" />
-								<Skeleton class="h-2.5 w-8 rounded" />
-							{:else if kpis?.ratio}
-								<span
-									class="truncate text-[0.6rem] uppercase tracking-wide text-muted-foreground 2xl:text-xs"
-								>
-									{kpis.ratio.label()}
-								</span>
-								<span class="text-xs font-semibold tabular-nums 2xl:text-sm">
-									{percent(kpis.ratio.value)}%
-								</span>
-							{/if}
-						</div>
-						<div class="h-1 overflow-hidden rounded-full {slots.ratio ? 'bg-border/60' : ''}">
-							{#if kpis === null && slots.ratio}
-								<Skeleton class="h-full w-full rounded-full" />
-							{:else if kpis?.ratio}
-								<div
-									class={`h-full rounded-full ${t.bar}`}
-									style={`width:${percent(kpis.ratio.value)}%;transition:width 700ms ease`}
-								></div>
-							{/if}
-						</div>
-						<div class="flex min-h-3.5 items-baseline justify-between gap-2 2xl:min-h-4">
-							{#if kpis === null && slots.money}
-								<Skeleton class="h-2.5 w-24 rounded" />
-								<Skeleton class="h-2.5 w-10 rounded" />
-							{:else if kpis?.money}
-								<span
-									class="truncate text-[0.6rem] uppercase tracking-wide text-muted-foreground 2xl:text-xs"
-								>
-									{kpis.money.label()}
-								</span>
-								<span class={`text-xs font-semibold tabular-nums 2xl:text-sm ${kpis.money.color}`}>
-									{kpis.money.text}
-								</span>
-							{/if}
-						</div>
-					</div>
-				{/if}
-			</div>
+				{/snippet}
+			</EnergyDetailDialog>
 		{/each}
 	</div>
 {/if}

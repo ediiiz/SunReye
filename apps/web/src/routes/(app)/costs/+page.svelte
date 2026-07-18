@@ -5,6 +5,7 @@
 	import * as m from '$lib/paraglide/messages';
 	import * as Popover from '$lib/components/ui/popover';
 	import CostRangePicker from '$lib/components/inverter/cost-range-picker.svelte';
+	import { setPageHeader } from '$lib/page-header.svelte';
 	import CostBarChart from '$lib/components/inverter/cost-bar-chart.svelte';
 	import EnergySplitChart from '$lib/components/inverter/energy-split-chart.svelte';
 	import { resolveCostPreset, type CostBucket, type CostRange } from '$lib/cost/ranges';
@@ -119,14 +120,12 @@
 		custom: m.costs_caption_custom
 	};
 	const caption = $derived(CAPTIONS[range.id]?.() ?? range.chart.caption);
+
+	$effect(() => setPageHeader(m.nav_costs(), m.costs_subtitle()));
 </script>
 
 <div class="flex w-full flex-col gap-6 p-4 sm:p-6">
-	<div class="flex flex-wrap items-center justify-between gap-3">
-		<div>
-			<h1 class="text-lg font-semibold">{m.nav_costs()}</h1>
-			<p class="text-sm text-muted-foreground">{m.costs_subtitle()}</p>
-		</div>
+	<div class="flex flex-wrap items-center justify-end gap-3">
 		<CostRangePicker bind:range />
 	</div>
 

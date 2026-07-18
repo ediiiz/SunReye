@@ -2,7 +2,8 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$lib/resolve';
 	import * as Card from '$lib/components/ui/card';
-	import { needsSetup } from '$lib/setup';
+	import { Button } from '$lib/components/ui/button';
+	import { needsSetup, publicDashboardEnabled } from '$lib/setup';
 	import * as m from '$lib/paraglide/messages';
 	import AuthForm from '../../components/AuthForm.svelte';
 	import AuthShell from '../../components/AuthShell.svelte';
@@ -14,6 +15,13 @@
 			if (setup) goto(resolve('/onboarding'));
 		});
 	});
+
+	// Offer a way into the read-only dashboard without signing in, but only when
+	// the admin has actually enabled it (otherwise the reads would 401).
+	let publicDashboard = $state(false);
+	$effect(() => {
+		publicDashboardEnabled().then((ok) => (publicDashboard = ok));
+	});
 </script>
 
 <AuthShell title="SunReye" subtitle={m.brand_tagline()}>
@@ -24,6 +32,13 @@
 		</Card.Header>
 		<Card.Content>
 			<AuthForm mode="signin" />
+			{#if publicDashboard}
+				<div class="mt-4 text-center">
+					<Button variant="link" size="sm" href={resolve('/')}>
+						{m.access_view_dashboard()}
+					</Button>
+				</div>
+			{/if}
 		</Card.Content>
 	</Card.Root>
 </AuthShell>

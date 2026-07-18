@@ -11,6 +11,7 @@
   "nav_signed_in": "Autenticato",
   "nav_log_in": "Accedi",
   "access_read_only": "Sola lettura",
+  "access_view_dashboard": "Visualizza dashboard pubblica",
   "app_loading": "Caricamento…",
   "app_redirecting": "Reindirizzamento…",
   "app_redirecting_login": "Reindirizzamento all'accesso…",

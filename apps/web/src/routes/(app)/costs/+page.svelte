@@ -186,14 +186,15 @@
 			})}
 			{@render tile({
 				label: m.costs_tile_grid_import(),
-				value: kwh(c.importKwh),
-				sub: m.costs_sub_grid_import({ amount: money(c.importCost) }),
+				value: money(c.importCost),
+				sub: m.costs_sub_grid_import({ energy: kwh(c.importKwh) }),
 				explain: m.costs_tile_grid_import_explain()
 			})}
 			{@render tile({
 				label: m.costs_tile_grid_export(),
-				value: kwh(c.exportKwh),
-				sub: m.costs_sub_grid_export({ amount: money(c.exportEarnings) }),
+				value: money(c.exportEarnings),
+				sub: m.costs_sub_grid_export({ energy: kwh(c.exportKwh) }),
+				accent: c.exportEarnings > 0 ? 'text-emerald-500' : '',
 				explain: m.costs_tile_grid_export_explain()
 			})}
 			{@render tile({

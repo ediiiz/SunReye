@@ -34,6 +34,20 @@ const computeExprSchema = z.union([
       scale: z.number().optional(),
     }),
   }),
+  z
+    .strictObject({
+      clamp: z.strictObject({
+        key: z.string().min(1),
+        min: z.number().optional(),
+        max: z.number().optional(),
+      }),
+    })
+    // A clamp with neither bound is a no-op (identity) — reject it so the
+    // author states at least one bound and the intent is explicit.
+    .refine((e) => e.clamp.min !== undefined || e.clamp.max !== undefined, {
+      message: "clamp requires at least one of min or max",
+      path: ["clamp"],
+    }),
 ]);
 
 const controlExprSchema = z.union([
@@ -74,6 +88,7 @@ function computeRefs(expr: ComputeExpr): string[] {
   if ("diff" in expr) return expr.diff;
   if ("scale" in expr) return [expr.scale[0]];
   if ("combine" in expr) return [...expr.combine.add, ...(expr.combine.sub ?? [])];
+  if ("clamp" in expr) return [expr.clamp.key];
   return [...expr.ratio.num, ...expr.ratio.den];
 }
 

@@ -173,6 +173,24 @@ describe("profileDataSchema", () => {
     const p = { ...goodProfile(), rogue: true };
     expect(safeParseProfileData(p).success).toBe(false);
   });
+
+  test("accepts a valid clamp computeExpr", () => {
+    const p = goodProfile();
+    p.metrics[5]!.computeExpr = { clamp: { key: "dc.pv1.power", min: 0 } };
+    expect(safeParseProfileData(p).success).toBe(true);
+  });
+
+  test("rejects a clamp with neither min nor max (no-op)", () => {
+    const p = goodProfile();
+    p.metrics[5]!.computeExpr = { clamp: { key: "dc.pv1.power" } } as never;
+    expect(safeParseProfileData(p).success).toBe(false);
+  });
+
+  test("rejects a clamp referencing an unknown key", () => {
+    const p = goodProfile();
+    p.metrics[5]!.computeExpr = { clamp: { key: "does.not.exist", min: 0 } };
+    expect(safeParseProfileData(p).success).toBe(false);
+  });
 });
 
 /** A profile with a writable target + a composite control that toggles it. */
@@ -319,5 +337,24 @@ describe("compileComputeExpr", () => {
     expect(eff({ load: 900, a: 1000, b: 0 })).toBe(90);
     expect(eff({ load: 900, a: 0, b: 0 })).toBe(0);
     expect(compileComputeExpr({ ratio: { num: ["a"], den: ["b"] } })({ a: 3, b: 4 })).toBe(0.75);
+  });
+
+  test("clamp bounds a single key, missing key reads as 0", () => {
+    // min-only = positive part max(0, x): clamps below, identity above.
+    const pos = compileComputeExpr({ clamp: { key: "a", min: 0 } });
+    expect(pos({ a: -30 })).toBe(0);
+    expect(pos({ a: 42 })).toBe(42);
+    expect(pos({})).toBe(0); // missing key → 0
+
+    // max-only clamps above, identity below.
+    const capped = compileComputeExpr({ clamp: { key: "a", max: 100 } });
+    expect(capped({ a: 250 })).toBe(100);
+    expect(capped({ a: 5 })).toBe(5);
+
+    // both bounds.
+    const both = compileComputeExpr({ clamp: { key: "a", min: 0, max: 100 } });
+    expect(both({ a: -5 })).toBe(0);
+    expect(both({ a: 150 })).toBe(100);
+    expect(both({ a: 60 })).toBe(60);
   });
 });

@@ -40,18 +40,44 @@
 		}
 		errors = {};
 		submitting = true;
-		const opts = {
-			onSuccess: () => goto(resolve('/')),
-			onError: (error: { error: { message?: string } }) => {
-				formError = error.error.message || m.auth_error_generic();
-			}
-		};
-		if (mode === 'signup') {
-			await authClient.signUp.email({ name, email, password }, opts);
-		} else {
-			await authClient.signIn.email({ email, password }, opts);
+		const { error } =
+			mode === 'signup'
+				? await authClient.signUp.email({ name, email, password })
+				: await authClient.signIn.email({ email, password });
+		if (error) {
+			formError = error.message || m.auth_error_generic();
+			submitting = false;
+			return;
 		}
+		// Wait until the reactive session store reflects the new cookie before
+		// navigating. Better Auth refreshes `useSession()` asynchronously (a delayed
+		// signal after sign-in), so navigating immediately races that refresh: the
+		// `(app)` guard reads a stale `data: null` and bounces straight back here,
+		// which is why the first login used to need a second try or a reload.
+		await waitForSession();
+		goto(resolve('/'));
 		submitting = false;
+	}
+
+	/** Resolve once `useSession()` reports an authenticated session (or we time out). */
+	function waitForSession(timeoutMs = 3000): Promise<void> {
+		// Kick a fresh fetch (updates the shared store) and settle as soon as it lands.
+		void authClient.getSession({ query: { disableCookieCache: true } });
+		const session = authClient.useSession();
+		return new Promise((done) => {
+			let settled = false;
+			const finish = () => {
+				if (settled) return;
+				settled = true;
+				unsubscribe();
+				clearTimeout(timer);
+				done();
+			};
+			const timer = setTimeout(finish, timeoutMs);
+			const unsubscribe = session.subscribe((s) => {
+				if (s.data) finish();
+			});
+		});
 	}
 </script>
 

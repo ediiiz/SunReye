@@ -7,6 +7,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import * as Chart from '$lib/components/ui/chart';
 	import { Skeleton } from '$lib/components/ui/skeleton';
+	import * as msg from '$lib/paraglide/messages';
 	import ChartLegend from '$lib/components/inverter/chart-legend.svelte';
 	import { api } from '$lib/api';
 	import { inverter } from '$lib/inverter/store.svelte';
@@ -133,10 +134,10 @@
 		<h3 class="truncate text-sm font-medium">{chart.name}</h3>
 		{#if isAdmin}
 			<div class="flex items-center gap-1">
-				<Button variant="ghost" size="icon" aria-label="Edit chart" onclick={() => onEdit?.()}>
+				<Button variant="ghost" size="icon" aria-label={msg.chart_edit_chart()} onclick={() => onEdit?.()}>
 					<PencilSimple class="size-4" />
 				</Button>
-				<Button variant="ghost" size="icon" aria-label="Delete chart" onclick={() => onDelete?.()}>
+				<Button variant="ghost" size="icon" aria-label={msg.chart_delete_chart()} onclick={() => onDelete?.()}>
 					<Trash class="size-4" />
 				</Button>
 			</div>
@@ -146,13 +147,13 @@
 	<div class="h-64 w-full">
 		{#if resolved.length === 0}
 			<div class="flex h-full items-center justify-center text-sm text-muted-foreground">
-				None of this chart's metrics are available in the active profile.
+				{msg.chart_none_available()}
 			</div>
 		{:else if !range.live && loading}
 			<Skeleton class="h-full w-full" />
 		{:else if chartData.length === 0}
 			<div class="flex h-full items-center justify-center text-sm text-muted-foreground">
-				No data for this range yet
+				{msg.chart_no_data()}
 			</div>
 		{:else}
 			<div class="h-full w-full" in:fade={{ duration: 300 }}>
@@ -201,7 +202,9 @@
 
 	{#if missing.length > 0}
 		<p class="text-xs text-muted-foreground">
-			{missing.length} metric{missing.length > 1 ? 's' : ''} unavailable in the active profile.
+			{missing.length === 1
+				? msg.chart_metrics_unavailable_one({ count: missing.length })
+				: msg.chart_metrics_unavailable_other({ count: missing.length })}
 		</p>
 	{/if}
 </section>

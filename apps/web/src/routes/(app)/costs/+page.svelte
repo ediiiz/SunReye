@@ -2,6 +2,7 @@
 	import { fade } from 'svelte/transition';
 	import Info from 'phosphor-svelte/lib/Info';
 	import { api } from '$lib/api';
+	import * as m from '$lib/paraglide/messages';
 	import * as Popover from '$lib/components/ui/popover';
 	import CostRangePicker from '$lib/components/inverter/cost-range-picker.svelte';
 	import CostBarChart from '$lib/components/inverter/cost-bar-chart.svelte';
@@ -104,20 +105,33 @@
 		if (!cost || cost.selfConsumedKwh <= 0) return null;
 		return `${kwh(cost.selfConsumedKwh)} × ${price(cost.solarSavings / cost.selfConsumedKwh)}`;
 	});
+
+	// Localized caption for the contextual charts, keyed by the picked preset id
+	// (mirrors the English captions baked into $lib/cost/ranges). Falls back to the
+	// range's own caption for any id without a dedicated message.
+	const CAPTIONS: Record<string, () => string> = {
+		today: m.costs_caption_today,
+		'7d': m.costs_caption_last_7d,
+		month: m.costs_caption_this_month,
+		lastMonth: m.range_12mo,
+		year: m.range_12mo,
+		custom: m.costs_caption_custom
+	};
+	const caption = $derived(CAPTIONS[range.id]?.() ?? range.chart.caption);
 </script>
 
 <div class="flex w-full flex-col gap-6 p-4 sm:p-6">
 	<div class="flex flex-wrap items-center justify-between gap-3">
 		<div>
-			<h1 class="text-lg font-semibold">Costs</h1>
-			<p class="text-sm text-muted-foreground">Energy priced with your tariff.</p>
+			<h1 class="text-lg font-semibold">{m.nav_costs()}</h1>
+			<p class="text-sm text-muted-foreground">{m.costs_subtitle()}</p>
 		</div>
 		<CostRangePicker bind:range />
 	</div>
 
 	{#if loading && !cost}
 		<div class="flex h-40 items-center justify-center border border-border text-sm text-muted-foreground">
-			Loading costs…
+			{m.costs_loading()}
 		</div>
 	{:else if cost}
 		{@const c = cost}
@@ -143,7 +157,7 @@
 						<Popover.Root>
 							<Popover.Trigger
 								class="text-muted-foreground/70 transition-colors hover:text-foreground"
-								aria-label="What is {t.label}?"
+								aria-label={m.costs_tile_info_aria({ label: t.label })}
 							>
 								<Info class="size-3.5" weight="bold" />
 							</Popover.Trigger>
@@ -158,47 +172,43 @@
 			{/snippet}
 
 			{@render tile({
-				label: 'Grid cost',
+				label: m.costs_tile_grid_cost(),
 				value: money(c.importCost + c.standingCharge),
-				sub: `import ${money(c.importCost)} + standing ${money(c.standingCharge)}`,
-				explain:
-					'What you actually pay the utility: imported energy priced at your tariff plus the standing charge. Export earnings are NOT subtracted here — this is the bill before feed-in income.'
+				sub: m.costs_sub_grid_cost({ imported: money(c.importCost), standing: money(c.standingCharge) }),
+				explain: m.costs_tile_grid_cost_explain()
 			})}
 			{@render tile({
-				label: 'Effective cost',
+				label: m.costs_tile_effective_cost(),
 				value: money(c.net),
-				sub: `grid cost − ${money(c.exportEarnings)} export`,
+				sub: m.costs_sub_effective_cost({ amount: money(c.exportEarnings) }),
 				accent: c.net < 0 ? 'text-emerald-500' : '',
-				explain:
-					'Grid cost after subtracting export (feed-in) earnings — your net out-of-pocket for the period. Negative means feed-in outweighed your bill.'
+				explain: m.costs_tile_effective_cost_explain()
 			})}
 			{@render tile({
-				label: 'Grid import',
+				label: m.costs_tile_grid_import(),
 				value: kwh(c.importKwh),
-				sub: `${money(c.importCost)} at your tariff`,
-				explain: 'Energy drawn from the grid over the period, and what it cost to import.'
+				sub: m.costs_sub_grid_import({ amount: money(c.importCost) }),
+				explain: m.costs_tile_grid_import_explain()
 			})}
 			{@render tile({
-				label: 'Grid export',
+				label: m.costs_tile_grid_export(),
 				value: kwh(c.exportKwh),
-				sub: `${money(c.exportEarnings)} feed-in`,
-				explain: 'Energy fed back to the grid over the period, and the feed-in earnings it produced.'
+				sub: m.costs_sub_grid_export({ amount: money(c.exportEarnings) }),
+				explain: m.costs_tile_grid_export_explain()
 			})}
 			{@render tile({
-				label: 'Solar saving',
+				label: m.costs_tile_solar_saving(),
 				value: money(c.solarSavings),
-				sub: solarSavingBreakdown ?? 'self-consumed energy',
+				sub: solarSavingBreakdown ?? m.costs_sub_self_consumed(),
 				accent: c.solarSavings > 0 ? 'text-emerald-500' : '',
-				explain:
-					'Value of solar/battery energy you used on-site instead of buying it: self-consumed kWh priced at the grid rate you would have paid. Excludes feed-in (that is Grid export).'
+				explain: m.costs_tile_solar_saving_explain()
 			})}
 			{@render tile({
-				label: 'Total savings',
+				label: m.costs_tile_total_savings(),
 				value: money(c.savings),
-				sub: `solar saving + ${money(c.exportEarnings)} export`,
+				sub: m.costs_sub_total_savings({ amount: money(c.exportEarnings) }),
 				accent: c.savings > 0 ? 'text-emerald-500' : '',
-				explain:
-					'How much better off you are than buying everything from the grid: solar saving plus export earnings. (Standing charge is excluded — you would pay it on all-grid too.)'
+				explain: m.costs_tile_total_savings_explain()
 			})}
 		</div>
 
@@ -210,7 +220,7 @@
 				transition:fade={{ duration: 200 }}
 			>
 				<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-					Total cost — {range.chart.caption}
+					{m.costs_total_cost()} — {caption}
 				</h2>
 				<CostBarChart points={series.points} bucket={series.bucket} currency={c.currency} />
 			</section>
@@ -218,7 +228,7 @@
 
 		<!-- Energy split (grid-vs-solar, self-consumed-vs-exported), same range as above.
 		     Owns its own section + fade and hides itself when the range has no energy. -->
-		<EnergySplitChart chart={range.chart} caption={range.chart.caption} />
+		<EnergySplitChart chart={range.chart} {caption} />
 
 		<!-- Import by band -->
 		{#if c.byBand.length > 0}
@@ -227,7 +237,7 @@
 				transition:fade={{ duration: 200 }}
 			>
 				<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-					Import by tariff band
+					{m.costs_import_by_band()}
 				</h2>
 				<div class="flex flex-col gap-1.5 text-sm">
 					{#each c.byBand as b (b.name)}

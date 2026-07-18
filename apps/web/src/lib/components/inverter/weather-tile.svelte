@@ -9,6 +9,7 @@
 	import CloudLightning from 'phosphor-svelte/lib/CloudLightning';
 	import MapPin from 'phosphor-svelte/lib/MapPin';
 	import { api } from '$lib/api';
+	import * as m from '$lib/paraglide/messages';
 
 	type Weather = {
 		temperature: number;
@@ -75,7 +76,7 @@
 				<span class="text-sm font-medium tabular-nums 2xl:text-base">
 					{weather.solarRadiationSum.toLocaleString(undefined, { maximumFractionDigits: 1 })}
 				</span>
-				<span class="text-[0.6rem] uppercase tracking-wide text-muted-foreground">MJ/m² sun</span>
+				<span class="text-[0.6rem] uppercase tracking-wide text-muted-foreground">{m.weather_solar_sum()}</span>
 			</div>
 		{/if}
 	</div>

@@ -3,6 +3,7 @@
 	import { Tween } from 'svelte/motion';
 	import { cubicOut } from 'svelte/easing';
 	import { Progress } from '$lib/components/ui/progress';
+	import * as m from '$lib/paraglide/messages';
 	import AnimatedNumber from './animated-number.svelte';
 
 	let {
@@ -15,7 +16,11 @@
 
 	// Sign convention (Deye register 590): power > 0 discharging, < 0 charging.
 	const state = $derived(
-		power === undefined || power === 0 ? 'Idle' : power > 0 ? 'Discharging' : 'Charging'
+		power === undefined || power === 0
+			? m.flow_idle()
+			: power > 0
+				? m.flow_discharging()
+				: m.flow_charging()
 	);
 
 	// Drive the bar with the same tween as the number (450ms cubicOut) so both

@@ -151,7 +151,7 @@
 							<GaugeIcon class="size-3" weight="duotone" />
 							<AnimatedNumber value={efficiency} unit="%" />%
 						</span>
-						<span class="text-[0.6rem] uppercase tracking-wide text-muted-foreground">Eff.</span>
+						<span class="text-[0.6rem] uppercase tracking-wide text-muted-foreground">{msg.flow_efficiency()}</span>
 					</div>
 				{/if}
 				{#if selfUse !== undefined}
@@ -161,7 +161,7 @@
 								class="ml-0.5 text-[0.6rem] font-normal text-muted-foreground">W</span
 							>
 						</span>
-						<span class="text-[0.6rem] uppercase tracking-wide text-muted-foreground">Self-use</span>
+						<span class="text-[0.6rem] uppercase tracking-wide text-muted-foreground">{msg.flow_self_use()}</span>
 					</div>
 				{/if}
 			</div>
@@ -181,7 +181,7 @@
 			></span>
 			<span class="text-xs font-semibold 2xl:text-sm">{msg.label_inverter()}</span>
 			<span class="text-[0.62rem] text-muted-foreground 2xl:text-xs">
-				{inverter.status === 'live' ? 'Online' : 'Connecting…'}
+				{inverter.status === 'live' ? msg.flow_online() : msg.status_connecting()}
 			</span>
 		</div>
 	</div>

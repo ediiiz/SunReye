@@ -6,6 +6,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { toast } from 'svelte-sonner';
 	import { api } from '$lib/api';
+	import * as m from '$lib/paraglide/messages';
 	import { inverter } from '$lib/inverter/store.svelte';
 	import type { ManifestMetric } from '$lib/inverter/types';
 
@@ -52,7 +53,7 @@
 			if (error) throw error;
 			toast.success(`${metric.label} → ${metric.enumLabels?.[v] ?? v}`);
 		} catch {
-			toast.error(`Failed to update ${metric.label}`);
+			toast.error(m.controls_toast_update_failed({ name: metric.label }));
 			pending = null;
 		} finally {
 			busy = false;
@@ -72,7 +73,7 @@
 		<Switch checked={value === 1} onCheckedChange={(c) => write(c ? 1 : 0)} disabled={busy} />
 	{:else if control === 'select'}
 		<Select.Root type="single" value={String(value)} onValueChange={(v) => write(Number(v))}>
-			<Select.Trigger class="w-full">{metric.enumLabels?.[value] ?? 'Select…'}</Select.Trigger>
+			<Select.Trigger class="w-full">{metric.enumLabels?.[value] ?? m.option_select_placeholder()}</Select.Trigger>
 			<Select.Content>
 				{#each enumKeys as k (k)}
 					<Select.Item value={String(k)}>{metric.enumLabels?.[k]}</Select.Item>
@@ -99,7 +100,7 @@
 				disabled={busy || inputValue === '' || Number(inputValue) === value}
 				onclick={() => write(Number(inputValue))}
 			>
-				Apply
+				{m.action_apply()}
 			</Button>
 		</div>
 	{/if}

@@ -2,6 +2,7 @@
 	import { BarChart } from 'layerchart';
 	import { fade } from 'svelte/transition';
 	import * as Chart from '$lib/components/ui/chart';
+	import * as msg from '$lib/paraglide/messages';
 	import ChartLegend from '$lib/components/inverter/chart-legend.svelte';
 	import RangeSwitcher from '$lib/components/inverter/range-switcher.svelte';
 	import { api } from '$lib/api';
@@ -36,7 +37,7 @@
 	// 100%-normalized share — only the LayerChart series layout changes.
 	const LAYOUTS = [
 		{ id: 'kwh', label: 'kWh' },
-		{ id: 'percent', label: '% share' }
+		{ id: 'percent', label: msg.chart_percent_share() }
 	] as const;
 	let layoutId = $state<(typeof LAYOUTS)[number]['id']>('kwh');
 	const seriesLayout = $derived(layoutId === 'percent' ? 'stackExpand' : 'stack');
@@ -75,10 +76,10 @@
 	type Series = { key: string; label: string; color: string; value: (d: Period) => number };
 
 	const consumptionSeries: Series[] = [
-		{ key: 'grid', label: 'From grid', color: 'var(--color-energy-grid)', value: (d) => d.gridToLoadKwh },
+		{ key: 'grid', label: msg.chart_from_grid(), color: 'var(--color-energy-grid)', value: (d) => d.gridToLoadKwh },
 		{
 			key: 'solar',
-			label: 'From solar / battery',
+			label: msg.chart_from_solar_battery(),
 			color: 'var(--color-energy-solar)',
 			value: (d) => d.solarToLoadKwh
 		}
@@ -86,11 +87,11 @@
 	const productionSeries: Series[] = [
 		{
 			key: 'selfused',
-			label: 'Used on-site',
+			label: msg.chart_used_onsite(),
 			color: 'var(--color-energy-selfused)',
 			value: (d) => d.selfConsumedKwh
 		},
-		{ key: 'export', label: 'Exported', color: 'var(--color-energy-export)', value: (d) => d.exportedKwh }
+		{ key: 'export', label: msg.chart_exported(), color: 'var(--color-energy-export)', value: (d) => d.exportedKwh }
 	];
 
 	const configOf = (series: Series[]): Chart.ChartConfig =>
@@ -107,7 +108,7 @@
 				<span class="text-xs text-muted-foreground">{subtitle}</span>
 			</div>
 			<span class="shrink-0 whitespace-nowrap text-sm tabular-nums text-muted-foreground">
-				avg <span class="font-semibold text-foreground">{pct(ratio)}</span>
+				{msg.chart_avg()} <span class="font-semibold text-foreground">{pct(ratio)}</span>
 			</span>
 		</div>
 		<Chart.Container config={configOf(series)} class="h-55 w-full">
@@ -137,21 +138,21 @@
 	>
 		<div class="flex flex-wrap items-center justify-between gap-3">
 			<h2 class="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-				Energy split — {caption}
+				{msg.chart_energy_split()} — {caption}
 			</h2>
 			<RangeSwitcher options={LAYOUTS} bind:value={layoutId} />
 		</div>
 
 		<div class="grid gap-8 lg:grid-cols-2">
 			{@render chartBlock(
-				'Consumption',
-				'Where your energy came from (self-sufficiency)',
+				msg.energy_consumption(),
+				msg.chart_consumption_sub(),
 				consumptionSeries,
 				avgSelfSufficiency
 			)}
 			{@render chartBlock(
-				'Production',
-				'Where your solar went (self-consumption)',
+				msg.energy_production(),
+				msg.chart_production_sub(),
 				productionSeries,
 				avgSelfConsumption
 			)}

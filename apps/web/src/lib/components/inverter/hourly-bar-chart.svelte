@@ -36,8 +36,8 @@
 </script>
 
 {#if hasData}
-	<div class="flex flex-col gap-3">
-		<Chart.Container {config} class="h-64 w-full">
+	<div class="flex min-w-0 flex-col gap-3">
+		<Chart.Container {config} class="h-64 w-full min-w-0">
 			<BarChart
 				{data}
 				x="label"

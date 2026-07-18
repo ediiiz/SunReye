@@ -63,7 +63,7 @@
 		<Dialog.Header>
 			<Dialog.Title>{m.weather_forecast_title()}</Dialog.Title>
 		</Dialog.Header>
-		<div class="flex flex-col gap-3">
+		<div class="flex min-w-0 flex-col gap-3">
 			<div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
 				<span>
 					{m.weather_forecast_today()}

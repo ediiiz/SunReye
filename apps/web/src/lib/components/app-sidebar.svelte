@@ -103,7 +103,7 @@
 		<Sidebar.Menu>
 			{#if isAdmin}
 				<Sidebar.MenuItem>
-					<Sidebar.MenuButton isActive={current === '/settings'}>
+					<Sidebar.MenuButton isActive={current === '/settings' || current.startsWith('/settings/')}>
 						{#snippet child({ props })}
 							<a href={resolve('/settings')} onclick={closeSidebar} {...props}>
 								<GearIcon class="size-4" />

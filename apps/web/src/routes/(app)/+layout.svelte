@@ -25,6 +25,12 @@
 	// the active route has to come from the hash (see `routePath`).
 	const current = $derived(routePath(page.url));
 
+	// The top-level section, e.g. '/settings/inverter' → '/settings'. Drives the
+	// header title, the admin guard, and the content transition so that moving
+	// between a section's subroutes (Settings panels) keeps the shell — and the
+	// section's own nav rail — stable instead of re-fading the whole area.
+	const topSegment = $derived('/' + (current.split('/')[1] ?? ''));
+
 	// Client-side guard (matches the existing app auth pattern).
 	$effect(() => {
 		if (!$sessionQuery.isPending && !$sessionQuery.data) goto(resolve('/login'));
@@ -50,7 +56,7 @@
 	const ADMIN_ONLY = ['/settings', '/controls'];
 	$effect(() => {
 		if ($sessionQuery.isPending || !$sessionQuery.data) return;
-		if ($sessionQuery.data.user?.role !== 'admin' && ADMIN_ONLY.includes(current)) {
+		if ($sessionQuery.data.user?.role !== 'admin' && ADMIN_ONLY.includes(topSegment)) {
 			goto(resolve('/'));
 		}
 	});
@@ -74,7 +80,7 @@
 		'/controls': m.nav_controls,
 		'/settings': m.nav_settings
 	};
-	const section = $derived((SECTION[current] ?? m.nav_overview)());
+	const section = $derived((SECTION[topSegment] ?? m.nav_overview)());
 
 	// Subtle route-to-route motion: the shell (sidebar + header) stays put while
 	// the inner content cross-fades up on each navigation. Honour reduced-motion.
@@ -117,7 +123,7 @@
 				</div>
 			</header>
 			<main class="min-h-0 flex-1 overflow-y-auto">
-				{#key current}
+				{#key topSegment}
 					<div in:fade={contentIn}>
 						{@render children()}
 					</div>

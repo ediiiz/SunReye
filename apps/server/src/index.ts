@@ -11,6 +11,7 @@ import { Elysia, t } from "elysia";
 import { type CostBucket, computeCost, computeCostSeries, resolveRange } from "./cost";
 import { energySeries } from "./energy";
 import { entitiesApi } from "./entities";
+import { evccControl, rebuildEvcc, stopEvcc } from "./evcc";
 import { queryRollup } from "./history";
 import { isPublicDashboard } from "./access-settings";
 import { buildProfileContext, initProfiles } from "./inverter";
@@ -339,6 +340,39 @@ const app = new Elysia()
     },
     { requireAdmin: true, body: t.Object({ key: t.String(), value: t.Number() }) },
   )
+  // EVCC loadpoint commands, relayed as MQTT `/set` publishes. EVCC applies
+  // the change and republishes its state, so reads converge via the ingest —
+  // there is no local echo to fake. Value validation is per action: the mode
+  // enum is checked here; limitSoc bounds are enforced by the schema.
+  .post(
+    "/api/commands/evcc",
+    ({ body, status }) => {
+      if (body.action === "mode" && !["off", "pv", "minpv", "now"].includes(String(body.value))) {
+        return status(400, { error: `Invalid mode "${body.value}"` });
+      }
+      try {
+        evccControl(body.loadpoint, body.action, String(body.value));
+      } catch (err) {
+        return status(503, { error: err instanceof Error ? err.message : String(err) });
+      }
+      return { ok: true };
+    },
+    {
+      requireAdmin: true,
+      body: t.Union([
+        t.Object({
+          loadpoint: t.Integer({ minimum: 1 }),
+          action: t.Literal("mode"),
+          value: t.String(),
+        }),
+        t.Object({
+          loadpoint: t.Integer({ minimum: 1 }),
+          action: t.Literal("limitSoc"),
+          value: t.Integer({ minimum: 0, maximum: 100 }),
+        }),
+      ]),
+    },
+  )
   // Runtime configuration (tariff, inverter, MQTT) + connection status.
   .use(settingsRoutes)
   // Cost breakdown over a named range (today / month-to-date / year-to-date) or
@@ -409,10 +443,15 @@ if (ctx) {
 // of the poll loop — runs even in onboarding-only boot.
 startUpdateChecks();
 
+// EVCC ingest (own MQTT client on the shared broker). Independent of the
+// inverter runtime — starts even in onboarding-only boot; no-op when disabled.
+void rebuildEvcc();
+
 // Graceful shutdown: stop polling and release the transport + broker.
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.on(signal, async () => {
     stopUpdateChecks();
+    await stopEvcc();
     await runtime.stop();
     process.exit(0);
   });

@@ -39,11 +39,28 @@ Once EVCC's retained state arrives, the EV card appears on the overview and the 
 node joins the power-flow diagram. Until then (EVCC offline, wrong topic root, EVCC not
 publishing) both stay hidden.
 
+### EV metered in house load
+
+The inverter's **Load** figure is the total AC load it serves. Whether that already includes
+the EV depends on your wiring:
+
+- **Charger wired on the inverter's load output** → the EV draw is inside `load.power`. Turn
+  **EV metered in house load** on to split it out: the load node becomes **Home** = load − EV
+  and the EV gets its own node, so Home and EV read as distinct, non-overlapping figures.
+- **Charger wired on the grid side** → `load.power` never included the EV. Leave the toggle
+  **off** (the default); the EV shows as an informational sub-branch and the Load figure is
+  untouched. Turning it on here would wrongly subtract the EV twice.
+
+The two independent samples (Modbus load, EVCC charge power) can skew briefly, so a
+transiently negative Home is clamped to 0.
+
 ## What you get
 
 - **Power flow**: an EV node attached to the house-load node. The EV's draw is already part
-  of the load figure, so it renders as a labeled sub-branch — the spine totals stay honest.
-  With a single loadpoint, the vehicle's state of charge rings the node.
+  of the load figure, so by default it renders as a labeled sub-branch — the spine totals
+  stay honest. With a single loadpoint, the vehicle's state of charge rings the node.
+  Optionally (see **EV metered in house load** below) the load node instead becomes **Home**
+  = load − EV, with the EV split out as its own node.
 - **EV card** (one per loadpoint): status (charging / plugged in / disconnected), charge
   power, vehicle name, SoC and range, session energy, and the active charge mode.
 - **Quick-settings** (admins only, tap the card): the four EVCC charge modes — Off, Solar,

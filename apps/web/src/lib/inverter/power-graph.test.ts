@@ -147,18 +147,21 @@ describe("buildPowerGraph", () => {
     expect(g.nodes.map((n) => n.id)).toEqual(["solar"]);
   });
 
-  test("charger branches off the load node, not the hub", () => {
+  test("informational mode: charger branches off the load node, load unchanged", () => {
     const g = buildPowerGraph(
       caps({ backupLoad: true, grid: true }),
       powerFrom({ "load.power": 2400 }),
       "landscape",
       () => true,
-      { power: 1800, soc: 75, connected: true, charging: true },
+      { power: 1800, soc: 75, connected: true, charging: true, subtractFromHome: false },
     );
     const charger = g.nodes.find((n) => n.kind === "charger");
     const load = g.nodes.find((n) => n.kind === "load");
     expect(charger?.value).toBe(1800);
     expect(charger?.flow).toBe("out");
+    // Load keeps its full value (EV shown as a sub-branch, not subtracted).
+    expect(load?.value).toBe(2400);
+    expect(load?.label).toBe("Load");
     const seg = g.segments.find((s) => s.id === "load-charger");
     expect(seg?.pts.at(-1)).toEqual(load?.at);
     // Every other segment still ends at the hub.
@@ -169,17 +172,46 @@ describe("buildPowerGraph", () => {
     ).toBe(true);
   });
 
+  test("residual mode: home = load − ev, EV is a hub sibling, they sum to load", () => {
+    const g = buildPowerGraph(
+      caps({ backupLoad: true, grid: true }),
+      powerFrom({ "load.power": 2400 }),
+      "landscape",
+      () => true,
+      { power: 1800, connected: true, charging: true, subtractFromHome: true },
+    );
+    const charger = g.nodes.find((n) => n.kind === "charger");
+    const load = g.nodes.find((n) => n.kind === "load");
+    expect(load?.value).toBe(600); // 2400 − 1800
+    expect(load?.label).toBe("Home");
+    expect(charger?.value).toBe(1800);
+    // No sub-branch: the EV takes a normal hub rail like any sibling node.
+    expect(g.segments.some((s) => s.id === "load-charger")).toBe(false);
+    expect(
+      g.segments.every((s) => s.pts.at(-1)?.x === g.hub.x && s.pts.at(-1)?.y === g.hub.y),
+    ).toBe(true);
+    // home + ev reconstructs the metered load.
+    expect((load?.value ?? 0) + (charger?.value ?? 0)).toBe(2400);
+  });
+
+  test("residual mode clamps a transient-negative home to 0", () => {
+    const g = buildPowerGraph(
+      caps({ backupLoad: true }),
+      powerFrom({ "load.power": 1500 }),
+      "landscape",
+      () => true,
+      { power: 1800, connected: true, charging: true, subtractFromHome: true }, // ev > load (skew)
+    );
+    expect(g.nodes.find((n) => n.kind === "load")?.value).toBe(0);
+  });
+
   test("charger needs a visible load node to branch from", () => {
     const noLoad = buildPowerGraph(
       caps({ grid: true }),
       () => undefined,
       "landscape",
       () => true,
-      {
-        power: 1800,
-        connected: true,
-        charging: true,
-      },
+      { power: 1800, connected: true, charging: true, subtractFromHome: false },
     );
     expect(noLoad.nodes.some((n) => n.kind === "charger")).toBe(false);
     const hiddenLoad = buildPowerGraph(
@@ -187,7 +219,7 @@ describe("buildPowerGraph", () => {
       () => undefined,
       "landscape",
       hidden(["load.power"]),
-      { power: 1800, connected: true, charging: true },
+      { power: 1800, connected: true, charging: true, subtractFromHome: false },
     );
     expect(hiddenLoad.nodes.some((n) => n.kind === "charger")).toBe(false);
   });
@@ -198,7 +230,7 @@ describe("buildPowerGraph", () => {
       powerFrom({ "load.power": 900 }),
       "portrait",
       () => true,
-      { power: 0, connected: true, charging: false },
+      { power: 0, connected: true, charging: false, subtractFromHome: false },
     );
     const charger = g.nodes.find((n) => n.kind === "charger");
     expect(charger?.flow).toBe("idle");

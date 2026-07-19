@@ -27,7 +27,7 @@
 
 	// EVCC integration rides the same broker, so its two knobs live on this page
 	// and save with the same button.
-	type EvccForm = { enabled: boolean; topicRoot: string };
+	type EvccForm = { enabled: boolean; topicRoot: string; subtractFromHome: boolean };
 
 	let cfg = $state<MqttForm | null>(null);
 	let evccCfg = $state<EvccForm | null>(null);
@@ -64,7 +64,12 @@
 				haDiscoveryPrefix: data.haDiscoveryPrefix
 			};
 		}
-		if (evccData) evccCfg = { enabled: evccData.enabled, topicRoot: evccData.topicRoot };
+		if (evccData)
+			evccCfg = {
+				enabled: evccData.enabled,
+				topicRoot: evccData.topicRoot,
+				subtractFromHome: evccData.subtractFromHome
+			};
 	});
 
 	// Only send username/password when non-empty (password absent = unchanged).
@@ -198,6 +203,13 @@
 					<Label for="evcc-topic">{m.evcc_topic_root()}</Label>
 					<Input id="evcc-topic" bind:value={evccCfg.topicRoot} class="max-w-60" placeholder="evcc" />
 					<span class="text-xs text-muted-foreground">{m.evcc_topic_hint()}</span>
+				</div>
+				<div class="flex items-center justify-between gap-4 border-t border-border pt-4">
+					<div class="flex flex-col">
+						<Label for="evcc-subtract">{m.evcc_subtract_label()}</Label>
+						<span class="text-xs text-muted-foreground">{m.evcc_subtract_hint()}</span>
+					</div>
+					<Switch id="evcc-subtract" bind:checked={evccCfg.subtractFromHome} />
 				</div>
 			{/if}
 		</SettingsSection>

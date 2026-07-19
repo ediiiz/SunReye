@@ -11,7 +11,7 @@ import { Elysia, t } from "elysia";
 import { type CostBucket, computeCost, computeCostSeries, resolveRange } from "./cost";
 import { energySeries } from "./energy";
 import { entitiesApi } from "./entities";
-import { evccControl, rebuildEvcc, stopEvcc } from "./evcc";
+import { evccControl, evccSnapshot, rebuildEvcc, setEvccListener, stopEvcc } from "./evcc";
 import { queryRollup } from "./history";
 import { isPublicDashboard } from "./access-settings";
 import { buildProfileContext, initProfiles } from "./inverter";
@@ -96,6 +96,7 @@ const SampleSchema = t.Object({
 });
 
 const METRICS_TOPIC = "metrics";
+const EVCC_TOPIC = "evcc";
 
 const app = new Elysia()
   // Structured HTTP request logging (category ["elysia"]). Health/liveness
@@ -217,6 +218,23 @@ const app = new Elysia()
         return;
       }
       ws.subscribe(METRICS_TOPIC);
+    },
+  })
+  // Live EVCC stream: the ingest coalesces MQTT updates and broadcasts each
+  // fresh snapshot to `EVCC_TOPIC` (wired below via setEvccListener). Rides the
+  // same dashboard read policy as `/api/evcc`. On open we send the current
+  // snapshot immediately so a subscriber paints without waiting for the next
+  // change (EVCC can sit idle for minutes between updates).
+  .ws("/ws/evcc", {
+    requireSession: true,
+    async open(ws) {
+      if (!(await dashboardReadAllowed(ws.data.request.headers))) {
+        ws.close();
+        return;
+      }
+      ws.subscribe(EVCC_TOPIC);
+      const snap = evccSnapshot();
+      if (snap) ws.send(JSON.stringify(snap));
     },
   })
   // Historical data (long form). Filter by metric / inverter; rollups live in
@@ -445,6 +463,9 @@ startUpdateChecks();
 
 // EVCC ingest (own MQTT client on the shared broker). Independent of the
 // inverter runtime — starts even in onboarding-only boot; no-op when disabled.
+// Each coalesced snapshot is broadcast to WS subscribers; late/new subscribers
+// get the current snapshot from the socket's `open` handler instead.
+setEvccListener((state) => app.server?.publish(EVCC_TOPIC, JSON.stringify(state)));
 void rebuildEvcc();
 
 // Graceful shutdown: stop polling and release the transport + broker.

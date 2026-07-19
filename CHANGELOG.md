@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.2.0](https://github.com/SunReye/SunReye/compare/server-v1.1.1...server-v1.2.0) (2026-07-19)
+
+
+### Features
+
+* **db:** add evcc integration config schema ([5848e77](https://github.com/SunReye/SunReye/commit/5848e774df7857a37149fbd4c7747ed691afd6b8))
+* **evcc:** optional residual-home split (Home = load − EV) ([0e0327f](https://github.com/SunReye/SunReye/commit/0e0327f3c6404afd026d38e3fd70f33ec9ec6702))
+* **evcc:** stream loadpoint state to the dashboard over WebSocket ([67aad79](https://github.com/SunReye/SunReye/commit/67aad79a30002269fa21d22f4acbcf28cca009d8))
+* **server:** evcc mqtt ingest, control relay, and routes ([98413b7](https://github.com/SunReye/SunReye/commit/98413b7a0394c6d8ef905334b0852d402167ff4a))
+
+
+### Bug Fixes
+
+* **server:** keep solar forecast remaining-today fresh under cache ([23d07f9](https://github.com/SunReye/SunReye/commit/23d07f997792d0e8e027f2e93c839021b27e097c))
+
 ## [1.1.1](https://github.com/SunReye/SunReye/compare/server-v1.1.0...server-v1.1.1) (2026-07-18)
 
 

@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.2.0](https://github.com/SunReye/SunReye/compare/web-v1.1.1...web-v1.2.0) (2026-07-19)
+
+
+### Features
+
+* **evcc:** optional residual-home split (Home = load − EV) ([0e0327f](https://github.com/SunReye/SunReye/commit/0e0327f3c6404afd026d38e3fd70f33ec9ec6702))
+* **evcc:** stream loadpoint state to the dashboard over WebSocket ([67aad79](https://github.com/SunReye/SunReye/commit/67aad79a30002269fa21d22f4acbcf28cca009d8))
+* **web:** EVCC EV charger — power-flow node, dashboard card, settings ([4d5fd57](https://github.com/SunReye/SunReye/commit/4d5fd5781ab835c46688f7f71168356c15b709bc))
+
+
+### Bug Fixes
+
+* **web:** make solar forecast dialog open instantly with fresh data ([9674a5e](https://github.com/SunReye/SunReye/commit/9674a5ed8a7a0d4e6a9020eaa02b31c43e1060b2))
+* **web:** stop dashboard animation stutter on weak devices ([b2b10e6](https://github.com/SunReye/SunReye/commit/b2b10e6473641d71648117992ed94f12984d73c7))
+
 ## [1.1.1](https://github.com/SunReye/SunReye/compare/web-v1.1.0...web-v1.1.1) (2026-07-18)
 
 

@@ -76,11 +76,16 @@
 		});
 	});
 
-	/** Map magnitude → dash travel time (s). More watts = faster stream. */
+	/** Map magnitude → dash travel time (s). More watts = faster stream.
+	 *  Quantized to coarse steps: changing a CSS animation-duration mid-flight
+	 *  remaps the elapsed time and makes the dots visibly jump, so with a 1 Hz
+	 *  live feed a continuous mapping stutters every sample. Steps keep the
+	 *  duration stable until the power moves materially. */
 	function flowDuration(watts: number | undefined): number {
 		const a = Math.abs(watts ?? 0);
 		const ms = 2600 / (1 + a / 130);
-		return Math.min(2600, Math.max(420, ms)) / 1000;
+		const stepped = Math.round(ms / 200) * 200;
+		return Math.min(2600, Math.max(400, stepped)) / 1000;
 	}
 </script>
 

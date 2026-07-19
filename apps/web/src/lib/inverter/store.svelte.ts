@@ -201,10 +201,20 @@ class InverterStore {
       this.latest = sample;
       this.status = "live";
       const t = new Date(sample.time).getTime();
+      const cutoff = t - WINDOW_MS;
       for (const [key, v] of Object.entries(sample.metrics)) {
-        // New array reference each tick so consumers re-render; trim to window.
-        const next = [...(this.#series.get(key) ?? []), { t, v }];
-        this.#series.set(key, this.#trim(next));
+        // One copy per metric per tick (new reference so consumers re-render):
+        // slice off expired points from the front and append the new one. At a
+        // 1 Hz feed this runs every second for every metric, so the old
+        // spread + filter pair (two full copies each) was the main source of
+        // GC pressure — periodic collection pauses showed up as animation hiccups.
+        const prev = this.#series.get(key) ?? [];
+        let start = 0;
+        while (start < prev.length && prev[start]!.t < cutoff) start++;
+        if (prev.length - start >= MAX_POINTS) start = prev.length - MAX_POINTS + 1;
+        const next = prev.slice(start);
+        next.push({ t, v });
+        this.#series.set(key, next);
       }
     });
     ws.on("open", () => {

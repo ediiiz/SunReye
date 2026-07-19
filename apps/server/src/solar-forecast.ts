@@ -60,7 +60,7 @@ export interface SolarForecast {
   hourly: SolarForecastHour[];
   /** Expected production for the local calendar day, kWh. */
   todayKwh: number;
-  /** Expected production from the current local hour to midnight, kWh. */
+  /** Expected production from now to local midnight, kWh (running hour prorated). */
   remainingTodayKwh: number;
   tomorrowKwh: number;
 }
@@ -114,10 +114,14 @@ export function buildSolarForecast(
     return { time, watts };
   });
 
-  // Bucket by the plant's local calendar day; "remaining" keeps the running
-  // hour (comparing on the hour prefix), so an 11:30 view still counts 11:00.
-  const localNow = new Date(nowMs + data.utcOffsetSeconds * 1000).toISOString();
+  // Bucket by the plant's local calendar day. "Remaining" includes the running
+  // hour prorated by the fraction of it still ahead, so an 11:30 view counts
+  // half of the 11:00 slot instead of the whole hour.
+  const shifted = new Date(nowMs + data.utcOffsetSeconds * 1000);
+  const localNow = shifted.toISOString();
   const today = localNow.slice(0, 10);
+  const nowHour = localNow.slice(0, 13);
+  const hourLeft = 1 - (shifted.getUTCMinutes() * 60 + shifted.getUTCSeconds()) / 3600;
   const tomorrow = new Date(nowMs + data.utcOffsetSeconds * 1000 + 24 * 3600 * 1000)
     .toISOString()
     .slice(0, 10);
@@ -127,19 +131,23 @@ export function buildSolarForecast(
     provider,
     hourly,
     todayKwh: kwh(hourly.filter((h) => h.time.startsWith(today))),
-    remainingTodayKwh: kwh(
-      hourly.filter(
-        (h) => h.time.startsWith(today) && h.time.slice(0, 13) >= localNow.slice(0, 13),
-      ),
-    ),
+    remainingTodayKwh: hourly.reduce((s, h) => {
+      if (!h.time.startsWith(today)) return s;
+      const hour = h.time.slice(0, 13);
+      if (hour < nowHour) return s;
+      return s + (h.watts / 1000) * (hour === nowHour ? hourLeft : 1);
+    }, 0),
     tomorrowKwh: kwh(hourly.filter((h) => h.time.startsWith(tomorrow))),
   };
 }
 
-/** How long a computed forecast is reused before hitting the provider again. */
+/** How long fetched irradiance is reused before hitting the provider again. */
 const CACHE_TTL_MS = 30 * 60 * 1000;
 
-let cache: { key: string; at: number; forecast: SolarForecast } | null = null;
+// The cache holds the provider's raw irradiance, not the finished forecast:
+// today/remaining sums depend on "now", so they are rebuilt on every request
+// (cheap — 48 hours × arrays) instead of being frozen for the TTL.
+let cache: { key: string; at: number; data: IrradianceForecast; provider: string } | null = null;
 
 /**
  * Production forecast for the configured plant, or `null` when the forecast is
@@ -158,7 +166,7 @@ export async function fetchSolarForecast(config: WeatherConfig): Promise<SolarFo
 
   const key = JSON.stringify([config.latitude, config.longitude, config.forecast]);
   if (cache !== null && cache.key === key && Date.now() - cache.at < CACHE_TTL_MS) {
-    return cache.forecast;
+    return buildSolarForecast(config.forecast, cache.data, cache.provider);
   }
 
   try {
@@ -166,11 +174,12 @@ export async function fetchSolarForecast(config: WeatherConfig): Promise<SolarFo
       { latitude: config.latitude, longitude: config.longitude },
       config.forecast.arrays.map(({ tilt, azimuth }) => ({ tilt, azimuth })),
     );
-    const forecast = buildSolarForecast(config.forecast, data, provider.id);
-    cache = { key, at: Date.now(), forecast };
-    return forecast;
+    cache = { key, at: Date.now(), data, provider: provider.id };
+    return buildSolarForecast(config.forecast, data, provider.id);
   } catch (err) {
     logger.warn("fetch failed: {error}", { error: err instanceof Error ? err.message : err });
-    return cache?.key === key ? cache.forecast : null;
+    return cache?.key === key
+      ? buildSolarForecast(config.forecast, cache.data, cache.provider)
+      : null;
   }
 }

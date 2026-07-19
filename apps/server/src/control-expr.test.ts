@@ -170,3 +170,23 @@ describe("injectControlValues", () => {
     expect(sample.metrics[LOCK_KEY]).toBe(1);
   });
 });
+
+describe("executeControl — malformed expressions", () => {
+  test("a metric without a controlExpr is rejected", async () => {
+    const h = harness();
+    const plainDef = { ...h.lockDef, key: "settings.plain", controlExpr: undefined };
+    await expect(executeControl(plainDef, 1, h.io)).rejects.toThrow(/not a control/);
+  });
+
+  test("an unknown controlExpr shape is rejected (never-armed data)", async () => {
+    // A hand-edited/corrupted profile blob could carry a shape the interpreter
+    // doesn't know; the exhaustive guard must fail loudly, not silently no-op.
+    const h = harness();
+    const bogusDef = {
+      ...h.lockDef,
+      key: "settings.bogus",
+      controlExpr: { warp: { factor: 9 } },
+    } as unknown as typeof h.lockDef;
+    await expect(executeControl(bogusDef, 1, h.io)).rejects.toThrow(/unsupported controlExpr/);
+  });
+});

@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import type { ProfileData } from "@SunReye/inverter-core";
+import { defineProfile, metric, type ProfileData } from "@SunReye/inverter-core";
 
 // A real, full profile fixture (the published Deye SG05LP3), snapshotted so the
 // CLI tests build/validate a realistic profile without depending on any inverter
@@ -129,6 +129,31 @@ describe("cmdCoverage", () => {
     await expect(cmdCoverage(join(dir, "missing.json"))).rejects.toThrow("exit 1");
     expect(io.err.join("\n")).toContain("file not found");
   });
+
+  test("lists unmapped roles grouped by prefix, marking indexed roles", async () => {
+    io = captureIo();
+    // A valid profile that maps only battery.soc — everything else is missing.
+    const partial = defineProfile({
+      id: "partial",
+      name: "Partial",
+      manufacturer: "Acme",
+      version: "1.0.0",
+      metrics: [
+        metric("battery/soc", {
+          label: "SOC",
+          group: "battery",
+          unit: "%",
+          role: "battery.soc",
+          addr: 588,
+        }),
+      ],
+    });
+    await cmdCoverage(writeFixture("partial.json", JSON.stringify(partial)));
+    const out = io.out.join("\n");
+    expect(out).toContain("Unmapped roles");
+    expect(out).toContain("pv.string.power[]"); // indexed roles get a [] marker
+    expect(out).not.toContain("Optimization hints"); // no sums to lint
+  });
 });
 
 describe("cmdScaffold", () => {
@@ -231,6 +256,27 @@ describe("cmdBuild", () => {
     expect(io.out.join("\n")).toContain("bumped from 1.0.0");
   });
 
+  test("applies an explicit --bump level to a changed profile", async () => {
+    const out = join(dir, "bump-out");
+    const b1 = writeFixture("bump1.json", JSON.stringify({ ...deyeSg05lp3Data, version: "2.0.0" }));
+    io = captureIo();
+    await cmdBuild([b1], { out });
+    io.restore();
+
+    // Same id, changed content, --bump minor → 2.1.0 instead of the patch default.
+    const b2 = writeFixture(
+      "bump2.json",
+      JSON.stringify({ ...deyeSg05lp3Data, version: "2.0.0", name: "Renamed" }),
+    );
+    io = captureIo();
+    await cmdBuild([b2], { out, bump: "minor" });
+
+    const published = JSON.parse(
+      await Bun.file(join(out, `profiles/${deyeSg05lp3Data.id}.json`)).text(),
+    ) as { version: string };
+    expect(published.version).toBe("2.1.0");
+  });
+
   test("rejects an invalid --bump level", async () => {
     io = captureIo();
     await expect(
@@ -308,6 +354,53 @@ describe("cmdInit", () => {
       ["bun", "install"],
       ["git", "init"],
     ]);
+  });
+
+  test("falls back to interactive prompts when no prompt/confirm deps are injected", async () => {
+    io = captureIo();
+    const out = join(dir, "init-interactive");
+    const commands: string[][] = [];
+    // The built-in prompt/confirm read via the global `prompt` — stub it per message.
+    const promptSpy = spyOn(globalThis, "prompt").mockImplementation(((message?: string) => {
+      const msg = message ?? "";
+      if (msg.startsWith("Package name")) return "  prompted-pkg  "; // gets trimmed
+      if (msg.startsWith("Install dependencies")) return ""; // blank → default (yes)
+      if (msg.startsWith("Initialize a git repository")) return "n";
+      return null; // null answer → the shown default
+    }) as typeof prompt);
+    try {
+      await cmdInit(
+        out,
+        {},
+        {
+          run: async (command: string[]) => {
+            commands.push(command);
+            return true;
+          },
+          sdkVersion: "1.0.0",
+        },
+      );
+    } finally {
+      promptSpy.mockRestore();
+    }
+
+    const pkg = JSON.parse(await Bun.file(join(out, "package.json")).text()) as { name: string };
+    expect(pkg.name).toBe("prompted-pkg");
+    // Install confirmed by its default; git declined with "n".
+    expect(commands).toEqual([["bun", "install"]]);
+  });
+
+  test("spawns real commands when no run dep is injected", async () => {
+    io = captureIo();
+    const out = join(dir, "init-real-git");
+    // --git (forced on) is the only spawn: `git init` in the fresh scaffold.
+    await cmdInit(
+      out,
+      { id: "x", manufacturer: "X", install: "false", git: "" },
+      { prompt: () => "", confirm: () => false, sdkVersion: "1.0.0" },
+    );
+    expect(existsSync(join(out, ".git"))).toBe(true);
+    expect(io.out.join("\n")).toContain("git repository initialized");
   });
 
   test("refuses to overwrite an existing package.json", async () => {

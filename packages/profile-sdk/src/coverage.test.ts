@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
-import { defineProfile, metric, type MetricDataDef } from "@SunReye/inverter-core";
+import { defineProfile, metric, ROLE_NAMES, type MetricDataDef } from "@SunReye/inverter-core";
 
-import { suggestAggregates } from "./coverage";
+import { coverage, groupByPrefix, isIndexedRole, suggestAggregates } from "./coverage";
 
 const pv = (n: number): MetricDataDef =>
   metric(`dc/pv${n}/power`, {
@@ -25,6 +25,45 @@ const total = (sum: string[]): MetricDataDef =>
 
 const profile = (metrics: MetricDataDef[]) =>
   defineProfile({ id: "acme", name: "Acme", manufacturer: "Acme", version: "1.0.0", metrics });
+
+describe("coverage", () => {
+  test("splits the role catalog into mapped and missing", () => {
+    const report = coverage(profile([pv(1), pv(2)]));
+    expect(report.total).toBe(ROLE_NAMES.length);
+    expect(report.mapped).toEqual(["pv.string.power"]); // dedupes the two strings
+    expect(report.mappedCount).toBe(1);
+    expect(report.missing).toHaveLength(ROLE_NAMES.length - 1);
+    expect(report.missing).not.toContain("pv.string.power");
+  });
+
+  test("ignores metrics without a role", () => {
+    const plain = metric("misc/raw", { label: "Raw", group: "solar", addr: 1 });
+    const report = coverage(profile([plain]));
+    expect(report.mappedCount).toBe(0);
+    expect(report.missing).toEqual([...ROLE_NAMES]);
+  });
+});
+
+describe("groupByPrefix", () => {
+  test("groups roles by their leading segment, preserving order", () => {
+    const groups = groupByPrefix(["pv.string.power", "battery.soc", "pv.total.power"]);
+    expect([...groups.keys()]).toEqual(["pv", "battery"]);
+    expect(groups.get("pv")).toEqual(["pv.string.power", "pv.total.power"]);
+    expect(groups.get("battery")).toEqual(["battery.soc"]);
+  });
+
+  test("returns an empty map for no roles", () => {
+    expect(groupByPrefix([]).size).toBe(0);
+  });
+});
+
+describe("isIndexedRole", () => {
+  test("distinguishes per-string/phase roles from scalar ones", () => {
+    expect(isIndexedRole("pv.string.power")).toBe(true);
+    expect(isIndexedRole("grid.phase.voltage")).toBe(true);
+    expect(isIndexedRole("battery.soc")).toBe(false);
+  });
+});
 
 describe("suggestAggregates", () => {
   test("suggests sumOf when a sum covers exactly an indexed role group", () => {

@@ -1,6 +1,11 @@
-import { describe, expect, test } from "bun:test";
-import { solarForecastConfigSchema } from "@SunReye/db/weather";
-import { type IrradianceForecast, buildSolarForecast, pvPowerW } from "./solar-forecast";
+import { type Mock, afterAll, beforeAll, describe, expect, spyOn, test } from "bun:test";
+import { solarForecastConfigSchema, weatherConfigSchema } from "@SunReye/db/weather";
+import {
+  type IrradianceForecast,
+  buildSolarForecast,
+  fetchSolarForecast,
+  pvPowerW,
+} from "./solar-forecast";
 
 const config = (over: object = {}) =>
   solarForecastConfigSchema.parse({
@@ -90,5 +95,99 @@ describe("buildSolarForecast", () => {
     const sparse: IrradianceForecast = { ...data, gti: [] };
     const f = buildSolarForecast(config(), sparse, "test", nowMs);
     expect(f.todayKwh).toBe(0);
+  });
+});
+
+describe("fetchSolarForecast", () => {
+  // The default provider (open-meteo) reaches the network through global
+  // fetch; answer it with canned payloads instead. The spy is created when the
+  // block's tests start (not at load) so it can't interleave with another
+  // file's fetch spy.
+  // Typed against the plain call signature: Bun's `typeof fetch` also carries
+  // `preconnect`, which canned-response test doubles have no reason to provide.
+  type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
+  let fetchSpy: Mock<FetchLike>;
+
+  beforeAll(() => {
+    fetchSpy = spyOn(globalThis, "fetch") as unknown as Mock<FetchLike>;
+  });
+
+  afterAll(() => {
+    fetchSpy.mockRestore();
+  });
+
+  const weather = (latitude: number, over: object = {}) =>
+    weatherConfigSchema.parse({
+      enabled: true,
+      latitude,
+      longitude: 8.2,
+      label: "Test",
+      forecast: {
+        enabled: true,
+        provider: "open-meteo",
+        arrays: [{ kwp: 10, tilt: 30, azimuth: 0 }],
+        tempCoefficient: -0.4,
+        systemLoss: 14,
+        ...over,
+      },
+    });
+
+  // Hours on the plant-local *current* day (same offset math as the code under
+  // test), so todayKwh actually buckets them as today.
+  const localToday = new Date(Date.now() + 7200 * 1000).toISOString().slice(0, 10);
+  const okBody = {
+    utc_offset_seconds: 7200,
+    hourly: {
+      time: [`${localToday}T08:00`, `${localToday}T12:00`],
+      temperature_2m: [20, 25],
+      global_tilted_irradiance: [100, 800],
+    },
+  };
+  const respondOk = () => Promise.resolve(new Response(JSON.stringify(okBody)));
+
+  test("returns null (without fetching) when the forecast is not configured", async () => {
+    fetchSpy.mockClear();
+    await expect(fetchSolarForecast(weatherConfigSchema.parse({}))).resolves.toBeNull();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  test("returns null for an unknown provider", async () => {
+    await expect(fetchSolarForecast(weather(48, { provider: "nope" }))).resolves.toBeNull();
+  });
+
+  test("returns null when the fetch fails and nothing is cached for the key", async () => {
+    fetchSpy.mockImplementation(() => Promise.reject(new Error("offline")));
+    await expect(fetchSolarForecast(weather(51))).resolves.toBeNull();
+  });
+
+  test("builds the forecast from the provider's irradiance", async () => {
+    fetchSpy.mockImplementation(respondOk);
+    const forecast = await fetchSolarForecast(weather(50.5));
+    expect(forecast?.provider).toBe("open-meteo");
+    expect(forecast?.hourly).toHaveLength(2);
+    expect(forecast?.todayKwh).toBeGreaterThan(0);
+  });
+
+  test("serves repeat calls from the cache within the TTL", async () => {
+    fetchSpy.mockClear();
+    fetchSpy.mockImplementation(() => Promise.reject(new Error("must not fetch")));
+    const forecast = await fetchSolarForecast(weather(50.5));
+    expect(forecast?.provider).toBe("open-meteo");
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  test("prefers the stale cache over null when a refresh fails after the TTL", async () => {
+    fetchSpy.mockClear();
+    fetchSpy.mockImplementation(() => Promise.reject(new Error("offline")));
+    const nowSpy = spyOn(Date, "now");
+    nowSpy.mockReturnValue(Date.now() + 31 * 60 * 1000); // past the 30 min TTL
+    try {
+      const forecast = await fetchSolarForecast(weather(50.5));
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(forecast?.provider).toBe("open-meteo");
+      expect(forecast?.hourly).toHaveLength(2);
+    } finally {
+      nowSpy.mockRestore();
+    }
   });
 });

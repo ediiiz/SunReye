@@ -1,5 +1,11 @@
 import { describe, expect, it } from "bun:test";
-import { type AxisSeries, domainFor, groupSeriesByUnit, normalizeSeries } from "./chart-axes";
+import {
+  type AxisSeries,
+  axisScale,
+  domainFor,
+  groupSeriesByUnit,
+  normalizeSeries,
+} from "./chart-axes";
 
 const s = (key: string, unit: string): AxisSeries => ({
   key,
@@ -63,6 +69,31 @@ describe("domainFor", () => {
 
   it("falls back to [0,1] with no finite values", () => {
     expect(domainFor([], [s("eff", "%")])).toEqual([0, 1]);
+  });
+
+  it("pads a flat positive series down to zero and 10% above", () => {
+    const flat = [{ eff: 82 }, { eff: 82 }];
+    expect(domainFor(flat, [s("eff", "%")])).toEqual([0, 82 * 1.1]);
+  });
+
+  it("pads a flat negative series 10% below and up to zero", () => {
+    const flat = [{ batt: -200 }, { batt: -200 }];
+    const [lo, hi] = domainFor(flat, [s("batt", "W")]);
+    expect(lo).toBeCloseTo(-220);
+    expect(hi).toBe(0);
+  });
+
+  it("uses [0,1] for a series that is constantly zero", () => {
+    expect(domainFor([{ batt: 0 }], [s("batt", "W")])).toEqual([0, 1]);
+  });
+});
+
+describe("axisScale", () => {
+  it("maps the domain onto plot height with y inverted (0 at the bottom)", () => {
+    const scale = axisScale([0, 100], 200);
+    expect(scale(0)).toBe(200);
+    expect(scale(100)).toBe(0);
+    expect(scale(50)).toBe(100);
   });
 });
 

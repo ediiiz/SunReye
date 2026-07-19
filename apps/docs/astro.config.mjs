@@ -109,6 +109,7 @@ export default defineConfig({
             { label: "REST API", slug: "integrations/rest-api" },
             { label: "MQTT Bridge", slug: "integrations/mqtt" },
             { label: "Home Assistant", slug: "integrations/home-assistant" },
+            { label: "EVCC", slug: "integrations/evcc" },
           ],
         },
         {

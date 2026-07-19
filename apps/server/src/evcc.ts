@@ -130,7 +130,36 @@ let connected = false;
 let evccStatus: string | null = null;
 const loadpoints = new Map<number, Map<string, EvccValue>>();
 
-/** Current EVCC state for `GET /api/evcc`, or `null` when the ingest is off. */
+/** Notified with the fresh snapshot whenever state changes (wired to the WS). */
+type EvccListener = (state: EvccState) => void;
+let listener: EvccListener = () => {};
+let emitTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Register the push listener (the server wires this to a WS broadcast). Only one
+ * is needed — the socket layer fans out to every subscriber.
+ */
+export function setEvccListener(fn: EvccListener): void {
+  listener = fn;
+}
+
+/**
+ * Coalesce a burst of topic updates into a single push. EVCC delivers its full
+ * retained state as ~dozens of individual leaf messages on (re)subscribe, and
+ * live changes often touch several related topics at once; a short debounce
+ * collapses each burst into one snapshot emit with negligible added latency.
+ */
+const EMIT_DEBOUNCE_MS = 200;
+function scheduleEmit(): void {
+  if (emitTimer) return;
+  emitTimer = setTimeout(() => {
+    emitTimer = null;
+    const snap = evccSnapshot();
+    if (snap) listener(snap);
+  }, EMIT_DEBOUNCE_MS);
+}
+
+/** Current EVCC state for `GET /api/evcc` and WS pushes, or `null` when off. */
 export function evccSnapshot(): EvccState | null {
   if (!client) return null;
   return {
@@ -153,6 +182,7 @@ export function evccControl(loadpoint: number, action: EvccAction, value: string
 function handleMessage(topic: string, payload: Buffer): void {
   if (topic === `${topicRoot}/status`) {
     evccStatus = payload.toString().trim();
+    scheduleEmit(); // reachability changed
     return;
   }
   const parsed = parseLoadpointTopic(topicRoot, topic);
@@ -166,6 +196,7 @@ function handleMessage(topic: string, payload: Buffer): void {
   // An empty retained payload is MQTT's "topic deleted" signal.
   if (value === null && payload.length === 0) values.delete(parsed.key);
   else values.set(parsed.key, value);
+  scheduleEmit();
 }
 
 async function stopClient(): Promise<void> {
@@ -174,6 +205,10 @@ async function stopClient(): Promise<void> {
   connected = false;
   evccStatus = null;
   loadpoints.clear();
+  if (emitTimer) {
+    clearTimeout(emitTimer);
+    emitTimer = null;
+  }
   if (previous) await previous.endAsync();
 }
 
@@ -206,6 +241,7 @@ export async function rebuildEvcc(): Promise<void> {
   });
   next.on("close", () => {
     connected = false;
+    scheduleEmit(); // dropped connection → push reachable:false
   });
   next.on("message", handleMessage);
   next.on("error", (err) => {

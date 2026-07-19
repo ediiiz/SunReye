@@ -56,6 +56,12 @@ describe("buildSolarForecast", () => {
     expect(f.tomorrowKwh).toBeCloseTo((f.hourly[2]?.watts ?? -1) / 1000, 6);
   });
 
+  test("prorates the running hour by the fraction still ahead", () => {
+    // Local 12:30 → half of the 12:00 slot remains.
+    const f = buildSolarForecast(config(), data, "test", Date.parse("2026-07-18T10:30:00Z"));
+    expect(f.remainingTodayKwh).toBeCloseTo(((f.hourly[1]?.watts ?? -1) / 1000) * 0.5, 6);
+  });
+
   test("sums power across multiple arrays with their own orientation series", () => {
     const two = config({
       arrays: [

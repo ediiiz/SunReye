@@ -39,7 +39,7 @@
 		return v === undefined ? undefined : Math.min(100, Math.max(0, v));
 	});
 
-	// EV charger (external EVCC): lease the store's poll loop while the diagram
+	// EV charger (external EVCC): lease the store's live stream while the diagram
 	// is mounted; the node appears only while EVCC is reachable with loadpoints.
 	$effect(() => evcc.connect());
 	const charger = $derived.by<ChargerDatum | undefined>(() => {
@@ -51,7 +51,8 @@
 			power: evcc.chargePower,
 			...(soc === undefined ? {} : { soc }),
 			connected: lps.some((lp) => lp.connected),
-			charging: lps.some((lp) => lp.charging)
+			charging: lps.some((lp) => lp.charging),
+			subtractFromHome: evcc.state?.subtractFromHome ?? false
 		};
 	});
 	const vehicleSoc = $derived(charger?.soc);

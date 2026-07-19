@@ -19,6 +19,14 @@ export const evccConfigSchema = z.object({
   enabled: z.boolean().default(false),
   /** EVCC's MQTT root topic (its `mqtt.topic` setting; default `evcc`). */
   topicRoot: z.string().min(1).max(120).default("evcc"),
+  /**
+   * Split the EV out of the house-load figure in the power-flow diagram: the
+   * load node becomes "Home" = `load − ev` and the EV gets its own node. Only
+   * correct when the charger is metered inside the inverter's `load.power`
+   * (wired on its load output). Off by default — the safe, wiring-agnostic view
+   * shows the EV as an informational sub-branch of the full load.
+   */
+  subtractFromHome: z.boolean().default(false),
 });
 export type EvccConfig = z.infer<typeof evccConfigSchema>;
 

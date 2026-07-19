@@ -20,9 +20,15 @@ export type NodeKind = "pv" | "battery" | "load" | "generator" | "grid" | "charg
 
 /**
  * Live EV-charger data (from the EVCC store). Injected as plain data so the
- * builder stays pure — it is *not* an inverter role; the EV draw is already
- * inside `load.power`, which is why the charger branches off the load node
- * instead of the hub (no double-counting on the spine).
+ * builder stays pure — it is *not* an inverter role.
+ *
+ * The EV draw is part of the inverter's `load.power`. Two display models:
+ * - `subtractFromHome = false` (default): the charger hangs off the load node as
+ *   an informational sub-branch; the load node keeps its full value. Correct for
+ *   any wiring (never double-counts on the spine).
+ * - `subtractFromHome = true`: the load node becomes "Home" = `load − ev` and the
+ *   EV is a sibling node with its own hub rail. Only correct when the charger is
+ *   actually metered inside `load.power` (wired on the inverter's load output).
  */
 export type ChargerDatum = {
   /** Aggregated charge power across loadpoints, W. */
@@ -32,6 +38,8 @@ export type ChargerDatum = {
   /** Vehicle plugged in. */
   connected: boolean;
   charging: boolean;
+  /** Subtract the EV draw from the load node and split it out (see above). */
+  subtractFromHome: boolean;
 };
 
 export type GraphNode = {
@@ -186,6 +194,47 @@ type BottomSpec = {
   color: string;
 };
 
+/**
+ * The load node's value + label. In residual-home mode the EV draw is metered
+ * inside `load.power`, so subtract it and label the node "Home"; the two figures
+ * come from independent samples, so clamp the transient-negative case to 0.
+ */
+function homeBottom(
+  loadW: number | undefined,
+  charger: ChargerDatum | undefined,
+): { value: number | undefined; label: string } {
+  if (charger?.subtractFromHome && loadW !== undefined) {
+    return { value: Math.max(0, loadW - charger.power), label: m.label_home() };
+  }
+  return { value: loadW, label: m.label_load() };
+}
+
+/** The battery bottom-row entry, or null when absent/hidden. */
+function batteryBottom(
+  caps: InverterCapabilities | null,
+  power: (role: CanonicalRole, index?: number) => number | undefined,
+  has: (role: CanonicalRole, index?: number) => boolean,
+): BottomSpec | null {
+  if (!caps?.battery || !has("battery.power")) return null;
+  const v = power("battery.power");
+  // Sign convention (Deye register 590): power > 0 discharging (in), < 0 charging (out).
+  const s = sense(
+    v,
+    { flow: "in", state: m.flow_discharging() },
+    { flow: "out", state: m.flow_charging() },
+  );
+  return {
+    id: "battery",
+    label: m.label_battery(),
+    kind: "battery",
+    type: "DC",
+    value: v,
+    accent: "var(--color-chart-3)",
+    color: flowColor(s.flow),
+    ...s,
+  };
+}
+
 /** The EV charger's bottom-row entry (state text mirrors EVCC's semantics). */
 function chargerBottom(charger: ChargerDatum): BottomSpec {
   const flow: Flow = charger.power > 0.5 ? "out" : "idle";
@@ -208,12 +257,19 @@ function chargerBottom(charger: ChargerDatum): BottomSpec {
 }
 
 /**
- * A bottom-row node's rail. Everything runs to the hub — except the charger,
- * which is a sub-branch of the load node (its draw is already inside
- * `load.power`, so a hub rail would double-count it on the spine).
+ * A bottom-row node's rail to the hub — except an informational-mode charger,
+ * which runs to the load node instead (its draw is inside `load.power`, so a hub
+ * rail would double-count it). In residual-home mode the EV is a real sibling and
+ * takes a normal hub rail like any other node.
  */
-function bottomSegment(b: BottomSpec, at: Pt, hub: Pt, loadAt: Pt): GraphSegment {
-  const toLoad = b.id === "charger";
+function bottomSegment(
+  b: BottomSpec,
+  at: Pt,
+  hub: Pt,
+  loadAt: Pt,
+  evAsSubBranch: boolean,
+): GraphSegment {
+  const toLoad = b.id === "charger" && evAsSubBranch;
   return {
     id: toLoad ? "load-charger" : `${b.id}-hub`,
     type: b.type,
@@ -289,25 +345,8 @@ export function buildPowerGraph(
   // landscape the grid gets the right end of the spine instead.
   const bottoms: BottomSpec[] = [];
 
-  if (caps?.battery && has("battery.power")) {
-    const v = power("battery.power");
-    // Sign convention (Deye register 590): power > 0 discharging (in), < 0 charging (out).
-    const s = sense(
-      v,
-      { flow: "in", state: m.flow_discharging() },
-      { flow: "out", state: m.flow_charging() },
-    );
-    bottoms.push({
-      id: "battery",
-      label: m.label_battery(),
-      kind: "battery",
-      type: "DC",
-      value: v,
-      accent: "var(--color-chart-3)",
-      color: flowColor(s.flow),
-      ...s,
-    });
-  }
+  const battery = batteryBottom(caps, power, has);
+  if (battery) bottoms.push(battery);
 
   const gridVisible = Boolean(caps?.grid) && has("grid.power");
   const gridValue = gridVisible ? power("grid.power") : undefined;
@@ -331,7 +370,7 @@ export function buildPowerGraph(
 
   const loadVisible = Boolean(caps?.backupLoad) && has("load.power");
   if (loadVisible) {
-    const v = power("load.power");
+    const { value: v, label } = homeBottom(power("load.power"), charger);
     const s = sense(
       v,
       { flow: "out", state: m.flow_consuming() },
@@ -339,7 +378,7 @@ export function buildPowerGraph(
     );
     bottoms.push({
       id: "load",
-      label: m.label_load(),
+      label,
       kind: "load",
       type: "AC",
       value: v,
@@ -349,9 +388,10 @@ export function buildPowerGraph(
     });
   }
 
-  // EV charger branches off the load node (see bottomSegment), so it renders
-  // only when the load node itself does. It joins the row for even spacing.
+  // The EV renders whenever the load node does. Informational mode hangs it off
+  // the load node (see bottomSegment); residual-home mode makes it a hub sibling.
   if (loadVisible && charger) bottoms.push(chargerBottom(charger));
+  const evAsSubBranch = loadVisible && charger !== undefined && !charger.subtractFromHome;
 
   if (caps?.generator && has("generator.power")) {
     const v = power("generator.power");
@@ -383,7 +423,7 @@ export function buildPowerGraph(
     const at = { x: bottomXs[i], y: bottomY };
     const { type: _type, ...node } = b;
     nodes.push({ ...node, at, labelSide: "below" });
-    segments.push(bottomSegment(b, at, hub, loadAt));
+    segments.push(bottomSegment(b, at, hub, loadAt, evAsSubBranch));
   });
 
   if (gridVisible && !portrait) {

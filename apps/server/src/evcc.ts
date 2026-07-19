@@ -62,6 +62,11 @@ export interface EvccState {
   /** Broker connected *and* EVCC's own status topic reports online. */
   reachable: boolean;
   loadpoints: EvccLoadpoint[];
+  /**
+   * Diagram hint: subtract the EV from the house-load node. Carried here (not in
+   * the admin-only settings) so the session-scoped public dashboard can read it.
+   */
+  subtractFromHome: boolean;
 }
 
 /** Writable loadpoint commands exposed to the web app. */
@@ -125,6 +130,8 @@ function toLoadpoint(index: number, values: Map<string, EvccValue>): EvccLoadpoi
 
 let client: MqttClient | null = null;
 let topicRoot = "evcc";
+/** Snapshot of the config flag, refreshed on each rebuild (see rebuildEvcc). */
+let subtractFromHome = false;
 let connected = false;
 /** Last value of `<root>/status` ("online"/"offline"); null until seen. */
 let evccStatus: string | null = null;
@@ -167,6 +174,7 @@ export function evccSnapshot(): EvccState | null {
     loadpoints: [...loadpoints.entries()]
       .sort(([a], [b]) => a - b)
       .map(([index, values]) => toLoadpoint(index, values)),
+    subtractFromHome,
   };
 }
 
@@ -220,6 +228,7 @@ async function stopClient(): Promise<void> {
 export async function rebuildEvcc(): Promise<void> {
   const [config, mqttConfig] = await Promise.all([getEvccConfig(), getMqttConfig()]);
   await stopClient();
+  subtractFromHome = config.subtractFromHome;
   if (!evccReady(config, mqttConfig)) return;
 
   topicRoot = config.topicRoot;

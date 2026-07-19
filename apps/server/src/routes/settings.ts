@@ -10,6 +10,8 @@ import {
 } from "../config";
 import { getAccess, setAccess } from "../access-settings";
 import { getDisplay, setDisplay } from "../display-settings";
+import { evccSnapshot, rebuildEvcc } from "../evcc";
+import { getEvccConfig, setEvccConfig } from "../evcc-settings";
 import * as runtime from "../runtime";
 import { getTariff, setTariff } from "../settings";
 import { fetchSolarForecast } from "../solar-forecast";
@@ -113,6 +115,9 @@ export const settingsRoutes = new Elysia({ name: "settings-routes" })
       try {
         const config = await setMqttConfig(body);
         await runtime.applyMqttConfig(config);
+        // The EVCC ingest dials the same broker on its own client, so a broker
+        // change must rebuild it too.
+        await rebuildEvcc();
         return maskMqttConfig(config);
       } catch (error) {
         return status(400, { error: error instanceof Error ? error.message : "Invalid config" });
@@ -160,6 +165,25 @@ export const settingsRoutes = new Elysia({ name: "settings-routes" })
     },
     { requireAdmin: true, body: t.Unknown() },
   )
+  // EVCC integration config (enable + topic root; broker comes from the MQTT
+  // config above) — admin read + write. Saving hot-rebuilds the subscriber.
+  .get("/api/settings/evcc", () => getEvccConfig(), { requireAdmin: true })
+  .put(
+    "/api/settings/evcc",
+    async ({ body, status }) => {
+      try {
+        const config = await setEvccConfig(body);
+        await rebuildEvcc();
+        return config;
+      } catch (error) {
+        return status(400, { error: error instanceof Error ? error.message : "Invalid config" });
+      }
+    },
+    { requireAdmin: true, body: t.Unknown() },
+  )
+  // Live EVCC loadpoint state (assembled from its retained MQTT topics). Rides
+  // the dashboard read policy like weather; `null` while the ingest is disabled.
+  .get("/api/evcc", () => evccSnapshot(), { requireSession: true })
   // Current weather for the configured location (Open-Meteo, server-proxied +
   // cached), plus the PV production forecast when configured. Rides the
   // dashboard read policy so the kiosk view shows it too; `null` when weather

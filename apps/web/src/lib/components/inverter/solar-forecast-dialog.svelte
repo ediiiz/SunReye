@@ -30,23 +30,51 @@
 	const kwh = (v: number) => v.toLocaleString(undefined, { maximumFractionDigits: 1 });
 
 	let open = $state(false);
-	// Actual hourly production for today (kWh/hour); null until the dialog first
-	// opens and the fetch resolves. Only spans past hours (query is [today, now)).
+	// Actual hourly production for today (kWh/hour); null until the first fetch
+	// resolves. Only spans past hours (query is [today, now)).
 	let actual = $state<Period[] | null>(null);
 
-	$effect(() => {
-		if (!open || actual !== null) return;
+	// Guards against out-of-order responses: only the latest request may land.
+	let seq = 0;
+	async function loadActual() {
+		const id = ++seq;
 		const now = new Date();
 		const from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-		let cancelled = false;
-		api.api.energy.series
-			.get({ query: { from: from.toISOString(), to: now.toISOString(), bucket: 'hour' } })
-			.then(({ data }) => {
-				if (!cancelled) actual = (data ?? []) as Period[];
+		const { data } = await api.api.energy.series.get({
+			query: { from: from.toISOString(), to: now.toISOString(), bucket: 'hour' }
+		});
+		if (id === seq) actual = (data ?? []) as Period[];
+	}
+
+	// Prime once at mount so the first open paints the actual bars instantly
+	// instead of waiting on the series query.
+	void loadActual();
+
+	// Refresh on every open (stale bars otherwise outlive the first open) and
+	// keep refreshing while the dialog stays open on a long-lived display.
+	$effect(() => {
+		if (!open) return;
+		void loadActual();
+		const refresh = setInterval(loadActual, 5 * 60 * 1000);
+		return () => clearInterval(refresh);
+	});
+
+	// Mounting the bar chart is by far the heaviest part of opening the dialog;
+	// doing it inside the click's task freezes the page before anything paints.
+	// Deferring it two frames lets the dialog shell render first, then the chart
+	// fills its placeholder.
+	let chartReady = $state(false);
+	$effect(() => {
+		if (!open) {
+			chartReady = false;
+			return;
+		}
+		let raf = requestAnimationFrame(() => {
+			raf = requestAnimationFrame(() => {
+				chartReady = true;
 			});
-		return () => {
-			cancelled = true;
-		};
+		});
+		return () => cancelAnimationFrame(raf);
 	});
 
 	// Actual production keyed by hour-of-day (0–23) so it merges onto the forecast.
@@ -123,14 +151,19 @@
 					</span>
 				</span>
 			</div>
-			<HourlyBarChart
-				{data}
-				{series}
-				unit="kWh"
-				layout="overlap"
-				xTicks={COST_X_TICKS.hour}
-				empty={m.overview_no_data_today()}
-			/>
+			{#if chartReady}
+				<HourlyBarChart
+					{data}
+					{series}
+					unit="kWh"
+					layout="overlap"
+					xTicks={COST_X_TICKS.hour}
+					empty={m.overview_no_data_today()}
+				/>
+			{:else}
+				<!-- Same height as the chart (+ legend row) so the dialog doesn't jump. -->
+				<div class="h-64" aria-hidden="true"></div>
+			{/if}
 		</div>
 	</Dialog.Content>
 </Dialog.Root>

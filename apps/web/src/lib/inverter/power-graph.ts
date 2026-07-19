@@ -16,7 +16,23 @@ export type Pt = { x: number; y: number };
 export type Orientation = "landscape" | "portrait";
 
 /** What the node represents; the component maps this to an icon. */
-export type NodeKind = "pv" | "battery" | "load" | "generator" | "grid";
+export type NodeKind = "pv" | "battery" | "load" | "generator" | "grid" | "charger";
+
+/**
+ * Live EV-charger data (from the EVCC store). Injected as plain data so the
+ * builder stays pure — it is *not* an inverter role; the EV draw is already
+ * inside `load.power`, which is why the charger branches off the load node
+ * instead of the hub (no double-counting on the spine).
+ */
+export type ChargerDatum = {
+  /** Aggregated charge power across loadpoints, W. */
+  power: number;
+  /** Vehicle state of charge (0..100) when a single vehicle is known. */
+  soc?: number;
+  /** Vehicle plugged in. */
+  connected: boolean;
+  charging: boolean;
+};
 
 export type GraphNode = {
   id: string;
@@ -135,6 +151,80 @@ function sweep(from: Pt, hub: Pt): Pt[] {
 }
 
 /**
+ * The visible PV source nodes: one per *visible* PV string (hiding a string's
+ * power metric drops it). With no per-string capability (or every string
+ * hidden), fall back to the aggregate solar node when it's visible, else no
+ * PV source at all.
+ */
+function pvSources(
+  count: number,
+  power: (role: CanonicalRole, index?: number) => number | undefined,
+  has: (role: CanonicalRole, index?: number) => boolean,
+): { id: string; label: string; value: number | undefined }[] {
+  const strings = Array.from({ length: count }, (_, i) => i + 1)
+    .filter((idx) => has("pv.string.power", idx))
+    .map((idx) => ({
+      id: `pv${idx}`,
+      label: `${m.label_string()} ${idx}`,
+      value: power("pv.string.power", idx),
+    }));
+  if (strings.length > 0) return strings;
+  if (!has("pv.total.power")) return [];
+  return [{ id: "solar", label: m.label_solar(), value: power("pv.total.power") }];
+}
+
+/** One entry of the sink/storage row below the hub. */
+type BottomSpec = {
+  id: string;
+  label: string;
+  kind: NodeKind;
+  type: "DC" | "AC";
+  value: number | undefined;
+  flow: Flow;
+  state: string;
+  accent: string;
+  color: string;
+};
+
+/** The EV charger's bottom-row entry (state text mirrors EVCC's semantics). */
+function chargerBottom(charger: ChargerDatum): BottomSpec {
+  const flow: Flow = charger.power > 0.5 ? "out" : "idle";
+  const state = charger.charging
+    ? m.flow_charging()
+    : charger.connected
+      ? m.flow_plugged()
+      : m.flow_idle();
+  return {
+    id: "charger",
+    label: m.label_ev(),
+    kind: "charger",
+    type: "AC",
+    value: charger.power,
+    flow,
+    state,
+    accent: "var(--color-chart-2)",
+    color: flowColor(flow),
+  };
+}
+
+/**
+ * A bottom-row node's rail. Everything runs to the hub — except the charger,
+ * which is a sub-branch of the load node (its draw is already inside
+ * `load.power`, so a hub rail would double-count it on the spine).
+ */
+function bottomSegment(b: BottomSpec, at: Pt, hub: Pt, loadAt: Pt): GraphSegment {
+  const toLoad = b.id === "charger";
+  return {
+    id: toLoad ? "load-charger" : `${b.id}-hub`,
+    type: b.type,
+    flow: b.flow,
+    value: b.value,
+    color: b.color,
+    pts: toLoad ? [at, loadAt] : drop(at, hub),
+  };
+}
+
+/**
  * Build the schematic graph for the power-flow diagram from the profile's
  * capabilities and a live power lookup. Pure — the caller injects `power`
  * (role → watts) so this stays free of the inverter store singleton.
@@ -151,6 +241,7 @@ export function buildPowerGraph(
   power: (role: CanonicalRole, index?: number) => number | undefined,
   orientation: Orientation = "landscape",
   has: (role: CanonicalRole, index?: number) => boolean = () => true,
+  charger?: ChargerDatum,
 ): PowerGraph {
   const hub = HUBS[orientation];
   const portrait = orientation === "portrait";
@@ -161,23 +252,7 @@ export function buildPowerGraph(
   // --- Sources: PV strings (or the aggregate) fan into the hub. Portrait puts
   // them in a row along the top (captions above, clear of the connectors);
   // landscape stacks them down the left edge.
-  const count = caps?.pvStrings ?? 0;
-  // One node per *visible* PV string; hiding a string's power metric drops it.
-  // With no per-string capability (or every string hidden), fall back to the
-  // aggregate solar node when it's visible, else no PV source at all.
-  const strings = Array.from({ length: count }, (_, i) => i + 1)
-    .filter((idx) => has("pv.string.power", idx))
-    .map((idx) => ({
-      id: `pv${idx}`,
-      label: `${m.label_string()} ${idx}`,
-      value: power("pv.string.power", idx),
-    }));
-  const pv =
-    strings.length > 0
-      ? strings
-      : has("pv.total.power")
-        ? [{ id: "solar", label: m.label_solar(), value: power("pv.total.power") }]
-        : [];
+  const pv = pvSources(caps?.pvStrings ?? 0, power, has);
   const pvXs = portrait ? rowPositions(pv.length, 0.02, 0.98) : pv.map(() => 0);
   const pvYs = portrait
     ? pv.map(() => 0)
@@ -212,17 +287,6 @@ export function buildPowerGraph(
 
   // --- Sinks/storage row below the hub. The grid joins it in portrait; in
   // landscape the grid gets the right end of the spine instead.
-  type BottomSpec = {
-    id: string;
-    label: string;
-    kind: NodeKind;
-    type: "DC" | "AC";
-    value: number | undefined;
-    flow: Flow;
-    state: string;
-    accent: string;
-    color: string;
-  };
   const bottoms: BottomSpec[] = [];
 
   if (caps?.battery && has("battery.power")) {
@@ -265,7 +329,8 @@ export function buildPowerGraph(
     });
   }
 
-  if (caps?.backupLoad && has("load.power")) {
+  const loadVisible = Boolean(caps?.backupLoad) && has("load.power");
+  if (loadVisible) {
     const v = power("load.power");
     const s = sense(
       v,
@@ -283,6 +348,10 @@ export function buildPowerGraph(
       ...s,
     });
   }
+
+  // EV charger branches off the load node (see bottomSegment), so it renders
+  // only when the load node itself does. It joins the row for even spacing.
+  if (loadVisible && charger) bottoms.push(chargerBottom(charger));
 
   if (caps?.generator && has("generator.power")) {
     const v = power("generator.power");
@@ -309,18 +378,12 @@ export function buildPowerGraph(
     ? bottoms.map((_, i) => (bottoms.length === 1 ? 0.5 : i / (bottoms.length - 1)))
     : rowPositions(bottoms.length, 0.16, 0.84);
   const bottomY = 1;
+  const loadAt = { x: bottomXs[bottoms.findIndex((b) => b.id === "load")], y: bottomY };
   bottoms.forEach((b, i) => {
     const at = { x: bottomXs[i], y: bottomY };
-    const { type, ...node } = b;
+    const { type: _type, ...node } = b;
     nodes.push({ ...node, at, labelSide: "below" });
-    segments.push({
-      id: `${b.id}-hub`,
-      type,
-      flow: b.flow,
-      value: b.value,
-      color: b.color,
-      pts: drop(at, hub),
-    });
+    segments.push(bottomSegment(b, at, hub, loadAt));
   });
 
   if (gridVisible && !portrait) {

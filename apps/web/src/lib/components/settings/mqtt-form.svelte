@@ -25,7 +25,12 @@
 
 	let { status = null }: { status?: MqttStatus | null } = $props();
 
+	// EVCC integration rides the same broker, so its two knobs live on this page
+	// and save with the same button.
+	type EvccForm = { enabled: boolean; topicRoot: string };
+
 	let cfg = $state<MqttForm | null>(null);
+	let evccCfg = $state<EvccForm | null>(null);
 	let hasPassword = $state(false);
 	let password = $state('');
 	let saving = $state(false);
@@ -44,7 +49,10 @@
 	);
 
 	onMount(async () => {
-		const { data } = await api.api.settings.mqtt.get();
+		const [{ data }, { data: evccData }] = await Promise.all([
+			api.api.settings.mqtt.get(),
+			api.api.settings.evcc.get()
+		]);
 		if (data) {
 			hasPassword = data.hasPassword;
 			cfg = {
@@ -56,6 +64,7 @@
 				haDiscoveryPrefix: data.haDiscoveryPrefix
 			};
 		}
+		if (evccData) evccCfg = { enabled: evccData.enabled, topicRoot: evccData.topicRoot };
 	});
 
 	// Only send username/password when non-empty (password absent = unchanged).
@@ -83,13 +92,23 @@
 		if (!body) return;
 		saving = true;
 		const { data, error } = await api.api.settings.mqtt.put(body);
-		saving = false;
 		if (error) {
+			saving = false;
 			toast.error(m.mqtt_toast_error());
 			return;
 		}
 		if (data) hasPassword = data.hasPassword;
 		password = '';
+		// EVCC config saves with the same button (it shares the broker above).
+		if (evccCfg) {
+			const { error: evccError } = await api.api.settings.evcc.put(evccCfg);
+			if (evccError) {
+				saving = false;
+				toast.error(m.evcc_toast_error());
+				return;
+			}
+		}
+		saving = false;
 		toast.success(m.mqtt_toast_saved());
 	}
 </script>
@@ -162,4 +181,25 @@
 			</div>
 		{/if}
 	</SettingsSection>
+
+	{#if evccCfg}
+		<!-- EVCC ingest reuses the broker configured above but runs its own
+		     subscription, independent of the inverter→MQTT publishing toggle. -->
+		<SettingsSection title={m.evcc_settings_title()}>
+			<div class="flex items-center justify-between gap-4">
+				<div class="flex flex-col">
+					<Label for="evcc-enabled">{m.label_enabled()}</Label>
+					<span class="text-xs text-muted-foreground">{m.evcc_enabled_desc()}</span>
+				</div>
+				<Switch id="evcc-enabled" bind:checked={evccCfg.enabled} />
+			</div>
+			{#if evccCfg.enabled}
+				<div class="flex flex-col gap-1.5">
+					<Label for="evcc-topic">{m.evcc_topic_root()}</Label>
+					<Input id="evcc-topic" bind:value={evccCfg.topicRoot} class="max-w-60" placeholder="evcc" />
+					<span class="text-xs text-muted-foreground">{m.evcc_topic_hint()}</span>
+				</div>
+			{/if}
+		</SettingsSection>
+	{/if}
 {/if}

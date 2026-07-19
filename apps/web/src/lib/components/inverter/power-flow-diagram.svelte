@@ -5,8 +5,14 @@
 	import AnimatedNumber from './animated-number.svelte';
 	import PowerFlowNode from './power-flow-node.svelte';
 	import { inverter } from '$lib/inverter/store.svelte';
+	import { evcc } from '$lib/evcc/store.svelte';
 	import * as msg from '$lib/paraglide/messages';
-	import { buildPowerGraph, type Flow, type Pt } from '$lib/inverter/power-graph';
+	import {
+		buildPowerGraph,
+		type ChargerDatum,
+		type Flow,
+		type Pt
+	} from '$lib/inverter/power-graph';
 
 	function power(role: CanonicalRole, index?: number): number | undefined {
 		const m = inverter.byRole(role, index);
@@ -33,6 +39,23 @@
 		return v === undefined ? undefined : Math.min(100, Math.max(0, v));
 	});
 
+	// EV charger (external EVCC): lease the store's poll loop while the diagram
+	// is mounted; the node appears only while EVCC is reachable with loadpoints.
+	$effect(() => evcc.connect());
+	const charger = $derived.by<ChargerDatum | undefined>(() => {
+		if (!evcc.active) return undefined;
+		const lps = evcc.loadpoints;
+		// One vehicle → its SoC rings the node; several → no single truthful value.
+		const soc = lps.length === 1 ? (lps[0].vehicleSoc ?? undefined) : undefined;
+		return {
+			power: evcc.chargePower,
+			...(soc === undefined ? {} : { soc }),
+			connected: lps.some((lp) => lp.connected),
+			charging: lps.some((lp) => lp.charging)
+		};
+	});
+	const vehicleSoc = $derived(charger?.soc);
+
 	// The hero's aspect ratio picks the layout: tall boxes (phones) stack the
 	// diagram, wide ones (tablets/walls) fan it out.
 	let ow = $state(0);
@@ -50,7 +73,7 @@
 		landscape: 'inset-x-12 top-10 bottom-22 sm:bottom-24 2xl:inset-x-16 2xl:top-12 2xl:bottom-30'
 	};
 
-	const graph = $derived.by(() => buildPowerGraph(caps, power, orientation, has));
+	const graph = $derived.by(() => buildPowerGraph(caps, power, orientation, has, charger));
 
 	type Line = { id: string; flow: Flow; color: string; dur: number; d: string };
 
@@ -172,7 +195,10 @@
 	</div>
 
 	{#each graph.nodes as n (n.id)}
-		<PowerFlowNode node={n} soc={n.kind === 'battery' ? batterySoc : undefined} />
+		<PowerFlowNode
+			node={n}
+			soc={n.kind === 'battery' ? batterySoc : n.kind === 'charger' ? vehicleSoc : undefined}
+		/>
 	{/each}
 	</div>
 	</div>

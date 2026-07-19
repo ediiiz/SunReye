@@ -2,6 +2,7 @@
 	import PowerFlow from '$lib/components/inverter/power-flow-diagram.svelte';
 	import WeatherTile from '$lib/components/inverter/weather-tile.svelte';
 	import DailyEnergy from '$lib/components/inverter/daily-energy.svelte';
+	import EvChargerCard from '$lib/components/inverter/ev-charger-card.svelte';
 	import { setPageHeader } from '$lib/page-header.svelte';
 	import * as m from '$lib/paraglide/messages';
 
@@ -39,5 +40,7 @@
 		<div class="w-full min-w-0">
 			<DailyEnergy />
 		</div>
+		<!-- Renders nothing until EVCC is enabled, reachable, and has loadpoints. -->
+		<EvChargerCard />
 	</div>
 </div>

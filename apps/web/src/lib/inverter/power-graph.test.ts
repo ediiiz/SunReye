@@ -147,6 +147,63 @@ describe("buildPowerGraph", () => {
     expect(g.nodes.map((n) => n.id)).toEqual(["solar"]);
   });
 
+  test("charger branches off the load node, not the hub", () => {
+    const g = buildPowerGraph(
+      caps({ backupLoad: true, grid: true }),
+      powerFrom({ "load.power": 2400 }),
+      "landscape",
+      () => true,
+      { power: 1800, soc: 75, connected: true, charging: true },
+    );
+    const charger = g.nodes.find((n) => n.kind === "charger");
+    const load = g.nodes.find((n) => n.kind === "load");
+    expect(charger?.value).toBe(1800);
+    expect(charger?.flow).toBe("out");
+    const seg = g.segments.find((s) => s.id === "load-charger");
+    expect(seg?.pts.at(-1)).toEqual(load?.at);
+    // Every other segment still ends at the hub.
+    expect(
+      g.segments
+        .filter((s) => s.id !== "load-charger")
+        .every((s) => s.pts.at(-1)?.x === g.hub.x && s.pts.at(-1)?.y === g.hub.y),
+    ).toBe(true);
+  });
+
+  test("charger needs a visible load node to branch from", () => {
+    const noLoad = buildPowerGraph(
+      caps({ grid: true }),
+      () => undefined,
+      "landscape",
+      () => true,
+      {
+        power: 1800,
+        connected: true,
+        charging: true,
+      },
+    );
+    expect(noLoad.nodes.some((n) => n.kind === "charger")).toBe(false);
+    const hiddenLoad = buildPowerGraph(
+      caps({ backupLoad: true }),
+      () => undefined,
+      "landscape",
+      hidden(["load.power"]),
+      { power: 1800, connected: true, charging: true },
+    );
+    expect(hiddenLoad.nodes.some((n) => n.kind === "charger")).toBe(false);
+  });
+
+  test("plugged-in but not charging charger idles", () => {
+    const g = buildPowerGraph(
+      caps({ backupLoad: true }),
+      powerFrom({ "load.power": 900 }),
+      "portrait",
+      () => true,
+      { power: 0, connected: true, charging: false },
+    );
+    const charger = g.nodes.find((n) => n.kind === "charger");
+    expect(charger?.flow).toBe("idle");
+  });
+
   test("no visible PV metric at all yields no PV node", () => {
     const g = buildPowerGraph(
       caps({ pvStrings: 1 }),

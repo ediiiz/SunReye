@@ -5,6 +5,7 @@
 	import Lightning from 'phosphor-svelte/lib/Lightning';
 	import House from 'phosphor-svelte/lib/House';
 	import Engine from 'phosphor-svelte/lib/Engine';
+	import CarProfile from 'phosphor-svelte/lib/CarProfile';
 	import ArrowDown from 'phosphor-svelte/lib/ArrowDown';
 	import ArrowUp from 'phosphor-svelte/lib/ArrowUp';
 	import AnimatedNumber from './animated-number.svelte';
@@ -15,7 +16,7 @@
 		soc
 	}: {
 		node: GraphNode;
-		/** Battery state-of-charge (0..100); renders the circular gauge when set. */
+		/** Battery/vehicle state-of-charge (0..100); renders the circular gauge when set. */
 		soc?: number;
 	} = $props();
 
@@ -26,12 +27,14 @@
 		battery: BatteryChargingIcon,
 		load: House,
 		generator: Engine,
-		grid: Lightning
+		grid: Lightning,
+		charger: CarProfile
 	};
 	const Icon = $derived(ICONS[node.kind]);
 
 	const active = $derived(node.flow !== 'idle');
-	const hasSoc = $derived(node.kind === 'battery' && soc !== undefined);
+	// The ring renders battery SoC — and vehicle SoC on the EV charger node.
+	const hasSoc = $derived((node.kind === 'battery' || node.kind === 'charger') && soc !== undefined);
 
 	// SOC ring geometry: drawn inside the node circle (viewBox 56×56, scaled with
 	// the circle) so the battery keeps the same footprint as every other node.
